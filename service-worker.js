@@ -1,29 +1,24 @@
-// ===== Fukiya Timer PWA : Offline Complete Service Worker =====
+/* =========================================================
+   Fukiya Timer PWA
+   完全自動更新 / オフライン対応 service-worker.js
+   改版時は CACHE_NAME を変更するだけ
+========================================================= */
 
-// キャッシュ名（更新時は必ず名前を変える）
-const CACHE_NAME = 'fukiya-timer-pwa-v1';
+const CACHE_NAME = 'fukiya-timer-pwa-20260204';
 
-// ① オフラインでも必ず表示したい「画面・UI」
-const OFFLINE_URLS = [
+/* オフラインでも必須なものだけ */
+const PRECACHE_URLS = [
   '/',
   '/index.html',
 
   '/official/',
   '/official/index.html',
-
   '/extra/',
   '/extra/index.html',
-
   '/other/',
   '/other/index.html',
 
-  '/icon-192.png',
-  '/icon-512.png'
-];
-
-// ② オフラインでも必ず鳴らしたい「音声（完全列挙）」
-const AUDIO_URLS = [
-  // official
+  // ===== official mp3 =====
   '/official/start-0.mp3',
   '/official/start-1.mp3',
   '/official/start-2.mp3',
@@ -37,51 +32,53 @@ const AUDIO_URLS = [
   '/official/end_tandoku.mp3',
   '/official/clean.mp3',
 
-  // extra
+  // ===== extra mp3 =====
   '/extra/start-0.mp3',
   '/extra/30sec.mp3',
   '/extra/end.mp3',
 
-  // other
+  // ===== other mp3 =====
   '/other/start-0.mp3',
   '/other/30sec.mp3',
-  '/other/end.mp3'
+  '/other/end.mp3',
+
+  // icon
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// ===== install：初回インストール時に全キャッシュ =====
+/* ===== install：一気にキャッシュ ===== */
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll([
-        ...OFFLINE_URLS,
-        ...AUDIO_URLS
-      ]);
+      return cache.addAll(PRECACHE_URLS);
     })
   );
-  self.skipWaiting();
 });
 
-// ===== activate：古いキャッシュを完全削除 =====
+/* ===== activate：古いキャッシュ完全削除 ===== */
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
       );
     })
   );
   self.clients.claim();
 });
 
-// ===== fetch：基本はキャッシュ優先 =====
+/* ===== fetch：キャッシュ最優先（音声命） ===== */
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+      return fetch(event.request);
     })
   );
 });
