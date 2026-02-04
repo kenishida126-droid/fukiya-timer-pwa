@@ -1,6 +1,6 @@
 {
   "name": "スポーツ吹矢タイマー MENU",
-  "short_name": "吹矢Timer",
+  "short_name": "吹矢Timer PWA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
