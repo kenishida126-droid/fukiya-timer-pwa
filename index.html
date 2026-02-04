@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スポーツ吹矢タイマー</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  body {
+    margin:0;
+    padding:0;
+    background-color:#000;  /* ブラックバック */
+    font-family: sans-serif;
+    color: #fff;
+    text-align:center;
+   /* 文字選択を全面禁止（長押し対策） */
+  -webkit-user-select: none;
+  user-select: none;
+  }
+
+  /* タイトル */
+  h1, h2 {
+    margin:0.2em 0;
+    color: gold;
+    animation: fadeIn 1s ease-out;
+  }
+
+  h1 {
+    font-size: 1.5em;      /* ← フォントを1段階小さく */
+    margin-top: 1em;       /* ← 上部に1行分の余白 */
+  }
+
+  h2 {
+    font-weight: normal; /* ≪ スポーツ吹矢タイマー ≫ の下文字 */
+    font-size:1.2em;
+  }
+
+  /* ボタン枠 */
+  .version-box {
+    background-color:#222; /* 濃いグレー */
+    margin: 2em auto;
+    padding: 1em;
+    width: 80%;
+    max-width:400px;
+    border-radius:10px;
+    cursor:pointer;
+    transition: all 0.3s ease;
+  }
+
+  /* 中央表示＆文字スライドイン */
+  .version-title {
+    font-size:1.4em;
+    font-weight:bold;
+    text-align:center;
+    animation: slideIn 0.5s ease-out;
+  }
+
+  .version-subtitle {
+    font-size:1.2em;
+    text-align:center;
+    margin-top:0.5em;
+  }
+
+  /* ホバーで色＆拡大 */
+  .version-box:hover {
+    background-color:#444;
+    transform: scale(1.05);
+  }
+
+  /* アニメーション */
+  @keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }
+
+  @keyframes slideIn {
+    0% {transform: translateY(20px); opacity:0;}
+    100% {transform: translateY(0); opacity:1;}
+  }
+
+</style>
+</head>
+<body>
+
+<h1>≪ スポーツ吹矢タイマー ≫</h1>
+<h2>～ by Ken.Ishida ～</h2>
+
+<div class="version-box" onclick="location.href='official/index.html'">
+  <div class="version-title">
+  Ⅰ．Official version <span style="font-size:0.7em; color:#aaa;">(標準)</span>
+  </div>
+  <div class="version-subtitle">《吹矢タイマー Ver.06+α♬》</div>
+</div>
+
+<div class="version-box" onclick="location.href='extra/index.html'">
+  <div class="version-title">
+  Ⅱ．Extra version <span style="font-size:0.7em; color:#aaa;">(自主練用)</span>
+  </div>
+  <div class="version-subtitle">《吹矢タイマー Extra_Ver.01》</div>
+</div>
+
+<div class="version-box" onclick="location.href='other/index.html'">
+  <div class="version-title">
+  Ⅲ．Other version <span style="font-size:0.7em; color:#aaa;">(自主練用)</span>
+  </div>
+  <div class="version-subtitle">《吹矢タイマー Other_Ver.01》</div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
+</script>
+
+</body>
+</html>
