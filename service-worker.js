@@ -1,28 +1,26 @@
-// ================================
-// Fukiya Timer PWA
-// 完全オフライン対応・最終版
-// ================================
+/* =========================================================
+   Fukiya Timer PWA
+   service-worker.js（最終・音声完全オフライン対応）
+   配置場所：
+   /fukiya-timer-pwa/service-worker.js
+   ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260204-2';
+const CACHE_NAME = 'fukiya-timer-pwa-20260204-final';
 
-// HTML & 必須リソース（壁紙は含めない）
+/* --- install 時に一気にキャッシュする対象 ---
+   ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
 const PRECACHE_URLS = [
   '/fukiya-timer-pwa/',
   '/fukiya-timer-pwa/index.html',
 
   '/fukiya-timer-pwa/official/',
   '/fukiya-timer-pwa/official/index.html',
-
   '/fukiya-timer-pwa/extra/',
   '/fukiya-timer-pwa/extra/index.html',
-
   '/fukiya-timer-pwa/other/',
   '/fukiya-timer-pwa/other/index.html',
 
-  '/fukiya-timer-pwa/icon-192.png',
-  '/fukiya-timer-pwa/icon-512.png',
-
-  // ---------- official mp3 ----------
+  // official mp3
   '/fukiya-timer-pwa/official/start-0.mp3',
   '/fukiya-timer-pwa/official/start-1.mp3',
   '/fukiya-timer-pwa/official/start-2.mp3',
@@ -36,48 +34,61 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/official/end_tandoku.mp3',
   '/fukiya-timer-pwa/official/clean.mp3',
 
-  // ---------- extra mp3 ----------
+  // extra
   '/fukiya-timer-pwa/extra/start-0.mp3',
   '/fukiya-timer-pwa/extra/30sec.mp3',
   '/fukiya-timer-pwa/extra/end.mp3',
 
-  // ---------- other mp3 ----------
+  // other
   '/fukiya-timer-pwa/other/start-0.mp3',
   '/fukiya-timer-pwa/other/30sec.mp3',
   '/fukiya-timer-pwa/other/end.mp3'
 ];
 
-// ---------- install：一気にキャッシュ ----------
+/* ---------------------------------------------------------
+   install
+   ・ここで「一気に全部キャッシュ」
+--------------------------------------------------------- */
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(PRECACHE_URLS);
-    })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
   );
   self.skipWaiting();
 });
 
-// ---------- activate：旧キャッシュ完全削除 ----------
+/* ---------------------------------------------------------
+   activate
+   ・古いキャッシュを完全削除
+--------------------------------------------------------- */
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      );
-    })
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+      )
+    )
   );
   self.clients.claim();
 });
 
-// ---------- fetch：キャッシュ優先（オフライン最優先） ----------
+/* ---------------------------------------------------------
+   fetch
+   ・mp3 は強制的にキャッシュから返す（Range対策）
+   ・それ以外は cache → network
+--------------------------------------------------------- */
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+
+  if (url.pathname.endsWith('.mp3')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        cache.match(url.pathname).then(res => res || fetch(event.request))
+      )
+    );
+    return;
+  }
 
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
+    caches.match(event.request).then(res => res || fetch(event.request))
   );
 });
