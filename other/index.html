@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Other Ver.01 練習専用簡易版</title>
+
+  <style>
+    /* ===== 基本レイアウト ===== */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000;
+      color: #fff;
+      font-family: "MS PGothic","MS Pゴシック",monospace;
+      text-align: center;
+      user-select: none;
+    }
+
+    #title {
+      margin-top: 20px;
+      line-height: 1.2;
+    }
+    #title-main { font-size: 32px; }
+    #title-sub  { font-size: 20px; }
+    #title-sign { font-size: 20px; }
+
+    /* ===== 上部タイマー表示 ===== */
+    #timer {
+      margin: 3vh 0;
+      font-size: 40vw;
+      font-weight: bold;
+      line-height: 1;
+      transform: scaleY(1.3);
+      cursor: pointer;
+    }
+
+    .timer-lime { color: #00ff00; }
+    .timer-gold { color: #d4af37; }
+    .timer-red  { color: #ff0000; }
+
+    .blink-slow {
+      animation: blinkSlow 1s steps(1) infinite;
+    }
+    @keyframes blinkSlow {
+      50% { opacity: 0; }
+    }
+
+    .blink-fast {
+      animation: blinkFast 0.3s steps(1) infinite;
+    }
+    @keyframes blinkFast {
+      50% { opacity: 0; }
+    }
+
+    /* ===== 円形タイマー ===== */
+    #circleWrap {
+      position: relative;
+    }
+    svg {
+      display: block;
+      margin: 0 auto;
+    }
+
+    @keyframes arcBlink {
+      0%,50%   { opacity: 1; }
+      51%,100% { opacity: 0.3; }
+    }
+    .arc-active {
+      animation: arcBlink 0.5s infinite;
+    }
+
+    /* 常時表示の白い円周 */
+    .circle-outline {
+      fill: none;
+      stroke: #fff;
+      stroke-width: 4;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ===== タイトル ===== -->
+  <div id="title">
+    <div id="title-main">スポーツ吹矢タイマー</div>
+    <div id="title-sub">《Other Ver.01～練習専用簡易版》</div>
+    <div id="title-sign">～ by Ken.Ishida ～</div>
+  </div>
+
+  <!-- ===== 上部タイマー ===== -->
+  <div id="timer" class="timer-lime">3:05</div>
+
+  <!-- ===== 円形タイマー ===== -->
+  <div id="circleWrap">
+    <svg id="circleTimer" viewBox="0 0 200 200" width="100%" style="max-width:330px">
+      <circle cx="100" cy="100" r="98" class="circle-outline"></circle>
+      <g id="sectors"></g>
+    </svg>
+  </div>
+
+<script>
+/* =====================================================
+   初期設定
+   ===================================================== */
+const timerEl  = document.getElementById('timer');
+const sectorsG = document.getElementById('sectors');
+
+const TOTAL = 185;          // 3:05
+let remain = TOTAL;
+let running = false;
+let intervalId = null;
+
+/* =====================================================
+   Audio Context
+   ===================================================== */
+let audioCtx;
+
+function audioContext(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+/* 単純ビープ音 */
+function beep(freq, dur, gain){
+  const c = audioContext();
+  const o = c.createOscillator();
+  const g = c.createGain();
+
+  o.frequency.value = freq;
+  g.gain.value = gain;
+
+  o.connect(g).connect(c.destination);
+  o.start();
+  o.stop(c.currentTime + dur);
+}
+
+const beepTap = () => beep(1800, 0.05, 0.15);
+
+/* ===== 矢音（WebAudio チャイム） ===== */
+function beepArrow(){
+  const c = audioContext();
+  if(c.state === 'suspended') c.resume();
+
+  const now = c.currentTime;
+  playTone(1210, now,      0.5); // ピン
+  playTone(965,  now + 0.5, 0.8); // ポーン
+}
+
+function playTone(freq, startTime, duration){
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq, startTime);
+
+  gain.gain.setValueAtTime(0.5, startTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.01,
+    startTime + duration
+  );
+
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+/* =====================================================
+   iOS Audio Unlock & MP3
+   ===================================================== */
+let audioUnlocked = false;
+let sndStart, snd30, sndEnd;
+
+function unlockAudio(){
+  if(audioUnlocked) return;
+
+  audioContext();
+  sndStart = new Audio('start-0.mp3');
+  snd30    = new Audio('30sec.mp3');
+  sndEnd   = new Audio('end.mp3');
+
+  [sndStart, snd30, sndEnd].forEach(a=>{
+    a.volume = 0;
+    a.play().then(()=>{
+      a.pause();
+      a.currentTime = 0;
+    });
+    a.volume = 1;
+  });
+
+  audioUnlocked = true;
+}
+
+/* =====================================================
+   円弧生成
+   ===================================================== */
+const SECS   = [39, 34, 34, 34, 39];
+const COLORS = ['green','orange','lime','yellow','red'];
+
+function polar(deg){
+  const r = 100, c = 100;
+  const rad = (deg - 90) * Math.PI / 180;
+  return {
+    x: c + r * Math.cos(rad),
+    y: c + r * Math.sin(rad)
+  };
+}
+
+function sectorPath(a0, a1){
+  const s = polar(a0);
+  const e = polar(a1);
+  const large = (a1 - a0) > 180 ? 1 : 0;
+  return `M100 100 L ${s.x} ${s.y} A100 100 0 ${large} 1 ${e.x} ${e.y} Z`;
+}
+
+let paths = [];
+let angle = 0;
+
+SECS.forEach((sec, i)=>{
+  const span = sec / 180 * 360;
+  const p = document.createElementNS(
+    'http://www.w3.org/2000/svg','path'
+  );
+  p.dataset.start = angle;
+  p.dataset.end   = angle + span;
+  p.setAttribute('fill', COLORS[i]);
+  p.setAttribute('d', sectorPath(angle, angle + span));
+  sectorsG.appendChild(p);
+  paths.push(p);
+  angle += span;
+});
+
+/* 円形タイマー描画 */
+function drawCircle(){
+  if(remain > 180){
+    paths.forEach(p=>{
+      const s = +p.dataset.start;
+      const e = +p.dataset.end;
+      p.style.display = '';
+      p.classList.remove('arc-active');
+      p.setAttribute('d', sectorPath(s, e));
+    });
+    return;
+  }
+
+  const cut = (180 - remain) / 180 * 360;
+
+  paths.forEach(p=>{
+    const s = +p.dataset.start;
+    const e = +p.dataset.end;
+    p.style.display = '';
+    p.classList.remove('arc-active');
+
+    if(cut <= s){
+      p.setAttribute('d', sectorPath(s, e));
+    }else if(cut >= e){
+      p.style.display = 'none';
+    }else{
+      p.setAttribute('d', sectorPath(cut, e));
+      p.classList.add('arc-active');
+    }
+  });
+}
+
+/* =====================================================
+   タイマー表示
+   ===================================================== */
+function updateTimerView(){
+  timerEl.className = '';
+
+  if(remain === TOTAL){
+    timerEl.textContent = '3:05';
+    timerEl.classList.add('timer-lime');
+    return;
+  }
+
+  if(remain > 180){
+    timerEl.textContent =
+      '3:' + String(remain - 180).padStart(2,'0');
+    timerEl.classList.add('timer-lime');
+    return;
+  }
+
+  const m = Math.floor(remain / 60);
+  const s = String(remain % 60).padStart(2,'0');
+  timerEl.textContent = `${m}:${s}`;
+
+  if(remain === 180){
+    timerEl.classList.add('timer-gold');
+  }else if(remain <= 30 && remain > 0){
+    timerEl.classList.add('timer-red','blink-slow');
+  }else if(remain === 0){
+    timerEl.classList.add('timer-lime','blink-fast');
+  }else{
+    timerEl.classList.add('timer-gold');
+  }
+}
+
+/* =====================================================
+   タイマー制御
+   ===================================================== */
+function tick(){
+  remain--;
+
+  if(remain === 181) sndStart?.play();
+  if(remain === 30)  snd30?.play();
+  if(remain === 0)   sndEnd?.play();
+
+  const marks = [141, 107, 73, 39];
+  if(marks.includes(remain)) beepArrow();
+
+  updateTimerView();
+  if(remain <= 180) drawCircle();
+  if(remain <= 0) stop();
+}
+
+function start(){
+  if(running) return;
+  running = true;
+  requestWakeLock();
+  intervalId = setInterval(tick, 1000);
+}
+
+function stop(){
+  running = false;
+  clearInterval(intervalId);
+  intervalId = null;
+  releaseWakeLock();
+}
+
+/* =====================================================
+   Wake Lock
+   ===================================================== */
+let wakeLock = null;
+
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){}
+}
+
+function releaseWakeLock(){
+  try{
+    wakeLock?.release();
+    wakeLock = null;
+  }catch(e){}
+}
+
+/* =====================================================
+   メイン操作
+   ===================================================== */
+timerEl.onclick = ()=>{
+  unlockAudio();
+  beepTap();
+
+  if(running){
+    stop();
+    remain = TOTAL;
+    updateTimerView();
+    drawCircle();
+    return;
+  }
+
+  if(remain === 0){
+    remain = TOTAL;
+    updateTimerView();
+    drawCircle();
+    return;
+  }
+
+  if(remain === TOTAL){
+    start();
+  }
+};
+
+updateTimerView();
+drawCircle();
+</script>
+
+</body>
+</html>
