@@ -3,7 +3,7 @@
 // 完全オフライン対応・最終版
 // ================================
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260204-1';
+const CACHE_NAME = 'fukiya-timer-pwa-20260204-2';
 
 // HTML & 必須リソース（壁紙は含めない）
 const PRECACHE_URLS = [
