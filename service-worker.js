@@ -1,54 +1,87 @@
-const CACHE_NAME = 'fukiya-timer-cache-v1';
+// ===== Fukiya Timer PWA : Offline Complete Service Worker =====
 
-// オフラインでも表示したい「画面だけ」
+// キャッシュ名（更新時は必ず名前を変える）
+const CACHE_NAME = 'fukiya-timer-pwa-v1';
+
+// ① オフラインでも必ず表示したい「画面・UI」
 const OFFLINE_URLS = [
   '/',
   '/index.html',
+
   '/official/',
   '/official/index.html',
+
   '/extra/',
   '/extra/index.html',
+
   '/other/',
   '/other/index.html',
+
   '/icon-192.png',
   '/icon-512.png'
 ];
 
-// インストール時：最低限だけキャッシュ
+// ② オフラインでも必ず鳴らしたい「音声（完全列挙）」
+const AUDIO_URLS = [
+  // official
+  '/official/start-0.mp3',
+  '/official/start-1.mp3',
+  '/official/start-2.mp3',
+  '/official/start-3.mp3',
+  '/official/start-4.mp3',
+  '/official/start-5.mp3',
+  '/official/start-6.mp3',
+  '/official/30sec.mp3',
+  '/official/end.mp3',
+  '/official/end_haneya.mp3',
+  '/official/end_tandoku.mp3',
+  '/official/clean.mp3',
+
+  // extra
+  '/extra/start-0.mp3',
+  '/extra/30sec.mp3',
+  '/extra/end.mp3',
+
+  // other
+  '/other/start-0.mp3',
+  '/other/30sec.mp3',
+  '/other/end.mp3'
+];
+
+// ===== install：初回インストール時に全キャッシュ =====
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(OFFLINE_URLS);
+      return cache.addAll([
+        ...OFFLINE_URLS,
+        ...AUDIO_URLS
+      ]);
     })
   );
   self.skipWaiting();
 });
 
-// 古いキャッシュ掃除（安全）
+// ===== activate：古いキャッシュを完全削除 =====
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
+        })
       );
     })
   );
   self.clients.claim();
 });
 
-// 通信優先 → 失敗したらキャッシュ
+// ===== fetch：基本はキャッシュ優先 =====
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') return;
-
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request);
-      })
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request);
+    })
   );
 });
