@@ -62,12 +62,28 @@ self.addEventListener('install', event => {
 --------------------------------------------------------- */
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      )
-    )
+    (async () => {
+
+      // ① 古いキャッシュを完全削除
+      const keys = await caches.keys();
+      await Promise.all(
+        keys.filter(k => k !== CACHE_NAME)
+            .map(k => caches.delete(k))
+      );
+
+      // ② 画面に「更新完了」を通知 ← ★ここが追加点
+      const clientsList = await self.clients.matchAll({ type: 'window' });
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'CACHE_UPDATED',
+          cacheName: CACHE_NAME
+        });
+      }
+
+    })()
   );
+
+  // ③ 新SWを即支配
   self.clients.claim();
 });
 

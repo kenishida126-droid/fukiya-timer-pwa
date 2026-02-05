@@ -109,6 +109,16 @@
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js');
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'CACHE_UPDATED') {
+      alert(
+        '吹矢Timer_PWA が更新されました。\n' +
+        '通信が発生しますので、Wi-Fi 環境下で\n' +
+        'しばらく起動したままにしてください。'
+      );
+    }
+  });
 }
 </script>
 
