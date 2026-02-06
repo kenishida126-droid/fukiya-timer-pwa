@@ -1,7 +1,7 @@
 {
   "name": "スポーツ吹矢タイマー MENU",
   "short_name": "吹矢Timer PWA",
-  "start_url": "./?v=20260206-icon"
+  "start_url": "./"
   "scope": "./",
   "display": "standalone",
   "background_color": "#000000",
