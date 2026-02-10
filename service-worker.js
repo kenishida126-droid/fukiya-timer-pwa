@@ -44,7 +44,7 @@ const PRECACHE_URLS = [
   // other
   '/fukiya-timer-pwa/other/start-0.mp3',
   '/fukiya-timer-pwa/other/30sec.mp3',
-  '/fukiya-timer-pwa/other/end.mp3'
+  '/fukiya-timer-pwa/other/end.mp3',
 
   // gemini
   '/fukiya-timer-pwa/gemini/start-0.mp3',
