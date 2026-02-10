@@ -248,7 +248,7 @@
         
         function initPie() { 
             const pie = document.getElementById('pie-segments'); pie.innerHTML = ''; let ang = 0;
-            [{sec:39,c:'green'},{sec:34,c:'orange'},{sec:34,c:'lime'},{sec:34,c:'yellow'},{sec:39,c:'red'}].forEach(a => {
+            [{sec:39,c:'lime'},{sec:34,c:'purple'},{sec:34,c:'Blue'},{sec:34,c:'yellow'},{sec:39,c:'red'}].forEach(a => {
                 const d = (a.sec/180)*360; const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
                 p.setAttribute("d", getPathData(ang, ang + d)); p.setAttribute("fill", a.c); pie.appendChild(p); ang += d;
             });
