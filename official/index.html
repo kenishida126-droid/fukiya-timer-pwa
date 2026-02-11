@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.06 +α♬ Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.07 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -269,7 +269,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.06+α♬ Ken.Ishida≫</h2>
+      <h2>≪Ver.07 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -645,13 +645,110 @@ function resetAction(){
   }
 }
 
-/* Round label click: cycle rounds (do not affect timer visual except label) */
-roundLabel.addEventListener('click', (e)=>{
-  roundIndex = (roundIndex + 1) % rounds.length;
+/*↓↓↓↓ここから入替*round select update */
+/* =========================
+   Round label tap handling
+   short tap  : cycle rounds（従来順）
+   long  tap  : ラベル直下に一覧表示して直接選択
+   ========================= */
+
+let roundPressTimer = null;
+let roundLongPress = false;
+let roundMenuEl = null;
+
+/* ===== 共通：ラベル更新（既存rounds使用）===== */
+function updateRoundLabel(){
   roundLabel.textContent = rounds[roundIndex];
-  if(roundIndex === rounds.length - 1) roundLabel.classList.add('final'); else roundLabel.classList.remove('final');
-  // NO timer pulse or layout change here (explicitly remove any added pulse)
+  if(roundIndex === rounds.length - 1){
+    roundLabel.classList.add('final');
+  }else{
+    roundLabel.classList.remove('final');
+  }
+}
+
+/* ===== ショートタップ（完全従来順）===== */
+function handleRoundShortTap(){
+  roundIndex = (roundIndex + 1) % rounds.length;
+  updateRoundLabel();
+}
+
+/* ===== ロングタップメニュー ===== */
+function showRoundMenu(){
+
+  if(roundMenuEl) return;
+
+  roundMenuEl = document.createElement("div");
+  roundMenuEl.style.position = "absolute";
+  roundMenuEl.style.left = roundLabel.offsetLeft + "px";
+  roundMenuEl.style.top  = (roundLabel.offsetTop + roundLabel.offsetHeight) + "px";
+  roundMenuEl.style.background = "#111";
+  roundMenuEl.style.border = "1px solid #888";
+  roundMenuEl.style.zIndex = "9999";
+  roundMenuEl.style.minWidth = roundLabel.offsetWidth + "px";
+
+  rounds.forEach((r, i)=>{
+    const item = document.createElement("div");
+    item.textContent = r;
+    item.style.padding = "6px 10px";
+    item.style.cursor = "pointer";
+    item.style.whiteSpace = "nowrap";
+
+    if(i === roundIndex){
+      item.style.background = "#333";
+      item.style.color = "#00ff00";
+    }
+
+    item.addEventListener("click", ()=>{
+      roundIndex = i;
+      updateRoundLabel();
+      closeRoundMenu();
+    });
+
+    roundMenuEl.appendChild(item);
+  });
+
+  document.body.appendChild(roundMenuEl);
+
+  setTimeout(()=>{
+    document.addEventListener("click", outsideClose);
+  },10);
+}
+
+function closeRoundMenu(){
+  if(roundMenuEl){
+    document.body.removeChild(roundMenuEl);
+    roundMenuEl = null;
+    document.removeEventListener("click", outsideClose);
+  }
+}
+
+function outsideClose(e){
+  if(!roundMenuEl) return;
+  if(!roundMenuEl.contains(e.target) && e.target !== roundLabel){
+    closeRoundMenu();
+  }
+}
+
+/* ===== long / short 判定 ===== */
+roundLabel.addEventListener("pointerdown", ()=>{
+  roundLongPress = false;
+  roundPressTimer = setTimeout(()=>{
+    roundLongPress = true;
+    showRoundMenu();
+  }, 500);
 });
+
+roundLabel.addEventListener("pointerup", ()=>{
+  clearTimeout(roundPressTimer);
+  if(!roundLongPress){
+    handleRoundShortTap();
+  }
+});
+
+roundLabel.addEventListener("pointerleave", ()=>{
+  clearTimeout(roundPressTimer);
+});
+/*↑↑↑↑ここまで*/
 
 /* Clean button (Lock style) */
 function setCleanVisual(){
