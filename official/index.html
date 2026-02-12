@@ -677,19 +677,25 @@ function showRoundMenu(){
 
   if(roundMenuEl) return;
 
+  const rect = roundLabel.getBoundingClientRect();
+
   roundMenuEl = document.createElement("div");
-  roundMenuEl.style.position = "absolute";
-  roundMenuEl.style.left = roundLabel.offsetLeft + "px";
-  roundMenuEl.style.top  = (roundLabel.offsetTop + roundLabel.offsetHeight) + "px";
+  roundMenuEl.style.position = "fixed";
+  roundMenuEl.style.left = "50%";
+  roundMenuEl.style.transform = "translateX(-50%)";
+  roundMenuEl.style.top  = rect.bottom + "px";
+  roundMenuEl.style.width = "70vw";
+  roundMenuEl.style.maxWidth = "95vw";
   roundMenuEl.style.background = "#111";
   roundMenuEl.style.border = "1px solid #888";
   roundMenuEl.style.zIndex = "9999";
-  roundMenuEl.style.minWidth = roundLabel.offsetWidth + "px";
+  roundMenuEl.style.boxSizing = "border-box";
 
   rounds.forEach((r, i)=>{
     const item = document.createElement("div");
     item.textContent = r;
-    item.style.padding = "6px 10px";
+    item.style.padding = "8px 12px";
+    item.style.fontSize = "20px";
     item.style.cursor = "pointer";
     item.style.whiteSpace = "nowrap";
 
@@ -697,6 +703,7 @@ function showRoundMenu(){
       item.style.background = "#333";
       item.style.color = "#00ff00";
     }
+
 
     item.addEventListener("click", ()=>{
       roundIndex = i;
