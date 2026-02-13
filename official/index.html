@@ -1328,21 +1328,16 @@ mainTitle.addEventListener('click', async (ev)=>{
 
 <script>
 (function(){
-
-  function lockScroll(){
-    if(window.scrollY !== 0){
+  if(!window.visualViewport) return;
+  let lastHeight = window.visualViewport.height;
+  window.visualViewport.addEventListener("resize", function(){
+    const currentHeight = window.visualViewport.height;
+    // アドレスバー復帰で高さが縮んだときのみ補正
+    if(currentHeight < lastHeight){
       window.scrollTo(0,0);
     }
-  }
-
-  window.addEventListener("scroll", lockScroll, { passive:true });
-
-  if(window.visualViewport){
-    window.visualViewport.addEventListener("resize", function(){
-      window.scrollTo(0,0);
-    });
-  }
-
+    lastHeight = currentHeight;
+  });
 })();
 </script>
 
