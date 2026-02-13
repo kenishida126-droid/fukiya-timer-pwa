@@ -19,9 +19,9 @@
   --toggle-off-start:#f3f3f3;
   --toggle-off-end:#dcdcdc;
   --wall-on1:#eaff7f;   /* Wallpaper グラデ（明）*/
-  --wall-on2:#adff2f;   /* Wallpaper グラデ（暗）*/
+  --wall-on2:#adff2f;   /* Wallpaper グラデ（明）*/
   --metro-on1:#ffc87a;  /* Metronome グラデ（明）*/
-  --metro-on2:#ff9800;  /* Metronome グラデ（暗）*/
+  --metro-on2:#ff9800;  /* Metronome グラデ（明）*/
   --toggle-shadow: 0 6px 12px rgba(0,0,0,0.35);
   --toggle-inset: inset 0 3px 4px rgba(255,255,255,0.22);
 
@@ -32,9 +32,16 @@
 }
 
 /* --- 基本レイアウト（Ver.05.3 準拠） --- */
-html,body{height:100%; margin:0; padding:0;}
+html,body{min-height:101vh;margin:0;padding:0;
+
+  /* ★追加 start */
+  overflow-y:scroll;
+  scroll-snap-type:y mandatory;
+  -webkit-overflow-scrolling: touch;
+  /* ★追加 end */
+}
+
 body{
-  min-height:100dvh;
   font-family:"MS PGothic","MS Pゴシック",monospace;
   background:linear-gradient(to bottom,var(--bg1),var(--bg2));
   background-size:cover;
@@ -262,14 +269,6 @@ body {
   color: transparent; /* 文字を透明にする */
 }
 
-/* ===== タイトル固定 ===== */
-#title{
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: #000;
-}
-
 </style>
 </head>
 <body>
@@ -335,6 +334,7 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
+
 
 <script>
 /* ===== 状態変数 ===== */
@@ -1313,5 +1313,7 @@ mainTitle.addEventListener('click', async (ev)=>{
   window.addEventListener('orientationchange', ()=>{ setTimeout(scrollToTop, 500); });
 })();
 </script>
+
+
 </body>
 </html>
