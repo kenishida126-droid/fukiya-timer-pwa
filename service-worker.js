@@ -1,11 +1,11 @@
 /* =========================================================
    Fukiya Timer PWA
-   service-worker.js（最終・音声完全オフライン対応）
+   service-worker.js（最新 index.html 強制取得対応）
    配置場所：
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260214-3';
+const CACHE_NAME = 'fukiya-timer-pwa-20260214-6';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -60,7 +60,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
   );
-  self.skipWaiting();
+  self.skipWaiting(); // 新SWを即有効化
 });
 
 /* ---------------------------------------------------------
@@ -70,15 +70,13 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
-
-      // ① 古いキャッシュを完全削除
+      // ① 古いキャッシュを削除
       const keys = await caches.keys();
       await Promise.all(
-        keys.filter(k => k !== CACHE_NAME)
-            .map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       );
 
-      // ② 画面に「更新完了」を通知 ← ★ここが追加点
+      // ② 更新通知を送る（必要ならクライアントで reload 可能）
       const clientsList = await self.clients.matchAll({ type: 'window' });
       for (const client of clientsList) {
         client.postMessage({
@@ -86,22 +84,27 @@ self.addEventListener('activate', event => {
           cacheName: CACHE_NAME
         });
       }
-
     })()
   );
-
-  // ③ 新SWを即支配
   self.clients.claim();
 });
 
 /* ---------------------------------------------------------
    fetch
-   ・mp3 は強制的にキャッシュから返す（Range対策）
-   ・それ以外は cache → network
+   ・mp3 はキャッシュ優先
+   ・index.html は常にネットワーク優先
+   ・それ以外はキャッシュ優先 → ネットワーク
 --------------------------------------------------------- */
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
+  // index.html は常に最新を取得
+  if (url.pathname.endsWith('index.html') || url.pathname === '/fukiya-timer-pwa/') {
+    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+    return;
+  }
+
+  // mp3 はキャッシュ優先（Range 対応）
   if (url.pathname.endsWith('.mp3')) {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache =>
@@ -111,6 +114,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // それ以外はキャッシュ優先 → ネットワーク
   event.respondWith(
     caches.match(event.request).then(res => res || fetch(event.request))
   );
