@@ -19,9 +19,9 @@
   --toggle-off-start:#f3f3f3;
   --toggle-off-end:#dcdcdc;
   --wall-on1:#eaff7f;   /* Wallpaper グラデ（明）*/
-  --wall-on2:#adff2f;   /* Wallpaper グラデ（明）*/
+  --wall-on2:#adff2f;   /* Wallpaper グラデ（暗）*/
   --metro-on1:#ffc87a;  /* Metronome グラデ（明）*/
-  --metro-on2:#ff9800;  /* Metronome グラデ（明）*/
+  --metro-on2:#ff9800;  /* Metronome グラデ（暗）*/
   --toggle-shadow: 0 6px 12px rgba(0,0,0,0.35);
   --toggle-inset: inset 0 3px 4px rgba(255,255,255,0.22);
 
@@ -32,22 +32,7 @@
 }
 
 /* --- 基本レイアウト（Ver.05.3 準拠） --- */
-html{
-  min-height:101vh;
-  margin:0;
-  padding:0;
-
-  overflow-y:scroll;
-  scroll-snap-type:y mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-
-body{
-  min-height:101vh;
-  margin:0;
-  padding:0;
-}
-
+html,body{min-height:101vh; margin:0; padding:0;}
 body{
   font-family:"MS PGothic","MS Pゴシック",monospace;
   background:linear-gradient(to bottom,var(--bg1),var(--bg2));
@@ -55,8 +40,12 @@ body{
   background-position:center;
   color:#fff;
   text-align:center;
+  display:flex;
+  flex-direction:column;
   transition:background-image 0.35s ease;
   position:relative;
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #overlay{
@@ -272,22 +261,15 @@ body {
   color: transparent; /* 文字を透明にする */
 }
 
-  footer{
-    font-size:12px;
-    opacity:0.6;
-    margin-top:20px;
-  }
-
 </style>
 </head>
 <body>
-  <div id="snapWrapper">
-    <div id="overlay"></div>
+  <div id="overlay"></div>
 
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.07 Ken.Ishida≫</h2>
+      <h2>≪Ver.07-1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -344,7 +326,6 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
-
 
 <script>
 /* ===== 状態変数 ===== */
@@ -1322,24 +1303,15 @@ mainTitle.addEventListener('click', async (ev)=>{
   window.addEventListener('load', ()=>{ setTimeout(scrollToTop, 500); });
   window.addEventListener('orientationchange', ()=>{ setTimeout(scrollToTop, 500); });
 })();
+
+/* ==== PWA専用：上スワイプ無効化 ==== */
+window.addEventListener('load', function () {
+  if (window.matchMedia('(display-mode: standalone)').matches) {
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+  }
+});
+
 </script>
-
-  </div>
-
-<script>
-(function(){
-  if(!window.visualViewport) return;
-  let lastHeight = window.visualViewport.height;
-  window.visualViewport.addEventListener("resize", function(){
-    const currentHeight = window.visualViewport.height;
-    // アドレスバー復帰で高さが縮んだときのみ補正
-    if(currentHeight < lastHeight){
-      window.scrollTo(0,0);
-    }
-    lastHeight = currentHeight;
-  });
-})();
-</script>
-
 </body>
 </html>
