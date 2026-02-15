@@ -38,7 +38,7 @@
   /* ボタン枠 */
   .version-box {
     background-color:#222; /* 濃いグレー */
-    margin: 2em auto;
+    margin: 1.5em auto;
     padding: 1em;
     width: 80%;
     max-width:400px;
@@ -62,10 +62,17 @@
   }
 
   /* ホバーで色＆拡大 */
-  .version-box:hover {
-    background-color:#444;
-    transform: scale(1.05);
-  }
+  /* ▼ 注意書き（iPhone非対応） */
+.version-attention {
+font-size:1.1em;
+color: gold;
+margin-top:0.5em;
+}
+
+.version-box:hover {
+background-color:#444;
+transform: scale(1.05);
+}
 
   /* アニメーション */
   @keyframes fadeIn {
@@ -111,6 +118,7 @@
   Ⅳ．Gemini version <span style="font-size:0.7em; color:#aaa;">(音声認識)</span>
   </div>
   <div class="version-subtitle">「スタート/開始/始め」を認識</div>
+  <div class="version-attention">※ iPhone では音声認識非対応です</div>
 </div>
 
 <script>
@@ -127,6 +135,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+
 </script>
 
 </body>
