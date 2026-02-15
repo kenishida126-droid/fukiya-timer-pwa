@@ -261,6 +261,13 @@ body {
   color: transparent; /* 文字を透明にする */
 }
 
+@media (display-mode: standalone) {
+  html, body {
+    overflow: hidden !important;
+    height: 100%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1303,14 +1310,6 @@ mainTitle.addEventListener('click', async (ev)=>{
   window.addEventListener('load', ()=>{ setTimeout(scrollToTop, 500); });
   window.addEventListener('orientationchange', ()=>{ setTimeout(scrollToTop, 500); });
 })();
-
-/* ==== PWA専用：上スワイプ無効化 ==== */
-window.addEventListener('load', function () {
-  if (window.matchMedia('(display-mode: standalone)').matches) {
-    document.documentElement.style.overflow = 'hidden';
-    document.body.style.overflow = 'hidden';
-  }
-});
 
 </script>
 </body>
