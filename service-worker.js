@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260214-11';
+const CACHE_NAME = 'fukiya-timer-pwa-20260215-1';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -119,4 +119,5 @@ self.addEventListener('fetch', event => {
     caches.match(event.request).then(res => res || fetch(event.request))
   );
 });
+
 
