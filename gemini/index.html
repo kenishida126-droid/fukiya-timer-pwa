@@ -135,14 +135,13 @@
         const display = document.getElementById('timer-display'), micButton = document.getElementById('mic-button');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // --- 追加：控えめなTAP音を鳴らす関数 ---
         function playTapSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // 控えめで高めの音
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 操作者向けの控えめ音量
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -150,7 +149,6 @@
             osc.stop(audioCtx.currentTime + 0.1);
         }
 
-        // --- WakeLock 制御ロジック (V45) ---
         async function updateWakeLock() {
             if (!('wakeLock' in navigator)) return;
             const shouldBeActive = isMicEnabled || isRunning;
@@ -201,7 +199,7 @@
 
         function toggleMic(event) {
             event.stopPropagation();
-            playTapSound(); // --- TAP音追加 ---
+            playTapSound();
             if (!recognition) return;
             if (audioCtx.state === 'suspended') audioCtx.resume();
             isMicEnabled = !isMicEnabled;
@@ -210,7 +208,43 @@
             updateWakeLock();
         }
 
-        const audioFiles = { start: new Audio('start-0.mp3'), halfMin: new Audio('30sec.mp3'), end: new Audio('end.mp3') };
+        let audioFiles = null; // Other版方式：unlock内で生成
+
+        // --- iPhone対策：Audio Unlock & 多重再生防止 ---
+        let audioUnlocked = false;
+        function unlockAudio(){
+            if(audioUnlocked) return;
+
+            // ★ Other版完全コピー方式
+            if(!audioFiles){
+                audioFiles = {
+                    start: new Audio('start-0.mp3'),
+                    halfMin: new Audio('30sec.mp3'),
+                    end: new Audio('end.mp3')
+                };
+            }
+
+            [audioFiles.start, audioFiles.halfMin, audioFiles.end].forEach(a=>{
+                a.volume = 0;
+                const p = a.play();
+                if(p){
+                    p.then(()=>{
+                        a.pause();
+                        a.currentTime = 0;
+                    }).catch(()=>{});
+                }
+                a.volume = 1;
+            });
+
+            audioUnlocked = true;
+        }
+        function safePlay(a){
+            try{
+                a.pause();
+                a.currentTime = 0;
+                a.play().catch(()=>{});
+            }catch(e){}
+        }
         function playChime() { const now = audioCtx.currentTime; const p = (f, s, d) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, s); g.gain.setValueAtTime(0.5, s); g.gain.exponentialRampToValueAtTime(0.01, s + d); o.connect(g); g.connect(audioCtx.destination); o.start(s); o.stop(s + d); }; p(659.25, now, 0.8); p(523.25, now + 0.4, 1.2); }
         
         function updateDisplay() {
@@ -234,10 +268,10 @@
             }
             
             if ([141, 107, 73, 39].includes(timeLeft)) playChime();
-            if (timeLeft === 181) audioFiles.start.play().catch(e=>{});
-            if (timeLeft === 30) audioFiles.halfMin.play().catch(e=>{});
+            if (timeLeft === 181) safePlay(audioFiles.start);
+            if (timeLeft === 30) safePlay(audioFiles.halfMin);
             if (timeLeft === 0) {
-                audioFiles.end.play().catch(e=>{}); clearInterval(timerInterval); isRunning = false;
+                safePlay(audioFiles.end); clearInterval(timerInterval); isRunning = false;
                 updateWakeLock(); 
                 if (isMicEnabled) setTimeout(() => { if (!isRunning && isMicEnabled) { try { recognition.start(); } catch(e){} updateMicVisual(); } }, 2000);
                 updateMicVisual();
@@ -255,7 +289,8 @@
         }
 
         function handleTap() { 
-            playTapSound(); // --- TAP音追加 ---
+            unlockAudio();
+            playTapSound();
             if (isRunning || timeLeft === 0) resetTimer(); else startTimer(); 
         }
 
@@ -271,7 +306,10 @@
         function resetTimer() { 
             clearInterval(timerInterval); isRunning = false; timeLeft = 185; 
             if (isMicEnabled) { try { recognition.start(); } catch(e){} } 
-            initPie(); updateDisplay(); updateMicVisual(); 
+            initPie(); 
+        updateDisplay();
+
+         updateMicVisual(); 
             updateWakeLock(); 
         }
 
