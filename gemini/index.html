@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>スポーツ吹矢タイマー V45</title>
+    <title>スポーツ吹矢タイマー V46</title>
     <style>
         html, body {
             background-color: #000;
@@ -208,14 +208,10 @@
             updateWakeLock();
         }
 
-        let audioFiles = null; // Other版方式：unlock内で生成
-
-        // --- iPhone対策：Audio Unlock & 多重再生防止 ---
+        let audioFiles = null;
         let audioUnlocked = false;
         function unlockAudio(){
             if(audioUnlocked) return;
-
-            // ★ Other版完全コピー方式
             if(!audioFiles){
                 audioFiles = {
                     start: new Audio('start-0.mp3'),
@@ -223,7 +219,6 @@
                     end: new Audio('end.mp3')
                 };
             }
-
             [audioFiles.start, audioFiles.halfMin, audioFiles.end].forEach(a=>{
                 a.volume = 0;
                 const p = a.play();
@@ -235,7 +230,6 @@
                 }
                 a.volume = 1;
             });
-
             audioUnlocked = true;
         }
         function safePlay(a){
@@ -268,10 +262,11 @@
             }
             
             if ([141, 107, 73, 39].includes(timeLeft)) playChime();
-            if (timeLeft === 181) safePlay(audioFiles.start);
-            if (timeLeft === 30) safePlay(audioFiles.halfMin);
+            if (timeLeft === 181 && audioFiles) safePlay(audioFiles.start);
+            if (timeLeft === 30 && audioFiles) safePlay(audioFiles.halfMin);
             if (timeLeft === 0) {
-                safePlay(audioFiles.end); clearInterval(timerInterval); isRunning = false;
+                if (audioFiles) safePlay(audioFiles.end);
+                clearInterval(timerInterval); isRunning = false;
                 updateWakeLock(); 
                 if (isMicEnabled) setTimeout(() => { if (!isRunning && isMicEnabled) { try { recognition.start(); } catch(e){} updateMicVisual(); } }, 2000);
                 updateMicVisual();
@@ -307,14 +302,134 @@
             clearInterval(timerInterval); isRunning = false; timeLeft = 185; 
             if (isMicEnabled) { try { recognition.start(); } catch(e){} } 
             initPie(); 
-        updateDisplay();
-
-         updateMicVisual(); 
+            updateDisplay();
+            updateMicVisual(); 
             updateWakeLock(); 
         }
 
         initPie(); 
         updateDisplay();
-    </script>
+    
+    /* === 虹色リニアモーターカー（周回色シフト完全版） === */
+(function(){
+  const svg = document.querySelector("#circle-timer-container svg");
+  if(!svg) return;
+
+  const NS = "http://www.w3.org/2000/svg";
+  const cx = 100;
+  const cy = 100;
+
+  const old = svg.querySelector("#linear-train");
+  if(old) old.remove();
+
+  const outline = svg.querySelector(".outline");
+  const tubeWidth = 6;
+  const tubeRadius = 98 - tubeWidth/2;
+  outline.setAttribute("r", tubeRadius);
+  outline.style.strokeWidth = tubeWidth;
+
+  const R = tubeRadius;
+  const totalDeg = 60;
+  const cars = 7;
+  const carDeg = totalDeg / cars;
+
+  const baseColors = [
+    "#ff0000", // 赤
+    "#ff7f00", // 橙
+    "#ffff00", // 黄
+    "#00ff00", // 緑
+    "#00aaff", // 青
+    "#0000ff", // 藍
+    "#8b00ff"  // 紫
+  ];
+
+  let shiftIndex = 0; // ①〜⑦管理
+
+  const group = document.createElementNS(NS,"g");
+  group.setAttribute("id","linear-train");
+  group.style.display = "none";
+  svg.appendChild(group);
+
+  function polar(angle){
+    const rad = (angle-90)*Math.PI/180;
+    return {
+      x: cx + R*Math.cos(rad),
+      y: cy + R*Math.sin(rad)
+    };
+  }
+
+  function getShiftedColors(){
+    const arr = [];
+    for(let i=0;i<cars;i++){
+      arr.push(baseColors[(i+shiftIndex)%cars]);
+    }
+    return arr;
+  }
+
+  function drawTrain(){
+    group.innerHTML = "";
+    const colors = getShiftedColors();
+
+    colors.forEach((color,i)=>{
+      const start = -i*carDeg;
+      const end = start - carDeg;
+
+      const p1 = polar(start);
+      const p2 = polar(end);
+
+      const path = document.createElementNS(NS,"path");
+      path.setAttribute("d",
+        `M ${p1.x} ${p1.y} A ${R} ${R} 0 0 0 ${p2.x} ${p2.y}`
+      );
+      path.setAttribute("fill","none");
+      path.setAttribute("stroke",color);
+      path.setAttribute("stroke-width", tubeWidth);
+      path.setAttribute("stroke-linecap","butt");
+
+      group.appendChild(path);
+    });
+  }
+
+  let rotation = 90;
+  let animId = null;
+  let lapCounter = 0;
+
+  function animate(){
+    rotation += 6; // 1周/秒
+
+    if(rotation >= 450){ // 360°回転完了（90→450）
+      rotation -= 360;
+      shiftIndex = (shiftIndex + 1) % 7; // ①→②→…→⑦→①
+      drawTrain();
+    }
+
+    group.setAttribute("transform",
+      `rotate(${rotation} ${cx} ${cy})`
+    );
+
+    animId = requestAnimationFrame(animate);
+  }
+
+  drawTrain();
+
+  const origStart = window.startTimer;
+  const origReset = window.resetTimer;
+
+  window.startTimer = function(){
+    group.style.display = "block";
+    rotation = 90;
+    shiftIndex = 0; // 常に①から開始
+    drawTrain();
+    animate();
+    if(origStart) origStart.apply(this,arguments);
+  }
+
+  window.resetTimer = function(){
+    group.style.display = "none";
+    cancelAnimationFrame(animId);
+    if(origReset) origReset.apply(this,arguments);
+  }
+})();
+</script>
 </body>
 </html>
