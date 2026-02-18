@@ -291,10 +291,22 @@
 
         async function startTimer() { 
             if (isRunning) return; 
+
+            // ★ 音声起動時も確実にAudio解放
+            unlockAudio();
+            if (audioCtx.state === 'suspended') {
+                try { await audioCtx.resume(); } catch(e){}
+            }
+
             isRunning = true; 
             if (isMicEnabled) { try { recognition.stop(); } catch(e){} } 
             updateWakeLock(); 
-            timerInterval = setInterval(() => { if (timeLeft > 0) { timeLeft--; updateDisplay(); } }, 1000); 
+            timerInterval = setInterval(() => { 
+                if (timeLeft > 0) { 
+                    timeLeft--; 
+                    updateDisplay(); 
+                } 
+            }, 1000); 
             updateMicVisual(); 
         }
 
