@@ -322,14 +322,13 @@
         initPie(); 
         updateDisplay();
     
-    /* === 虹色リニアモーターカー（周回色シフト完全版） === */
+    /* === 虹色リニアモーターカー（謙さん仕様修正版） === */
 (function(){
   const svg = document.querySelector("#circle-timer-container svg");
   if(!svg) return;
 
   const NS = "http://www.w3.org/2000/svg";
-  const cx = 100;
-  const cy = 100;
+  const cx = 100, cy = 100;
 
   const old = svg.querySelector("#linear-train");
   if(old) old.remove();
@@ -346,16 +345,21 @@
   const carDeg = totalDeg / cars;
 
   const baseColors = [
-    "#ff0000", // 赤
-    "#ff7f00", // 橙
-    "#ffff00", // 黄
-    "#00ff00", // 緑
-    "#00aaff", // 青
-    "#0000ff", // 藍
-    "#8b00ff"  // 紫
+    "#ff0000","#ff7f00","#ffff00",
+    "#00ff00","#00aaff","#0000ff","#8b00ff"
   ];
 
-  let shiftIndex = 0; // ①〜⑦管理
+  let rotation = 89.999; // 12時直前から開始して先頭(red)を最初に出庫させる            // 12時基準
+  let animId = null;
+  let running = false;
+  let stopRequested = false;
+  let colorShift = 0;
+  let lastTs = null;
+
+  // const degPerSec = 30; // debug用速度/frame(60fps想定)=約30deg/sec
+  const degPerSec = 180; // 本番用/ 2秒/周(360=1秒/周)
+
+  const carState = [];
 
   const group = document.createElementNS(NS,"g");
   group.setAttribute("id","linear-train");
@@ -370,21 +374,25 @@
     };
   }
 
-  function getShiftedColors(){
-    const arr = [];
-    for(let i=0;i<cars;i++){
-      arr.push(baseColors[(i+shiftIndex)%cars]);
-    }
-    return arr;
+  function normalize(a){
+    return ((a % 360) + 360) % 360;
   }
 
-  function drawTrain(){
-    group.innerHTML = "";
-    const colors = getShiftedColors();
+  // 回転は常に正方向前提
+  function crossedTwelve(prev, now){
+    const p = normalize(prev - 90);
+    const n = normalize(now  - 90);
+    return p > n; // 90度を跨いだ
+  }
 
-    colors.forEach((color,i)=>{
+  function draw(){
+    group.innerHTML = "";
+
+    for(let i=0;i<cars;i++){
+      if(!carState[i].visible) continue;
+
       const start = -i*carDeg;
-      const end = start - carDeg;
+      const end   = start - carDeg;
 
       const p1 = polar(start);
       const p2 = polar(end);
@@ -394,51 +402,121 @@
         `M ${p1.x} ${p1.y} A ${R} ${R} 0 0 0 ${p2.x} ${p2.y}`
       );
       path.setAttribute("fill","none");
-      path.setAttribute("stroke",color);
       path.setAttribute("stroke-width", tubeWidth);
       path.setAttribute("stroke-linecap","butt");
 
+      const colorIndex = (i + colorShift) % cars;
+      path.setAttribute("stroke", baseColors[colorIndex]);
+
       group.appendChild(path);
-    });
+    }
   }
 
-  let rotation = 90;
-  let animId = null;
-  let lapCounter = 0;
+  function animate(ts){
+    if(!lastTs) lastTs = ts;
+    const delta = (ts - lastTs) / 1000;
+    lastTs = ts;
 
-  function animate(){
-    rotation += 6; // 1周/秒
+    const prevRotation = rotation;
+    rotation += degPerSec * delta;
 
-    if(rotation >= 450){ // 360°回転完了（90→450）
-      rotation -= 360;
-      shiftIndex = (shiftIndex + 1) % 7; // ①→②→…→⑦→①
-      drawTrain();
+    const prevHead = prevRotation;
+    const nowHead  = rotation;
+
+    // 周回で色シフト（停止要求前のみ）
+    // ★ 全車両が出揃うまでは色シフトしない
+    if(crossedTwelve(prevHead, nowHead) && !stopRequested && carState.every(c=>c.visible)){
+      colorShift = (colorShift + 1) % cars;
     }
+
+    // 各車両の12時判定
+    for(let i=0;i<cars;i++){
+      const offset = i * carDeg;
+      const prevAngle = prevRotation - offset;
+      const nowAngle  = rotation - offset;
+
+      // 出庫（停止要求前のみ）
+      if(!carState[i].visible && !stopRequested){
+        if(crossedTwelve(prevAngle, nowAngle)){
+          carState[i].visible = true;
+        }
+      }
+
+      // 入庫
+      if(carState[i].visible && stopRequested){
+        if(crossedTwelve(prevAngle, nowAngle)){
+          carState[i].visible = false;
+        }
+      }
+    }
+
+    draw();
 
     group.setAttribute("transform",
       `rotate(${rotation} ${cx} ${cy})`
     );
 
+    if(stopRequested && carState.every(c=>!c.visible)){
+      cancelAnimationFrame(animId);
+      animId = null;
+      group.style.display = "none";
+      running = false;
+      stopRequested = false;
+      return;
+    }
+
     animId = requestAnimationFrame(animate);
   }
 
-  drawTrain();
+  function initCars(){
+    carState.length = 0;
+    for(let i=0;i<cars;i++){
+      // 出庫時は全車両非表示から開始
+      carState.push({ visible:false });
+    }
+  }
+
 
   const origStart = window.startTimer;
   const origReset = window.resetTimer;
+  const origUpdateDisplay = window.updateDisplay;
 
   window.startTimer = function(){
-    group.style.display = "block";
-    rotation = 90;
-    shiftIndex = 0; // 常に①から開始
-    drawTrain();
-    animate();
+    rotation = 89.999; // 12時直前から開始（redを最初に出庫させる）
+    colorShift = 0;
+    stopRequested = false;
+    running = false;
+    lastTs = null;
+    group.style.display = "none";
+    initCars();
     if(origStart) origStart.apply(this,arguments);
   }
 
+  window.updateDisplay = function(){
+    if(origUpdateDisplay) origUpdateDisplay.apply(this,arguments);
+
+    // 3:00で即運行開始
+    if(timeLeft === 180 && !running){
+      group.style.display = "block";
+      initCars();
+      running = true;
+      if(!animId) animId = requestAnimationFrame(animate);
+    }
+
+    // 0:00で入庫開始（即消さない）
+    if(timeLeft === 0 && running){
+      stopRequested = true;
+    }
+  }
+
   window.resetTimer = function(){
-    group.style.display = "none";
     cancelAnimationFrame(animId);
+    animId = null;
+    group.style.display = "none";
+    running = false;
+    stopRequested = false;
+    lastTs = null;
+    initCars();
     if(origReset) origReset.apply(this,arguments);
   }
 })();
