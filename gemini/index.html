@@ -322,7 +322,7 @@
         initPie(); 
         updateDisplay();
     
-    /* === 虹色リニアモーターカー（謙さん仕様修正版） === */
+    /* === 虹色リニアモーターカー（2秒/周・出入庫完全対称版） === */
 (function(){
   const svg = document.querySelector("#circle-timer-container svg");
   if(!svg) return;
@@ -349,17 +349,18 @@
     "#00ff00","#00aaff","#0000ff","#8b00ff"
   ];
 
-  let rotation = 89.999; // 12時直前から開始して先頭(red)を最初に出庫させる            // 12時基準
+/* === 虹色リニアモーターカー  周回速度 === */
+/* === const degPerSec = 20;  //18秒/周 === */
+/* === const degPerSec = 60;  // 6秒/周 === */
+/* === const degPerSec = 180; // 2秒/周 === */
+  const degPerSec = 180; // 2秒/周
+
   let animId = null;
-  let running = false;
-  let stopRequested = false;
+  let trainStartTime = null;
+  let stopStartTime = null;
+  let stopping = false;
   let colorShift = 0;
-  let lastTs = null;
-
-  // const degPerSec = 30; // debug用速度/frame(60fps想定)=約30deg/sec
-  const degPerSec = 180; // 本番用/ 2秒/周(360=1秒/周)
-
-  const carState = [];
+  let elapsedAtStop = 0; // 入庫開始時の経過秒
 
   const group = document.createElementNS(NS,"g");
   group.setAttribute("id","linear-train");
@@ -374,24 +375,46 @@
     };
   }
 
-  function normalize(a){
-    return ((a % 360) + 360) % 360;
-  }
-
-  // 回転は常に正方向前提
-  function crossedTwelve(prev, now){
-    const p = normalize(prev - 90);
-    const n = normalize(now  - 90);
-    return p > n; // 90度を跨いだ
-  }
-
-  function draw(){
+  function draw(now){
     group.innerHTML = "";
+    if(!trainStartTime) return;
 
-    for(let i=0;i<cars;i++){
-      if(!carState[i].visible) continue;
+    const elapsed = (now - trainStartTime)/1000;
+    let totalElapsed = elapsed;
+    if(stopping){
+      const stopElapsed = (now - stopStartTime)/1000;
+      totalElapsed = elapsedAtStop + stopElapsed; // 出庫の続きとして回転
+    }
+    const rotation = 90 + totalElapsed * degPerSec;
+    const passedDeg = totalElapsed * degPerSec;
 
-      const start = -i*carDeg;
+    const laps = Math.floor(passedDeg / 360);
+    colorShift = laps % cars;
+
+    let visibleCars;
+
+    let headShift = 0; // 先頭を何両分進めるか
+
+    // 出庫：開始からの進行角で増加（最大7両）
+    if(!stopping){
+      const carsOut = Math.floor(passedDeg / carDeg) + 1;
+      visibleCars = Math.min(cars, carsOut);
+    }
+    // 入庫：12時通過ごとに「先頭車両を消す」＝先頭を前に送る
+    else{
+      const stopElapsed = (now - stopStartTime)/1000;
+      const stopDeg = stopElapsed * degPerSec;
+      const carsIn = Math.floor(stopDeg / carDeg) + 1;
+      const hidden = Math.min(cars, carsIn);
+
+      headShift = hidden;              // 先頭をhidden両分進める
+      visibleCars = Math.max(0, cars - hidden);
+    }
+
+    for(let i=0;i<visibleCars;i++){
+      const logicalIndex = i + (typeof headShift !== 'undefined' ? headShift : 0);
+      const offset = logicalIndex * carDeg;
+      const start = rotation - offset;
       const end   = start - carDeg;
 
       const p1 = polar(start);
@@ -404,119 +427,61 @@
       path.setAttribute("fill","none");
       path.setAttribute("stroke-width", tubeWidth);
       path.setAttribute("stroke-linecap","butt");
-
-      const colorIndex = (i + colorShift) % cars;
-      path.setAttribute("stroke", baseColors[colorIndex]);
+      path.setAttribute("stroke", baseColors[(logicalIndex + colorShift) % cars]);
 
       group.appendChild(path);
     }
-  }
 
-  function animate(ts){
-    if(!lastTs) lastTs = ts;
-    const delta = (ts - lastTs) / 1000;
-    lastTs = ts;
-
-    const prevRotation = rotation;
-    rotation += degPerSec * delta;
-
-    const prevHead = prevRotation;
-    const nowHead  = rotation;
-
-    // 周回で色シフト（停止要求前のみ）
-    // ★ 全車両が出揃うまでは色シフトしない
-    if(crossedTwelve(prevHead, nowHead) && !stopRequested && carState.every(c=>c.visible)){
-      colorShift = (colorShift + 1) % cars;
-    }
-
-    // 各車両の12時判定
-    for(let i=0;i<cars;i++){
-      const offset = i * carDeg;
-      const prevAngle = prevRotation - offset;
-      const nowAngle  = rotation - offset;
-
-      // 出庫（停止要求前のみ）
-      if(!carState[i].visible && !stopRequested){
-        if(crossedTwelve(prevAngle, nowAngle)){
-          carState[i].visible = true;
-        }
-      }
-
-      // 入庫
-      if(carState[i].visible && stopRequested){
-        if(crossedTwelve(prevAngle, nowAngle)){
-          carState[i].visible = false;
-        }
-      }
-    }
-
-    draw();
-
-    group.setAttribute("transform",
-      `rotate(${rotation} ${cx} ${cy})`
-    );
-
-    if(stopRequested && carState.every(c=>!c.visible)){
+    if(stopping && visibleCars === 0){
       cancelAnimationFrame(animId);
       animId = null;
       group.style.display = "none";
-      running = false;
-      stopRequested = false;
-      return;
+      stopping = false;
     }
+  }
 
+  function animate(now){
+    draw(now);
     animId = requestAnimationFrame(animate);
   }
-
-  function initCars(){
-    carState.length = 0;
-    for(let i=0;i<cars;i++){
-      // 出庫時は全車両非表示から開始
-      carState.push({ visible:false });
-    }
-  }
-
 
   const origStart = window.startTimer;
   const origReset = window.resetTimer;
   const origUpdateDisplay = window.updateDisplay;
 
   window.startTimer = function(){
-    rotation = 89.999; // 12時直前から開始（redを最初に出庫させる）
-    colorShift = 0;
-    stopRequested = false;
-    running = false;
-    lastTs = null;
+    trainStartTime = null;
+    stopStartTime = null;
+    stopping = false;
     group.style.display = "none";
-    initCars();
     if(origStart) origStart.apply(this,arguments);
   }
 
   window.updateDisplay = function(){
     if(origUpdateDisplay) origUpdateDisplay.apply(this,arguments);
 
-    // 3:00で即運行開始
-    if(timeLeft === 180 && !running){
+    // 3:00 出庫開始
+    if(timeLeft === 180 && !trainStartTime){
+      trainStartTime = performance.now();
       group.style.display = "block";
-      initCars();
-      running = true;
       if(!animId) animId = requestAnimationFrame(animate);
     }
 
-    // 0:00で入庫開始（即消さない）
-    if(timeLeft === 0 && running){
-      stopRequested = true;
+    // 0:00 入庫開始（即消さない）
+    if(timeLeft === 0 && trainStartTime && !stopping){
+      stopStartTime = performance.now();
+      elapsedAtStop = (stopStartTime - trainStartTime)/1000;
+      stopping = true;
     }
   }
 
   window.resetTimer = function(){
     cancelAnimationFrame(animId);
     animId = null;
+    trainStartTime = null;
+    stopStartTime = null;
+    stopping = false;
     group.style.display = "none";
-    running = false;
-    stopRequested = false;
-    lastTs = null;
-    initCars();
     if(origReset) origReset.apply(this,arguments);
   }
 })();
