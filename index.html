@@ -20,14 +20,14 @@
 
   /* タイトル */
   h1, h2 {
-    margin:0.2em 0;
+    margin:0.1em 0;
     color: gold;
     animation: fadeIn 1s ease-out;
   }
 
   h1 {
     font-size: 1.5em;      /* ← フォントを1段階小さく */
-    margin-top: 1em;       /* ← 上部に1行分の余白 */
+    margin-top: 0.8em;       /* ← 上部に1行分の余白 */
   }
 
   h2 {
@@ -38,7 +38,7 @@
   /* ボタン枠 */
   .version-box {
     background-color:#222; /* 濃いグレー */
-    margin: 1.5em auto;
+    margin: 1.0em auto;
     padding: 1em;
     width: 80%;
     max-width:400px;
@@ -137,6 +137,8 @@ if ('serviceWorker' in navigator) {
   <div class="credit-title">Voiced by</div>
   <div class="credit-link">https://CoeFont.cloud</div>
   <div class="credit-link">https://ondoku3.com/ja/</div>
+  <div class="credit-support1">Programming support:</div>
+  <div class="credit-support2">ChatGPT & Gemini</div>
 </div>
 
 <style>
@@ -144,7 +146,7 @@ if ('serviceWorker' in navigator) {
   border:1px solid #888;
   width:80%;
   max-width:420px;
-  margin:2em auto 3em auto;
+  margin:1.0em auto 3em auto;
   padding:0.8em 1em;
   border-radius:4px;
   color:#fff;
@@ -160,6 +162,18 @@ if ('serviceWorker' in navigator) {
 .credit-link{
   margin-left:3.6em;
   line-height:1.6;
+}
+.credit-support1{
+  margin-top:0.2em;
+  margin-left:2.4em;
+  color:gold;
+  font-weight:bold;
+}
+.credit-support2{
+  margin-top:0.2em;
+  margin-left:5.6em;
+  color:gold;
+  font-weight:bold;
 }
 </style>
 
