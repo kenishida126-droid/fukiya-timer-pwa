@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.07 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.08 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -276,7 +276,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.07 Ken.Ishida≫</h2>
+      <h2>≪Ver.08 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -333,6 +333,7 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
+
 
 <script>
 /* ===== 状態変数 ===== */
@@ -567,6 +568,7 @@ function startTimer(){
     if(remaining === 30) audio30.play().catch(()=>{});
 
     if(remaining === 0){
+      setBounceVisual();
       clearInterval(timer); timer=null;
       if(audioStartTimeout){ clearTimeout(audioStartTimeout); audioStartTimeout=null; }
       if(currentAudioStart){ try{ currentAudioStart.pause(); currentAudioStart.currentTime=0; }catch(e){} currentAudioStart=null; }
@@ -787,19 +789,26 @@ cleanBtn.addEventListener('click', ()=>{
 */
 function setBounceVisual(){
   if(bounceOn){
-    bounceBtn.textContent = '撥ね矢有➡';
-    bounceBtn.classList.add('pressed'); bounceBtn.classList.add('locked'); bounceBtn.classList.add('on');
+    if(remaining === 0){
+      // ③ 0:00 到達後
+      bounceBtn.textContent = '撥ね矢有➡';
+      resetBtn.textContent  = '撥矢／終了';
+    } else {
+      // ② カウントダウン中
+      bounceBtn.textContent = '撥ね矢有';
+      resetBtn.textContent  = '解　除';
+    }
+
+    bounceBtn.classList.add('pressed','locked','on');
     bounceBtn.setAttribute('aria-pressed','true');
 
-    // reset becomes non-lock '撥矢／終了'
-    resetBtn.textContent = '撥矢／終了';
-    resetBtn.classList.remove('pressed','locked');
   } else {
+    // ① 初期状態
     bounceBtn.textContent = '撥ね矢';
+    resetBtn.textContent  = '解　除';
+
     bounceBtn.classList.remove('pressed','locked','on');
     bounceBtn.setAttribute('aria-pressed','false');
-
-    resetBtn.textContent = '解　除';
   }
 }
 
@@ -808,7 +817,7 @@ function setBounceVisual(){
    以前は pulse を入れていたが、要望により「何もしない（ビジュアルヒントも不要）」にする。
 */
 bounceBtn.addEventListener('click', ()=>{
-  if(started || remaining === 0){
+   if(started){
     bounceOn = !bounceOn;
     setBounceVisual();
     // When bounce turned ON during countdown, keep wakeLock until resolved
