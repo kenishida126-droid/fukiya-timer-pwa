@@ -793,10 +793,17 @@ function setBounceVisual(){
       // ③ 0:00 到達後
       bounceBtn.textContent = '撥ね矢有➡';
       resetBtn.textContent  = '撥矢／終了';
+      // 👇これを追加、釦配色変更
+      resetBtn.style.background = 'blue';
+      resetBtn.style.color = 'white';
+
     } else {
       // ② カウントダウン中
       bounceBtn.textContent = '撥ね矢有';
       resetBtn.textContent  = '解　除';
+      // 👇元に戻す（重要）、釦配色を元に戻す
+      resetBtn.style.background = '';
+      resetBtn.style.color = '';
     }
 
     bounceBtn.classList.add('pressed','locked','on');
@@ -806,6 +813,9 @@ function setBounceVisual(){
     // ① 初期状態
     bounceBtn.textContent = '撥ね矢';
     resetBtn.textContent  = '解　除';
+    // 👇これを追加（超重要）
+    resetBtn.style.background = '';
+    resetBtn.style.color = '';
 
     bounceBtn.classList.remove('pressed','locked','on');
     bounceBtn.setAttribute('aria-pressed','false');
