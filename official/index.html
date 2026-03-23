@@ -587,7 +587,6 @@ function startTimer(){
 
       started = false;
       // clear start pressed visuals
-      startBtn.classList.remove('pressed'); startBtn.classList.remove('locked');
 
       // After countdown finishes, selection remains cleared (we treat selection only pre-start)
       selectedStartSeconds = null;
@@ -840,6 +839,7 @@ bounceBtn.addEventListener('click', ()=>{
 
 /* start/reset wiring */
 startBtn.addEventListener('click', ()=>{
+  if(startBtn.classList.contains('locked')) return; // ←追加
   // iOS 対策: ユーザー操作中に audio をアンロック
   unlockIosAudio();
   if(!timer) startTimer();
