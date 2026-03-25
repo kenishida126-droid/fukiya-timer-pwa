@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.08 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.08.1 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -276,7 +276,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.08 Ken.Ishida≫</h2>
+      <h2>≪Ver.08.1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -333,6 +333,7 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
+
 
 
 <script>
@@ -838,11 +839,41 @@ bounceBtn.addEventListener('click', ()=>{
 });
 
 /* start/reset wiring */
+/* ===== Ver.08.1 追加: start_beep ===== */
+function start_beep() {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = "square";
+  osc.frequency.setValueAtTime(2100, audioCtx.currentTime);
+
+  gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  audioCtx.resume(); // iPhone対策
+  osc.start();
+  osc.stop(audioCtx.currentTime + 1.5);
+}
+
+/* start/reset wiring */
 startBtn.addEventListener('click', ()=>{
   if(startBtn.classList.contains('locked')) return; // ←追加
+
   // iOS 対策: ユーザー操作中に audio をアンロック
   unlockIosAudio();
-  if(!timer) startTimer();
+
+  // Ver.08.1: 開始ビープ
+  start_beep();
+
+  // 上級テク: 少し遅らせてタイマー開始（ビープ優先）
+  setTimeout(()=>{
+    if(!timer) startTimer();
+  }, 100);
 });
 resetBtn.addEventListener('click', ()=>{ resetAction(); });
 
@@ -1331,5 +1362,6 @@ mainTitle.addEventListener('click', async (ev)=>{
 })();
 
 </script>
+
 </body>
 </html>
