@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.08.1 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.08.2 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -276,7 +276,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.08.1 Ken.Ishida≫</h2>
+      <h2>≪Ver.08.2 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -1360,6 +1360,11 @@ mainTitle.addEventListener('click', async (ev)=>{
   window.addEventListener('load', ()=>{ setTimeout(scrollToTop, 500); });
   window.addEventListener('orientationchange', ()=>{ setTimeout(scrollToTop, 500); });
 })();
+
+// ===== PCでの右クリック禁止機能(Ver.08.2) =====
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+});
 
 </script>
 
