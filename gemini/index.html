@@ -231,7 +231,7 @@
             const gain = audioCtx.createGain();
             osc.type = "square";
             osc.frequency.setValueAtTime(1500, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -245,7 +245,7 @@
             const gain = audioCtx.createGain();
             osc.type = "triangle";
             osc.frequency.setValueAtTime(700, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
