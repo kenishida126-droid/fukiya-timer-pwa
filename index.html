@@ -1,620 +1,181 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>スポーツ吹矢タイマー V46</title>
-    <style>
-        html, body {
-            background-color: #000;
-            color: #fff;
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
-            overflow-x: hidden;
-            overflow-y: scroll;
-            scroll-snap-type: y mandatory;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スポーツ吹矢タイマー</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  body {
+    margin:0;
+    padding:0;
+    background-color:#000;  /* ブラックバック */
+    font-family: sans-serif;
+    color: #fff;
+    text-align:center;
+   /* 文字選択を全面禁止（長押し対策） */
+  -webkit-user-select: none;
+  user-select: none;
+  }
 
-        #main-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 101vh;
-            width: 100%;
-        }
+  /* タイトル */
+  h1, h2 {
+    margin:0.1em 0;
+    color: gold;
+    animation: fadeIn 1s ease-out;
+  }
 
-        #snap-point {
-            scroll-snap-align: start;
-            height: 2vh;
-            width: 100%;
-        }
+  h1 {
+    font-size: 1.5em;      /* ← フォントを1段階小さく */
+    margin-top: 0.8em;       /* ← 上部に1行分の余白 */
+  }
 
-        #header-container {
-            width: 100%;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        #title-main { display: inline-block; font-size: 9.5vw; font-weight: bold; line-height: 1.1; transform: scaleX(0.9); }
-        #title-sub { display: block; font-family: sans-serif; font-size: 7vw; opacity: 0.9; margin-top: -0.5vh; }
+  h2 {
+    font-weight: normal; /* ≪ スポーツ吹矢タイマー ≫ の下文字 */
+    font-size:1.2em;
+  }
 
-        #timer-display {
-            flex-shrink: 0;
-            width: 100%;
-            text-align: center;
-            font-variant-numeric: tabular-nums;
-            font-weight: 900;
-            font-size: 40vw;
-            line-height: 0.75;
-            transform: scale(1.22, 1.5);
-            transform-origin: center;
-            margin-top: 5vh; 
-            margin-bottom: 0;
-            color: lime;
-            cursor: pointer;
-        }
+  /* ボタン枠 */
+  .version-box {
+    background-color:#222; /* 濃いグレー */
+    margin: 1.0em auto;
+    padding: 1em;
+    width: 80%;
+    max-width:400px;
+    border-radius:10px;
+    cursor:pointer;
+    transition: all 0.3s ease;
+  }
 
-        #circle-timer-container {
-            flex-shrink: 0;
-            width: 92vw;
-            height: 92vw;
-            margin-top: 8.5vh; 
-            margin-bottom: 5vh;
-            position: relative;
-        }
+  /* 中央表示＆文字スライドイン */
+  .version-title {
+    font-size:1.4em;
+    font-weight:bold;
+    text-align:center;
+    animation: slideIn 0.5s ease-out;
+  }
 
-        svg {
-            width: 100%;
-            height: 100%;
-        }
-        
-        .outline { fill: none; stroke: #fff; stroke-width: 1; }
+  .version-subtitle {
+    font-size:1.2em;
+    text-align:center;
+    margin-top:0.5em;
+  }
 
-        #mic-button { cursor: pointer; }
-        #mic-circle { fill: #000; stroke: #fff; stroke-width: 2; }
-        .mic-active #mic-icon-group { fill: #f00 !important; stroke: #f00 !important; filter: drop-shadow(0 0 5px #f00); }
-        .mic-waiting #mic-icon-group { animation: mic-blink 1.2s infinite ease-in-out; }
-        @keyframes mic-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-        #mic-icon-group { fill: #fff; stroke: #fff; }
+  /* ホバーで色＆拡大 */
+  /* ▼ 注意書き（iPhone非対応） */
+.version-attention {
+font-size:1.1em;
+color: gold;
+margin-top:0.5em;
+}
 
-        .blink { animation: sharp-blink-op 0.7s steps(1) infinite; }
-        .blink-fast { animation: sharp-blink-op 0.2s steps(1) infinite; }
-        @keyframes sharp-blink-op { 50% { opacity: 0; } }
+.version-box:hover {
+background-color:#444;
+transform: scale(1.05);
+}
 
-        @keyframes rainbow-wave {
-            0% { filter: brightness(0.5); }
-            50% { filter: brightness(1.8) drop-shadow(0 0 10px white); }
-            100% { filter: brightness(0.5); }
-        }
-        .wave-active path {
-            animation: rainbow-wave 2s ease-in-out infinite;
-        }
-        .wave-active path:nth-child(1) { animation-delay: 0.0s; }
-        .wave-active path:nth-child(2) { animation-delay: 0.2s; }
-        .wave-active path:nth-child(3) { animation-delay: 0.4s; }
-        .wave-active path:nth-child(4) { animation-delay: 0.6s; }
-        .wave-active path:nth-child(5) { animation-delay: 0.8s; }
+  /* アニメーション */
+  @keyframes fadeIn {
+    0% {opacity:0;}
+    100% {opacity:1;}
+  }
 
-        /* ★ メトロノーム */
-        #metronome, .metro-note { fill: white; cursor: pointer; }
-        @keyframes metro-blink { 0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;} }
-        .on-red { fill: red !important; animation: metro-blink 1s infinite; }
-        .on-yellow { fill: yellow !important; animation: metro-blink 1s infinite; }
-        .on-lime { fill: lime !important; animation: metro-blink 1s infinite; }
-        .on-aqua { fill: aqua !important; animation: metro-blink 1s infinite; }
-        @keyframes metro-blink { 0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;} }
-        .metro-on { fill: red !important; animation: metro-blink 1s infinite; }
-    </style>
+  @keyframes slideIn {
+    0% {transform: translateY(20px); opacity:0;}
+    100% {transform: translateY(0); opacity:1;}
+  }
+
+</style>
 </head>
 <body>
-    <div id="main-wrapper">
-        <div id="snap-point"></div>
-        
-        <div id="header-container">
-            <span id="title-main">スポーツ吹矢タイマー</span><br>
-            <span id="title-sub">《by Ken.ishida & Gemini》</span>
-        </div>
 
-        <div id="timer-display" onclick="handleTap()">03:05</div>
+<h1>≪ スポーツ吹矢タイマー ≫</h1>
+<h2>Design/Development: Ken.Ishida</h2>
 
-        <div id="circle-timer-container">
-            <svg viewBox="0 0 200 200">
-                
+<div class="version-box" onclick="location.href='official/index.html'">
+  <div class="version-title">
+  Ⅰ．Official version <span style="font-size:0.7em; color:#aaa;">(標準)</span>
+  </div>
+  <div class="version-subtitle">《吹矢タイマー Ver.08.2》</div>
+</div>
 
-                <g id="pie-segments"></g>
-                <path id="mask-path" fill="#000" />
-                <circle class="outline" cx="100" cy="100" r="98" />
-                <g id="mic-button" onclick="toggleMic(event)">
-                    <circle id="mic-circle" cx="100" cy="100" r="28" />
-                    <g id="mic-icon-group">
-                        <path d="M100,81c-3.8,0-7,3.1-7,7v10c0,3.8,3.2,7,7,7s7-3.2,7-7V88C107,84.1,103.8,81,100,81z" stroke-width="0"/>
-                        <path d="M113,99v4c0,7.1-5.8,13-13,13s-13-5.9-13-13v-4h2v4c0,6.1,4.9,11,11,11s11-4.9,11-11v-4H113z" stroke-width="0"/>
-                        <path d="M100,116 v7 M92,123 h16" fill="none" stroke-width="2.5" stroke-linecap="round"/>
-                    </g>
-                </g>
-                            
-<!-- ① beep1（既存） -->
-<text id="note1" class="metro-note" x="190" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
-<!-- ② beep2 -->
-<text id="note2" class="metro-note" x="190" y="182" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(2)">♫</text>
-<!-- ③ beep3 -->
-<text id="note3" class="metro-note" x="15" y="182" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(3)">♪</text>
-<!-- ④ beep4 -->
-<text id="note4" class="metro-note" x="15" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
+<div class="version-box" onclick="location.href='extra/index.html'">
+  <div class="version-title">
+  Ⅱ．Extra version <span style="font-size:0.7em; color:#aaa;">(自主練用)</span>
+  </div>
+  <div class="version-subtitle">《吹矢タイマー Extra_Ver.01》</div>
+</div>
 
-            </svg>
-        </div>
-    </div>
+<div class="version-box" onclick="location.href='gemini/index.html'">
+  <div class="version-title">
+  Ⅲ．Gemini ver.02.1 <span style="font-size:0.7em; color:#aaa;">(音声認識)</span>
+  </div>
+  <div class="version-subtitle">「スタート/開始/始め」を認識</div>
+  <div class="version-attention">※ iPhone では音声認識未対応です</div>
+</div>
 
-    <script>
-        let timeLeft = 185, timerInterval = null, isRunning = false, wakeLock = null, isMicEnabled = false, recognition = null;
-        const display = document.getElementById('timer-display'), micButton = document.getElementById('mic-button');
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
 
-        // ★ beep1（カチ音：基本）
-        function beep1(){
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        }
-
-        // ★ メトロノーム
-        // ★ メトロノーム（4種・排他）
-        let currentMetro = 0;
-        let metroTimer = null;
-
-        function clearMetro(){
-            [1,2,3,4].forEach(i=>{
-                const el = document.getElementById('note'+i);
-                if(el) el.classList.remove('on-red','on-yellow','on-lime','on-aqua');
-            });
-            if(metroTimer){ clearInterval(metroTimer); metroTimer = null; }
-            currentMetro = 0;
-        }
-
-        function toggleMetro(n){
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            if(currentMetro === n){
-                clearMetro();
-                return;
-            }
-
-            clearMetro();
-            currentMetro = n;
-
-            const el = document.getElementById('note'+n);
-            if(!el) return;
-
-            if(n===1) el.classList.add('on-red');
-            if(n===2) el.classList.add('on-yellow');
-            if(n===3) el.classList.add('on-lime');
-            if(n===4) el.classList.add('on-aqua');
-
-            metroTimer = setInterval(function(){
-                if(n===1) beep1();
-                else if(n===2) beep2();
-                else if(n===3) beep3();
-                else if(n===4) beep4();
-            },1000);
-        }
-
-        // ② 指定音（音量調整済）
-        function beep2(){
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
-
-        // ③ メトロノーム風（カチ強化）
-        function beep3(){
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(1500, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.03);
-        }
-
-        // ④ おすすめ（柔らかクリック）
-        function beep4(){
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(700, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.08);
-        }
-        
-
-        function playTapSound() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
-
-        async function updateWakeLock() {
-            if (!('wakeLock' in navigator)) return;
-            const shouldBeActive = isMicEnabled || isRunning;
-            if (shouldBeActive && wakeLock === null) {
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => { wakeLock = null; });
-                } catch (err) {}
-            } else if (!shouldBeActive && wakeLock !== null) {
-                try {
-                    await wakeLock.release();
-                    wakeLock = null;
-                } catch (err) {}
-            }
-        }
-
-        function updateMicVisual() {
-            if (!isMicEnabled) { micButton.classList.remove('mic-active', 'mic-waiting'); return; }
-            micButton.classList.add('mic-active');
-            if (!isRunning && (timeLeft === 185 || timeLeft === 0)) { micButton.classList.add('mic-waiting'); }
-            else { micButton.classList.remove('mic-waiting'); }
-        }
-
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ja-JP';
-            recognition.continuous = true;
-            recognition.interimResults = true;
-
-            recognition.onresult = (event) => {
-                let transcript = "";
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    transcript += event.results[i][0].transcript;
-                }
-                transcript = transcript.toLowerCase().trim();
-                if (!isRunning && (timeLeft === 185 || timeLeft === 0)) {
-                    if (/(開始|かいし|カイシ|スタート|すたーと|start|始め|はじめ|ハジメ)/.test(transcript)) {
-                        if (timeLeft === 0) resetTimer();
-                        startTimer();
-                    }
-                }
-            };
-            recognition.onstart = () => { updateMicVisual(); updateWakeLock(); };
-            recognition.onend = () => { if (isMicEnabled && !isRunning) recognition.start(); updateMicVisual(); updateWakeLock(); };
-            recognition.onerror = () => { if (isMicEnabled) setTimeout(() => recognition.start(), 300); };
-        }
-
-        function toggleMic(event) {
-            event.stopPropagation();
-            playTapSound();
-            if (!recognition) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            isMicEnabled = !isMicEnabled;
-            if (isMicEnabled) { try { recognition.start(); } catch(e) {} } else { recognition.stop(); }
-            updateMicVisual();
-            updateWakeLock();
-        }
-
-        let audioFiles = null;
-        let audioUnlocked = false;
-        function unlockAudio(){
-            if(audioUnlocked) return;
-            if(!audioFiles){
-                audioFiles = {
-                    start: new Audio('start-0.mp3'),
-                    halfMin: new Audio('30sec.mp3'),
-                    end: new Audio('end.mp3')
-                };
-            }
-            [audioFiles.start, audioFiles.halfMin, audioFiles.end].forEach(a=>{
-                a.volume = 0;
-                const p = a.play();
-                if(p){
-                    p.then(()=>{
-                        a.pause();
-                        a.currentTime = 0;
-                    }).catch(()=>{});
-                }
-                a.volume = 1;
-            });
-            audioUnlocked = true;
-        }
-        function safePlay(a){
-            try{
-                a.pause();
-                a.currentTime = 0;
-                a.play().catch(()=>{});
-            }catch(e){}
-        }
-        function playChime() { const now = audioCtx.currentTime; const p = (f, s, d) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, s); g.gain.setValueAtTime(0.5, s); g.gain.exponentialRampToValueAtTime(0.01, s + d); o.connect(g); g.connect(audioCtx.destination); o.start(s); o.stop(s + d); }; p(659.25, now, 0.8); p(523.25, now + 0.4, 1.2); }
-        
-        function updateDisplay() {
-            let m = Math.floor(timeLeft / 60), s = timeLeft % 60;
-            display.innerText = m + ":" + s.toString().padStart(2, '0');
-            display.classList.remove('blink', 'blink-fast');
-            const pieSegments = document.getElementById('pie-segments');
-            const maskPath = document.getElementById('mask-path');
-
-            if (timeLeft > 180 || timeLeft === 0) {
-                display.style.color = "lime";
-                if (timeLeft === 0) display.classList.add('blink-fast');
-                maskPath.setAttribute("d", ""); 
-                pieSegments.classList.add('wave-active');
-            } else {
-                display.style.color = (timeLeft > 30) ? "gold" : "red";
-                if (timeLeft <= 30) display.classList.add('blink');
-                pieSegments.classList.remove('wave-active');
-
-                const startAngle = -90;
-                const angle = ((180 - Math.max(0, timeLeft)) / 180) * 360;
-                maskPath.setAttribute("d", angle <= 0 ? "" : getPathData(startAngle, startAngle + Math.min(angle, 359.9)));
-            }
-            
-            if ([141, 107, 73, 39].includes(timeLeft)) playChime();
-            if (timeLeft === 181 && audioFiles) safePlay(audioFiles.start);
-            if (timeLeft === 30 && audioFiles) safePlay(audioFiles.halfMin);
-            if (timeLeft === 0) {
-                if (audioFiles) safePlay(audioFiles.end);
-                clearInterval(timerInterval); isRunning = false;
-                updateWakeLock(); 
-                if (isMicEnabled) setTimeout(() => { if (!isRunning && isMicEnabled) { try { recognition.start(); } catch(e){} updateMicVisual(); } }, 2000);
-                updateMicVisual();
-            }
-        }
-
-        function getPathData(s, e) {
-            const r = Math.PI / 180;
-            return "M 100 100 L "
-              + (100 + 98 * Math.cos(s * r)) + " "
-              + (100 + 98 * Math.sin(s * r))
-              + " A 98 98 0 "
-              + (e - s <= 180 ? 0 : 1) + " 1 "
-              + (100 + 98 * Math.cos(e * r)) + " "
-              + (100 + 98 * Math.sin(e * r)) + " Z";
-        }
-
-        function initPie() { 
-            const pie = document.getElementById('pie-segments'); pie.innerHTML = ''; let ang = -90;
-            [{sec:39,c:'lime'},{sec:34,c:'purple'},{sec:34,c:'Blue'},{sec:34,c:'yellow'},{sec:39,c:'red'}].forEach(a => {
-                const d = (a.sec/180)*360; const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-                p.setAttribute("d", getPathData(ang, ang + d)); p.setAttribute("fill", a.c); pie.appendChild(p); ang += d;
-            });
-        }
-
-        function handleTap() { 
-            unlockAudio();
-            playTapSound();
-            if (isRunning || timeLeft === 0) resetTimer(); else startTimer(); 
-        }
-
-        async function startTimer() { 
-            if (isRunning) return; 
-
-            // ★ 音声起動時も確実にAudio解放
-            unlockAudio();
-            if (audioCtx.state === 'suspended') {
-                try { await audioCtx.resume(); } catch(e){}
-            }
-
-            isRunning = true; 
-            if (isMicEnabled) { try { recognition.stop(); } catch(e){} } 
-            updateWakeLock(); 
-            timerInterval = setInterval(() => { 
-                if (timeLeft > 0) { 
-                    timeLeft--; 
-                    updateDisplay(); 
-                } 
-            }, 1000); 
-            updateMicVisual(); 
-        }
-
-        function resetTimer() { 
-            clearInterval(timerInterval); isRunning = false; timeLeft = 185; 
-            if (isMicEnabled) { try { recognition.start(); } catch(e){} } 
-            initPie(); 
-            updateDisplay();
-            updateMicVisual(); 
-            updateWakeLock(); 
-        }
-
-        initPie(); 
-        updateDisplay();
-    
-    /* === 虹色リニアモーターカー（2秒/周・出入庫完全対称版） === */
-(function(){
-  const svg = document.querySelector("#circle-timer-container svg");
-  if(!svg) return;
-
-  const NS = "http://www.w3.org/2000/svg";
-  const cx = 100, cy = 100;
-
-  const old = svg.querySelector("#linear-train");
-  if(old) old.remove();
-
-  const outline = svg.querySelector(".outline");
-  const tubeWidth = 6;
-  const tubeRadius = 98 - tubeWidth/2;
-  outline.setAttribute("r", tubeRadius);
-  outline.style.strokeWidth = tubeWidth;
-
-  const R = tubeRadius;
-  const totalDeg = 60;
-  const cars = 7;
-  const carDeg = totalDeg / cars;
-
-  const baseColors = [
-    "#ff0000","#ff7f00","#ffff00",
-    "#00ff00","#00aaff","#0000ff","#8b00ff"
-  ];
-
-/* === 虹色リニアモーターカー  周回速度 === */
-/* === const degPerSec = 20;  //18秒/周 === */
-/* === const degPerSec = 60;  // 6秒/周 === */
-/* === const degPerSec = 180; // 2秒/周 === */
-  const degPerSec = 180; // 2秒/周
-
-  let animId = null;
-  let trainStartTime = null;
-  let stopStartTime = null;
-  let stopping = false;
-  let colorShift = 0;
-  let elapsedAtStop = 0; // 入庫開始時の経過秒
-
-  const group = document.createElementNS(NS,"g");
-  group.setAttribute("id","linear-train");
-  group.style.display = "none";
-  svg.appendChild(group);
-
-  function polar(angle){
-    const rad = (angle-90)*Math.PI/180;
-    return {
-      x: cx + R*Math.cos(rad),
-      y: cy + R*Math.sin(rad)
-    };
-  }
-
-  function draw(now){
-    group.innerHTML = "";
-    if(!trainStartTime) return;
-
-    const elapsed = (now - trainStartTime)/1000;
-    let totalElapsed = elapsed;
-    if(stopping){
-      const stopElapsed = (now - stopStartTime)/1000;
-      totalElapsed = elapsedAtStop + stopElapsed; // 出庫の続きとして回転
-    }
-    const rotation = 0 + totalElapsed * degPerSec;
-    const passedDeg = totalElapsed * degPerSec;
-
-    const laps = Math.floor(passedDeg / 360);
-    colorShift = laps % cars;
-
-    let visibleCars;
-
-    let headShift = 0; // 先頭を何両分進めるか
-
-    // 出庫：開始からの進行角で増加（最大7両）
-    if(!stopping){
-      const carsOut = Math.floor(passedDeg / carDeg) + 1;
-      visibleCars = Math.min(cars, carsOut);
-    }
-    // 入庫：12時通過ごとに「先頭車両を消す」＝先頭を前に送る
-    else{
-      const stopElapsed = (now - stopStartTime)/1000;
-      const stopDeg = stopElapsed * degPerSec;
-      const carsIn = Math.floor(stopDeg / carDeg) + 1;
-      const hidden = Math.min(cars, carsIn);
-
-      headShift = hidden;              // 先頭をhidden両分進める
-      visibleCars = Math.max(0, cars - hidden);
-    }
-
-    for(let i=0;i<visibleCars;i++){
-      const logicalIndex = i + (typeof headShift !== 'undefined' ? headShift : 0);
-      const offset = logicalIndex * carDeg;
-      const start = rotation - offset;
-      const end   = start - carDeg;
-
-      const p1 = polar(start);
-      const p2 = polar(end);
-
-      const path = document.createElementNS(NS,"path");
-      path.setAttribute("d",
-        `M ${p1.x} ${p1.y} A ${R} ${R} 0 0 0 ${p2.x} ${p2.y}`
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'CACHE_UPDATED') {
+      alert(
+        '吹矢Timer_PWA が更新されました。\n' +
+        '通信が発生しますので、Wi-Fi 環境下で\n' +
+        'しばらく起動したままにしてください。'
       );
-      path.setAttribute("fill","none");
-      path.setAttribute("stroke-width", tubeWidth);
-      path.setAttribute("stroke-linecap","butt");
-      path.setAttribute("stroke", baseColors[(logicalIndex + colorShift) % cars]);
-
-      group.appendChild(path);
     }
+  });
+}
 
-    if(stopping && visibleCars === 0){
-      cancelAnimationFrame(animId);
-      animId = null;
-      group.style.display = "none";
-      stopping = false;
-    }
-  }
-
-  function animate(now){
-    draw(now);
-    animId = requestAnimationFrame(animate);
-  }
-
-  const origStart = window.startTimer;
-  const origReset = window.resetTimer;
-  const origUpdateDisplay = window.updateDisplay;
-
-  window.startTimer = function(){
-    trainStartTime = null;
-    stopStartTime = null;
-    stopping = false;
-    group.style.display = "none";
-    if(origStart) origStart.apply(this,arguments);
-  }
-
-  window.updateDisplay = function(){
-    if(origUpdateDisplay) origUpdateDisplay.apply(this,arguments);
-
-    // 3:00 出庫開始
-    if(timeLeft === 180 && !trainStartTime){
-      trainStartTime = performance.now();
-      group.style.display = "block";
-      if(!animId) animId = requestAnimationFrame(animate);
-    }
-
-    // 0:00 入庫開始（即消さない）
-    if(timeLeft === 0 && trainStartTime && !stopping){
-      stopStartTime = performance.now();
-      elapsedAtStop = (stopStartTime - trainStartTime)/1000;
-      stopping = true;
-    }
-  }
-
-  window.resetTimer = function(){
-    cancelAnimationFrame(animId);
-    animId = null;
-    trainStartTime = null;
-    stopStartTime = null;
-    stopping = false;
-    group.style.display = "none";
-    if(origReset) origReset.apply(this,arguments);
-  }
-})();
 </script>
+
+
+<!-- Credit -->
+<div class="credit-box">
+  <div class="credit-title">Voiced by</div>
+  <div class="credit-link">https://CoeFont.cloud</div>
+  <div class="credit-link">https://ondoku3.com/ja/</div>
+  <div class="credit-support1">Programming support:</div>
+  <div class="credit-support2">ChatGPT & Gemini</div>
+</div>
+
+<style>
+.credit-box{
+  border:1px solid #888;
+  width:80%;
+  max-width:420px;
+  margin:1.0em auto 3em auto;
+  padding:0.8em 1em;
+  border-radius:4px;
+  color:#fff;
+  font-size:1.1em;
+  font-family: monospace;
+  text-align:left;
+  background: rgba(255,255,255,0.03);
+}
+.credit-title{
+  margin-bottom:0.4em;
+  margin-left:2.4em;
+}
+.credit-link{
+  margin-left:3.6em;
+  line-height:1.6;
+}
+.credit-support1{
+  margin-top:0.2em;
+  margin-left:2.4em;
+  color:gold;
+  font-weight:bold;
+}
+.credit-support2{
+  margin-top:0.2em;
+  margin-left:5.6em;
+  color:gold;
+  font-weight:bold;
+}
+</style>
+
 </body>
 </html>
