@@ -139,13 +139,13 @@
                 </g>
                             
 <!-- ① beep1（既存） -->
-<text id="note1" class="metro-note" x="190" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
+<text id="note1" class="metro-note" x="190" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
 <!-- ② beep2 -->
-<text id="note2" class="metro-note" x="190" y="182" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(2)">♫</text>
+<text id="note2" class="metro-note" x="190" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(2)">♫</text>
 <!-- ③ beep3 -->
-<text id="note3" class="metro-note" x="15" y="182" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(3)">♪</text>
+<text id="note3" class="metro-note" x="15" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(3)">♪</text>
 <!-- ④ beep4 -->
-<text id="note4" class="metro-note" x="15" y="20" font-size="30" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
+<text id="note4" class="metro-note" x="15" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
 
             </svg>
         </div>
@@ -162,7 +162,7 @@
             const gain = audioCtx.createGain();
             osc.type = "square";
             osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
@@ -217,12 +217,12 @@
             const gain = audioCtx.createGain();
             osc.type = "sine";
             osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
+            osc.stop(audioCtx.currentTime + 0.6);
         }
 
         // ③ メトロノーム風（カチ強化）
@@ -245,7 +245,7 @@
             const gain = audioCtx.createGain();
             osc.type = "triangle";
             osc.frequency.setValueAtTime(700, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.6, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
