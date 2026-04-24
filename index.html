@@ -9,16 +9,14 @@
   body {
     margin:0;
     padding:0;
-    background-color:#000;  /* ブラックバック */
+    background-color:#000;
     font-family: sans-serif;
     color: #fff;
     text-align:center;
-   /* 文字選択を全面禁止（長押し対策） */
-  -webkit-user-select: none;
-  user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
-  /* タイトル */
   h1, h2 {
     margin:0.1em 0;
     color: gold;
@@ -26,18 +24,17 @@
   }
 
   h1 {
-    font-size: 1.5em;      /* ← フォントを1段階小さく */
-    margin-top: 0.8em;       /* ← 上部に1行分の余白 */
+    font-size: 1.5em;
+    margin-top: 0.8em;
   }
 
   h2 {
-    font-weight: normal; /* ≪ スポーツ吹矢タイマー ≫ の下文字 */
+    font-weight: normal;
     font-size:1.2em;
   }
 
-  /* ボタン枠 */
   .version-box {
-    background-color:#222; /* 濃いグレー */
+    background-color:#222;
     margin: 1.0em auto;
     padding: 1em;
     width: 80%;
@@ -47,7 +44,6 @@
     transition: all 0.3s ease;
   }
 
-  /* 中央表示＆文字スライドイン */
   .version-title {
     font-size:1.4em;
     font-weight:bold;
@@ -61,20 +57,17 @@
     margin-top:0.5em;
   }
 
-  /* ホバーで色＆拡大 */
-  /* ▼ 注意書き（iPhone非対応） */
-.version-attention {
-font-size:1.1em;
-color: gold;
-margin-top:0.5em;
-}
+  .version-attention {
+    font-size:1.1em;
+    color: gold;
+    margin-top:0.5em;
+  }
 
-.version-box:hover {
-background-color:#444;
-transform: scale(1.05);
-}
+  .version-box:hover {
+    background-color:#444;
+    transform: scale(1.05);
+  }
 
-  /* アニメーション */
   @keyframes fadeIn {
     0% {opacity:0;}
     100% {opacity:1;}
@@ -114,6 +107,13 @@ transform: scale(1.05);
   <div class="version-attention">※ iPhone では音声認識未対応です</div>
 </div>
 
+<!-- ▼ 取扱説明書リンク（テキストのみ） -->
+<div style="margin-top:0.6em;">
+  <a href="manual.pdf" target="_blank" style="color:gold; text-decoration:underline; font-size:1.2em;">
+    ※ 取扱説明書はこちら
+  </a>
+</div>
+
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js');
@@ -128,9 +128,7 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
-
 </script>
-
 
 <!-- Credit -->
 <div class="credit-box">
