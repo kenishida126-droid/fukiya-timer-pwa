@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>スポーツ吹矢タイマー V46</title>
+    <title>スポーツ吹矢タイマー Gemini version</title>
     <style>
         html, body {
             background-color: #000;
@@ -138,13 +138,13 @@
                     </g>
                 </g>
                             
-<!-- ① beep1（既存） -->
+<!-- ① beep1(2時の位置) -->
 <text id="note1" class="metro-note" x="190" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
-<!-- ② beep2 -->
+<!-- ② beep2(4時の位置) -->
 <text id="note2" class="metro-note" x="190" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(2)">♫</text>
-<!-- ③ beep3 -->
+<!-- ③ beep3(7時の位置) -->
 <text id="note3" class="metro-note" x="15" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(3)">♪</text>
-<!-- ④ beep4 -->
+<!-- ④ beep4(10時の位置) -->
 <text id="note4" class="metro-note" x="15" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
 
             </svg>
@@ -155,20 +155,6 @@
         let timeLeft = 185, timerInterval = null, isRunning = false, wakeLock = null, isMicEnabled = false, recognition = null;
         const display = document.getElementById('timer-display'), micButton = document.getElementById('mic-button');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-        // ★ beep1（カチ音：基本）
-        function beep1(){
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.05);
-        }
 
         // ★ メトロノーム
         // ★ メトロノーム（4種・排他）
@@ -211,6 +197,32 @@
             },1000);
         }
 
+        // ① beep音（トライアングル音もどき）
+        function beep1(){
+         const osc = audioCtx.createOscillator();
+         const gainNode = audioCtx.createGain();
+
+         // 1. サイン波または三角波（トライアングルの音に近い）
+         osc.type = 'triangle';
+         // 2. 高い周波数を設定
+         osc.frequency.value = 3000; 
+
+         // 3. エンベロープの設定（急なアタックと減衰）
+         const now = audioCtx.currentTime;
+         gainNode.gain.setValueAtTime(0, now);
+         gainNode.gain.linearRampToValueAtTime(0.4, now + 0.01); // アタック（急）
+         gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.8); // 減衰（長め）
+
+         // ノードの接続
+         osc.connect(gainNode);
+         gainNode.connect(audioCtx.destination);
+
+         // 再生と停止
+         osc.start();
+         osc.stop(audioCtx.currentTime + 0.8);
+        }
+
+
         // ② 指定音（音量調整済）
         function beep2(){
             const osc = audioCtx.createOscillator();
@@ -225,21 +237,44 @@
             osc.stop(audioCtx.currentTime + 0.6);
         }
 
-        // ③ メトロノーム風（カチ強化）
+        // ③ Real Metronome音（改良版：クリック＋アタック）
         function beep3(){
+            const now = audioCtx.currentTime;
+
+            // --- 高音クリック（芯） ---
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = "square";
-            osc.frequency.setValueAtTime(2300, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(2000, now);
+            gain.gain.setValueAtTime(0.7, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.8);
+            osc.start(now);
+            osc.stop(now + 0.03);
+
+            // --- ノイズクリック（リアル感） ---
+            const bufferSize = audioCtx.sampleRate * 0.02; // 20ms
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * 0.5;
+            }
+
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0.4, now);
+            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+            noise.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+
+            noise.start(now);
         }
 
-        // ④ おすすめ（柔らかクリック）
+        // ④ ピーン音 2100Hz
         function beep4(){
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
