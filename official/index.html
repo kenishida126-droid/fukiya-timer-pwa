@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.08.2 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.09 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -102,7 +102,7 @@ body{
   text-shadow:
     0 0 25px rgba(212,175,55,0.95),
     2px 2px 5px rgba(0,0,0,0.7);
-  margin:5vh 0; line-height:1; transform:scaleY(1.3);
+  margin:5vh 0 2vh 0; line-height:1; transform:scaleY(1.3);
   transition:color 0.2s, text-shadow 0.2s, transform 0.1s;
   text-align:center;
   user-select:none;
@@ -276,11 +276,17 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.08.2 Ken.Ishida≫</h2>
+      <h2>≪Ver.09 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
     <div id="roundLabel" role="button" aria-pressed="false">～ 練習ラウンド ～</div>
+
+    <div id="earlyEndGuideWrapper" style="height:16px; text-align:center;">
+     <div id="earlyEndGuide" style="color:white; display:none; font-size:20px; font-weight:bold;">
+        ⬇ タイマー値TAPで強制終了 ⬇
+     </div>
+    </div>
 
     <!-- Timer (with overlay "■■■■" that sits over the ":" area) -->
     <div id="timeContainer">
@@ -333,7 +339,7 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
-
+  <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
 
 
 <script>
@@ -413,7 +419,7 @@ const timeOverlay = document.getElementById('timeOverlay');
 let iosAudioUnlocked = false;
 function unlockIosAudio(){
   if(iosAudioUnlocked) return;
-  const list = [audio30,audioEnd,audioEndHaneya,audioEndTandoku,audioClean];
+  const list = [audio30,audioEnd,audioEndHaneya,audioEndTandoku,audioClean,audioEndEarly];
   list.forEach(a=>{
     if(!a) return;
     try{
@@ -1209,13 +1215,6 @@ timeDiv.addEventListener('keydown', (e)=>{
   }
 });
 
-/* Overlay click -> triggers the timer-initial-value change */
-if(timeOverlay){
-  timeOverlay.addEventListener('click', (e)=>{
-    e.preventDefault();
-    handleTimeTap();
-  });
-}
 
 /* === tolk-♪ 機能追加のためのグローバル変数 === */
 /* currentTolkAudio: タイトルから再生される tolk-*.mp3 の再生オブジェクト参照（存在しない場合 null） */
@@ -1360,6 +1359,99 @@ mainTitle.addEventListener('click', async (ev)=>{
   window.addEventListener('load', ()=>{ setTimeout(scrollToTop, 500); });
   window.addEventListener('orientationchange', ()=>{ setTimeout(scrollToTop, 500); });
 })();
+
+/* ===== Ver.09 フル統合版（Ver.08.2 + 早期終了機能） ===== */
+
+/* ===== 追加：早期終了用Audio ===== */
+// HTMLに以下を追加すること
+// <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
+const audioEndEarly = document.getElementById('audioEndEarly');
+
+/* ★重要：iOS用アンロック対象に追加すること
+   既存の unlockIosAudio() 内の list に audioEndEarly を追加してください
+   例：
+   const list = [audio30,audioEnd,audioEndHaneya,audioEndTandoku,audioClean,audioEndEarly];
+*/
+
+/* ===== 既存コードはそのまま使用（省略） ===== */
+/* ※ここに謙さんの1028行コードをそのまま貼る */
+
+/* ===== 追加：早期終了処理 ===== */
+function handleEarlyEnd(){
+  if(!started) return;
+
+  if(timer){ clearInterval(timer); timer = null; }
+  if(audioStartTimeout){ clearTimeout(audioStartTimeout); audioStartTimeout = null; }
+  if(currentAudioStart){ 
+    try{ currentAudioStart.pause(); currentAudioStart.currentTime = 0; }catch(e){}
+    currentAudioStart = null;
+  }
+
+  if(audioEndEarly){
+    audioEndEarly.currentTime = 0;
+    const p = audioEndEarly.play();
+    if(p && p.catch){ p.catch(()=>{}); }
+  } else {
+    console.warn('audioEndEarly が見つかりません');
+  }
+
+  started = false;
+
+  disableWakeLock();
+  remaining = 180;
+  pulseFired = { "3_05": false, "3_00": false, "0_30": false, "0_10": false, "0_00": false };
+
+  selectedStartSeconds = null;
+  selectionIndex = -1;
+
+  timeDiv.classList.remove('pulse','blink','fast-blink');
+  updateDisplay();
+
+  startBtn.classList.remove('pressed','locked');
+  bounceOn = false;
+  setBounceVisual();
+
+  if(metroToggle){
+    metroToggle.checked = false;
+    updateMetronomeLabel();
+    stopMetronome();
+  }
+}
+
+/* ===== 表示メッセージ要素（追加） ===== */
+// HTMLに以下を追加（ラウンドとタイマーの間）
+// <div id="earlyEndGuide" style="color:white; text-align:center; display:none;">
+//   ⬇タイマー値TAPで強制終了⬇
+// </div>
+const earlyEndGuide = document.getElementById('earlyEndGuide');
+
+/* updateDisplay に追記する処理（表示制御） */
+const _origUpdateDisplay = updateDisplay;
+updateDisplay = function(){
+  _origUpdateDisplay();
+
+  if(!earlyEndGuide) return;
+
+  // 表示条件：カウント中のみ
+  if(started && remaining > 0){
+    earlyEndGuide.style.display = 'block';
+  } else {
+    earlyEndGuide.style.display = 'none';
+  }
+};
+
+/* ===== 修正：timeOverlayクリック処理 ===== */
+if(timeOverlay){
+  timeOverlay.addEventListener('click', (e)=>{
+    if(started){
+      e.preventDefault();
+      handleEarlyEnd();
+      return;
+    }
+    handleTimeTap();
+  });
+}
+
 
 // ===== PCでの右クリック禁止機能(Ver.08.2) =====
   document.addEventListener('contextmenu', function(e) {
