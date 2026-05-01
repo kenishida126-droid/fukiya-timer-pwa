@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.09 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.09.1 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -276,7 +276,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.09 Ken.Ishida≫</h2>
+      <h2>≪Ver.09.1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -1388,6 +1388,8 @@ const audioEndEarly = document.getElementById('audioEndEarly');
 function handleEarlyEnd(){
   if(!started) return;
 
+  const remainSec = remaining; // ★追加（残り時間を保持）
+
   if(timer){ clearInterval(timer); timer = null; }
   if(audioStartTimeout){ clearTimeout(audioStartTimeout); audioStartTimeout = null; }
   if(currentAudioStart){ 
@@ -1399,6 +1401,12 @@ function handleEarlyEnd(){
     audioEndEarly.currentTime = 0;
     const p = audioEndEarly.play();
     if(p && p.catch){ p.catch(()=>{}); }
+
+  // ★ここも必ず同じ変数にする
+    audioEndEarly.addEventListener('ended', ()=>{
+      speakRemaining(remainSec);
+  }, { once:true });
+
   } else {
     console.warn('audioEndEarly が見つかりません');
   }
@@ -1423,6 +1431,22 @@ function handleEarlyEnd(){
     metroToggle.checked = false;
     updateMetronomeLabel();
     stopMetronome();
+  }
+}
+
+function speakRemaining(sec){
+  try{
+    if(!('speechSynthesis' in window)) return;
+
+    const msg = new SpeechSynthesisUtterance(`${sec}秒、余りましたよ？`);
+    msg.lang = 'ja-JP';
+    msg.rate = 1.0;
+    msg.pitch = 1.0;
+
+    speechSynthesis.cancel(); // 念のため
+    speechSynthesis.speak(msg);
+  }catch(e){
+    console.warn('speech error', e);
   }
 }
 
