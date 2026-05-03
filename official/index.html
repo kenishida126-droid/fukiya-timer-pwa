@@ -1451,7 +1451,7 @@ function speakRemaining(sec){
   try{
     if(!('speechSynthesis' in window)) return;
 
-    const msg = new SpeechSynthesisUtterance(`${sec}秒、残りました。`);
+    const msg = new SpeechSynthesisUtterance(`${sec}秒、残ってました。`);
     msg.lang = 'ja-JP';
     msg.rate = 1.0;
     msg.pitch = 1.0;
