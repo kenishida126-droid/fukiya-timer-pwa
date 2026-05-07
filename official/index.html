@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.09.1 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.09.2 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -276,7 +276,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.09.1 Ken.Ishida≫</h2>
+      <h2>≪Ver.09.2 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -629,51 +629,65 @@ function startTimer(){
 
 /* reset action / 撥矢/終了 handling */
 function resetAction(){
+  
+  // ★Ver.09.2 改訂版：音は残して、1回で完全初期化
+
+  // --- 0:00 & 撥ね矢ON時の特別処理（音は必要）---
   if(bounceOn && remaining === 0){
-    // 撥矢/終了 pressed when bounceOn and 0:00 => play end_tandoku then clear bounceOn
+
     audioEndTandoku.play().catch(()=>{});
+
     audioEndTandoku.addEventListener('ended', ()=>{
-      if(cleanOn){ setTimeout(()=>{ audioClean.play().catch(()=>{}); },1000); }
-      bounceOn = false; setBounceVisual();
-      disableWakeLock();
+
+      if(cleanOn){
+        setTimeout(()=>{ audioClean.play().catch(()=>{}); },1000);
+      }
+
+      // ★ここで完全初期化（1回で終わらせる）
+      finalizeReset();
+
     }, { once:true });
+
     return;
   }
 
-  // normal reset
+  // 通常reset
+  finalizeReset();
+}
+
+
+// ★完全初期化処理を分離（共通化）
+function finalizeReset(){
+
   if(timer){ clearInterval(timer); timer=null; }
   if(audioStartTimeout){ clearTimeout(audioStartTimeout); audioStartTimeout=null; }
   if(currentAudioStart){ try{ currentAudioStart.pause(); currentAudioStart.currentTime=0; }catch(e){} currentAudioStart=null; }
+
   disableWakeLock();
-  remaining = 180; started=false;
+
+  remaining = 180;
+  started = false;
+
   pulseFired = { "3_05": false, "3_00": false, "0_30": false, "0_10": false, "0_00": false };
+
   timeDiv.classList.remove('pulse','blink','fast-blink');
 
-  // Ver.06.1: Clear selection when reset/解除 pressed
-  // <- MOVED BEFORE updateDisplay() to ensure updateDisplay doesn't detect selection and show lime.
   selectedStartSeconds = null;
   selectionIndex = -1;
 
-  timeDiv.style.color = "var(--timer-gold)";
-  timeDiv.style.textShadow = "0 0 25px rgba(212,175,55,0.95),2px 2px 5px rgba(0,0,0,0.7)";
   updateDisplay();
 
-  // metronome OFF on reset (per spec)
   if(metroToggle){
     metroToggle.checked = false;
     updateMetronomeLabel();
     stopMetronome();
   }
 
-  // clear start visual if any
-  startBtn.classList.remove('pressed'); startBtn.classList.remove('locked');
+  startBtn.classList.remove('pressed','locked');
 
-  // bounce reset
-  bounceOn = false; setBounceVisual();
+  bounceOn = false;
+  setBounceVisual();
 
-  /* === tolk-♪ 追加部分 ===
-     音声再生中(タイトルクリックで再生された tolk-*.mp3)の停止処理をここで行う
-  */
   if(window.currentTolkAudio){
     try{ window.currentTolkAudio.pause(); window.currentTolkAudio.currentTime = 0; }catch(e){}
     window.currentTolkAudio = null;
@@ -1504,6 +1518,7 @@ if(timeOverlay){
 });
 
 </script>
+
 
 </body>
 </html>
