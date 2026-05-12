@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.09.2 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -268,6 +268,23 @@ body {
   }
 }
 
+#roundOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  color: gold;
+
+  display: none;
+  justify-content: center;
+  align-items: center;
+
+  font-size: 95vw;
+  font-weight: bold;
+
+  z-index: 99999;
+  pointer-events: none;
+}
+
 </style>
 </head>
 <body>
@@ -276,7 +293,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.09.2 Ken.Ishida≫</h2>
+      <h2>≪Ver.10 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -360,15 +377,19 @@ let currentAudioStart = null;
 let wakeLock = null;
 
 const rounds = [
-  "～ 練習ラウンド ～",
-  "～ 第１ラウンド ～",
-  "～ 第２ラウンド ～",
-  "～ 第３ラウンド ～",
-  "～ 第４ラウンド ～",
-  "～ 第５ラウンド ～",
-  "～ 最終ラウンド ～"
+  "練習ラウンド",
+  "第１ラウンド",
+  "第２ラウンド",
+  "第３ラウンド",
+  "第４ラウンド",
+  "第５ラウンド",
+  "最終ラウンド"
 ];
 let roundIndex = 0;
+// Ver.10 リモコン検知フラグ（未確認=赤／確認済=緑）
+let remoteDetected = false;
+let remoteFirstSpaceDone = false;
+let remoteFirstFlashDone = false; // 初回ビヨン制御
 
 /* locks */
 let cleanOn = true;   // initial ON
@@ -707,12 +728,107 @@ let roundMenuEl = null;
 
 /* ===== 共通：ラベル更新（既存rounds使用）===== */
 function updateRoundLabel(){
-  roundLabel.textContent = rounds[roundIndex];
+  // Winmaxle B1対応
+  const base = rounds[roundIndex].replace(/～/g,'').trim();
+
+  // 起動直後 or 未検知
+  if(!remoteDetected){
+    roundLabel.textContent = `～ ${base} ～`;
+    return;
+  }
+
+  // 初回以降（常時グリーン）
+  roundLabel.textContent = `🟢 ${base} 🟢`;
+
+  // 初回だけビヨン
+  if(!remoteFirstFlashDone){
+    remoteFirstFlashDone = true;
+    roundLabel.classList.add('pulse');
+    setTimeout(()=> roundLabel.classList.remove('pulse'), 500);
+  }
+
+  // 最終ラウンド装飾
   if(roundIndex === rounds.length - 1){
     roundLabel.classList.add('final');
-  }else{
+  } else {
     roundLabel.classList.remove('final');
   }
+}
+
+// ===== Wallpaper操作 =====
+function nextWallpaper(){
+  currentIndex++;
+
+  if(currentIndex >= wallpapers.length){
+    currentIndex = 0;
+  }
+
+  setWallpaperByIndex(currentIndex);
+
+  try{
+    localStorage.setItem('lastWallpaperIndex', String(currentIndex));
+  }catch(e){}
+}
+
+function prevWallpaper(){
+  currentIndex--;
+
+  if(currentIndex < 0){
+    currentIndex = wallpapers.length - 1;
+  }
+
+  setWallpaperByIndex(currentIndex);
+
+  try{
+    localStorage.setItem('lastWallpaperIndex', String(currentIndex));
+  }catch(e){}
+}
+
+// ===== Metronome tone操作 =====
+function nextTone(){
+  if(!metroToggle.checked) return;
+
+  const radios = Array.from(toneRadios);
+
+  let current = radios.findIndex(r => r.checked);
+
+  current++;
+
+  if(current >= radios.length){
+    current = 0;
+  }
+
+  radios[current].checked = true;
+  radios[current].dispatchEvent(new Event('change'));
+}
+
+function prevTone(){
+  if(!metroToggle.checked) return;
+
+  const radios = Array.from(toneRadios);
+
+  let current = radios.findIndex(r => r.checked);
+
+  current--;
+
+  if(current < 0){
+    current = radios.length - 1;
+  }
+
+  radios[current].checked = true;
+  radios[current].dispatchEvent(new Event('change'));
+}
+
+// ===== ラウンド番号巨大表示 =====
+function showRoundOverlay(num){
+  const overlay = document.getElementById('roundOverlay');
+
+  overlay.textContent = num;
+  overlay.style.display = 'flex';
+
+  setTimeout(()=>{
+    overlay.style.display = 'none';
+  }, 500);
 }
 
 /* ===== ショートタップ（完全従来順）===== */
@@ -867,14 +983,19 @@ function setBounceVisual(){
    以前は pulse を入れていたが、要望により「何もしない（ビジュアルヒントも不要）」にする。
 */
 bounceBtn.addEventListener('click', ()=>{
-   if(started){
+  if(started){
     bounceOn = !bounceOn;
+
     setBounceVisual();
-    // When bounce turned ON during countdown, keep wakeLock until resolved
-    if(bounceOn) enableWakeLock();
+
+    // 撥ね矢ON時に「ピーン」
+    if(bounceOn){
+      start_beep();
+      enableWakeLock();
+    }
+
   } else {
-    // DO NOTHING: no pulse, no layout shift — per spec (removed extraneous timer pulse)
-    // intentionally empty to avoid any timer visual "揺らぎ"
+    // DO NOTHING: no pulse, no layout shift — per spec
   }
 });
 
@@ -1512,6 +1633,142 @@ if(timeOverlay){
 }
 
 
+// ===== Ver.10: リモコン1ボタン制御 =====
+function handleRemoteSingleButton(){
+
+  // ① start待ち
+  if(!started && remaining >= 180){
+    startBtn.click();
+    return;
+  }
+
+  // ② カウントダウン中
+  if(started && remaining > 0){
+    bounceBtn.click();
+    return;
+  }
+
+  // ③ 終了状態（0:00）
+  if(!started && remaining === 0){
+    resetBtn.click();
+    return;
+  }
+}
+
+// Winmaxle B1 / Bluetooth Keyboard対応
+// any-key初回検知 + 各種キー操作
+
+document.addEventListener('keydown', (e)=>{
+  // 初回リモコン検知（any-key）
+if(!remoteDetected){
+  remoteDetected = true;
+  updateRoundLabel();
+
+  // 初回any-keyは接続確認のみ
+  return;
+}
+
+  const key = e.key;
+
+  // ===== Space/Enter：既存動作維持 =====
+  if(
+  key === ' ' ||
+  e.code === 'Space' ||
+  e.code === 'Enter'
+){
+    e.preventDefault();
+
+    if(!started && remaining >= 180){
+      startBtn.click();
+    } else if(started && remaining > 0){
+      bounceBtn.click();
+    } else if(remaining === 0){
+      resetBtn.click();
+    }
+    return;
+  }
+
+// ===== 個別キー操作 =====
+  switch(key){
+
+    // === 筒清掃指示（Clean） ===
+    case 'c':
+    case 'C':
+      cleanBtn.click();
+      break;
+
+    // === 撥ね矢（Bounce） ===
+    case 'b':
+    case 'B':
+    case 'h':
+    case 'H':
+      bounceBtn.click();
+      break;
+
+    // === 開始（Start） ===
+    case 's':
+    case 'S':
+      startBtn.click();
+      break;
+
+    // === 解除（Reset） ===
+    case 'r':
+    case 'R':
+    case 'e':
+    case 'E':
+      resetBtn.click();
+      break;
+
+    // === Time Overlay ===
+    case 't':
+    case 'T':
+    case 'x':
+    case 'X':
+    case 'z':
+    case 'Z':
+
+      if(timeOverlay){
+        timeOverlay.click();
+      }
+      break;
+
+    // === Wallpaper ===
+    case 'w':
+    case 'W':
+      wallToggle.click();
+      break;
+
+    case 'ArrowRight':
+      nextWallpaper();
+      break;
+
+    case 'ArrowLeft':
+      prevWallpaper();
+      break;
+
+    // === Metronome ===
+    case 'm':
+    case 'M':
+      metroToggle.click();
+      break;
+
+    case 'ArrowUp':
+      nextTone();
+      break;
+
+    case 'ArrowDown':
+      prevTone();
+      break;
+  }
+
+  // === ラウンド切替 0～6 ===
+  if(/^[0-6]$/.test(key)){
+    roundIndex = Number(key);
+    updateRoundLabel();
+    showRoundOverlay(key);
+  }
+});
+
 // ===== PCでの右クリック禁止機能(Ver.08.2) =====
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
@@ -1519,6 +1776,7 @@ if(timeOverlay){
 
 </script>
 
+  <div id="roundOverlay"></div>
 
 </body>
 </html>
