@@ -983,19 +983,14 @@ function setBounceVisual(){
    以前は pulse を入れていたが、要望により「何もしない（ビジュアルヒントも不要）」にする。
 */
 bounceBtn.addEventListener('click', ()=>{
-  if(started){
+   if(started){
     bounceOn = !bounceOn;
-
     setBounceVisual();
-
-    // 撥ね矢ON時に「ピーン」
-    if(bounceOn){
-      start_beep();
-      enableWakeLock();
-    }
-
+    // When bounce turned ON during countdown, keep wakeLock until resolved
+    if(bounceOn) enableWakeLock();
   } else {
-    // DO NOTHING: no pulse, no layout shift — per spec
+    // DO NOTHING: no pulse, no layout shift — per spec (removed extraneous timer pulse)
+    // intentionally empty to avoid any timer visual "揺らぎ"
   }
 });
 
