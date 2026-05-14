@@ -728,12 +728,21 @@ let roundMenuEl = null;
 
 /* ===== 共通：ラベル更新（既存rounds使用）===== */
 function updateRoundLabel(){
-  // Winmaxle B1対応
+
   const base = rounds[roundIndex].replace(/～/g,'').trim();
 
   // 起動直後 or 未検知
   if(!remoteDetected){
+
     roundLabel.textContent = `～ ${base} ～`;
+
+    // 最終ラウンド装飾
+    if(roundIndex === rounds.length - 1){
+      roundLabel.classList.add('final');
+    } else {
+      roundLabel.classList.remove('final');
+    }
+
     return;
   }
 
@@ -744,6 +753,7 @@ function updateRoundLabel(){
   if(!remoteFirstFlashDone){
     remoteFirstFlashDone = true;
     roundLabel.classList.add('pulse');
+
     setTimeout(()=> roundLabel.classList.remove('pulse'), 500);
   }
 
