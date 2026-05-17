@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10.1 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -293,7 +293,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.10 Ken.Ishida≫</h2>
+      <h2>≪Ver.10.1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -796,35 +796,23 @@ function prevWallpaper(){
 
 // ===== Metronome tone操作 =====
 function nextTone(){
-  if(!metroToggle.checked) return;
-
   const radios = Array.from(toneRadios);
-
   let current = radios.findIndex(r => r.checked);
-
   current++;
-
   if(current >= radios.length){
     current = 0;
   }
-
   radios[current].checked = true;
   radios[current].dispatchEvent(new Event('change'));
 }
 
 function prevTone(){
-  if(!metroToggle.checked) return;
-
   const radios = Array.from(toneRadios);
-
   let current = radios.findIndex(r => r.checked);
-
   current--;
-
   if(current < 0){
     current = radios.length - 1;
   }
-
   radios[current].checked = true;
   radios[current].dispatchEvent(new Event('change'));
 }
@@ -1764,15 +1752,26 @@ if(!remoteDetected){
     case 'ArrowDown':
       prevTone();
       break;
+
+    // ===== Joke / Ocharake =====
+    case 'j':
+    case 'J':
+    case 'o':
+    case 'O':
+      e.preventDefault();
+      mainTitle.click();
+      break;
+      
   }
 
-  // === ラウンド切替 0～6 ===
-  if(/^[0-6]$/.test(key)){
-    roundIndex = Number(key);
-    updateRoundLabel();
-    showRoundOverlay(key);
+    // === ラウンド切替 0～6 ===
+    if(/^[0-6]$/.test(key)){
+      roundIndex = Number(key);
+      updateRoundLabel();
+      showRoundOverlay(key);
   }
 });
+
 
 // ===== PCでの右クリック禁止機能(Ver.08.2) =====
   document.addEventListener('contextmenu', function(e) {
