@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10.1 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10.2 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -285,6 +285,25 @@ body {
   pointer-events: none;
 }
 
+@keyframes roundPulse {
+  0% {
+    transform: scale(1);
+  }
+
+  45% {
+    transform: scale(1.35);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+.roundPulse{
+  display: inline-block;
+  animation: roundPulse 0.8s cubic-bezier(.2,1.7,.4,1) 1;
+}
+
 </style>
 </head>
 <body>
@@ -293,7 +312,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.10.1 Ken.Ishida≫</h2>
+      <h2>≪Ver.10.2 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -821,12 +840,13 @@ function prevTone(){
 function showRoundOverlay(num){
   const overlay = document.getElementById('roundOverlay');
 
-  overlay.textContent = num;
-  overlay.style.display = 'flex';
+    overlay.innerHTML =
+      `<span class="roundPulse">${num}</span>`;
+    overlay.style.display = 'flex';
 
   setTimeout(()=>{
     overlay.style.display = 'none';
-  }, 500);
+  }, 1000);
 }
 
 /* ===== ショートタップ（完全従来順）===== */
