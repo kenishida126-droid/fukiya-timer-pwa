@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10.2 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10.3 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -312,7 +312,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.10.2 Ken.Ishida≫</h2>
+      <h2>≪Ver.10.3 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -1790,6 +1790,12 @@ if(!remoteDetected){
       updateRoundLabel();
       showRoundOverlay(key);
   }
+
+    // === 現ラウンド№表示 ===
+    if((e.key === 'n' || e.key === 'N') && !e.repeat){
+      showRoundOverlay(roundIndex);
+  }
+
 });
 
 
