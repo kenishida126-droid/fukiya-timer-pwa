@@ -107,14 +107,37 @@
   <div class="version-attention">※ iPhone では音声認識未対応です</div>
 </div>
 
-<!-- ▼ 取扱説明書リンク（テキストのみ） -->
+<!-- ▼ 取扱説明書リンク -->
 <div style="margin-top:0.6em;">
-  <a href="manual.pdf" target="_blank" style="color:gold; text-decoration:underline; font-size:1.1em;">
-    ※ 取扱説明書はこちら：26/05/25 版
+  <a id="manualLink"
+     href="manual.pdf"
+     target="_blank"
+     style="color:gold; text-decoration:underline; font-size:1.1em;">
+    ※ 取扱説明書はこちら
   </a>
 </div>
 
 <script>
+// manual.pdf => GitHub 日付を"※ 取説はこちら：yy/mm/dd UP版"と表記
+fetch("manual.pdf", { method: "HEAD" })
+  .then(response => {
+    const lastModified = response.headers.get("Last-Modified");
+
+    if (lastModified) {
+      const date = new Date(lastModified);
+
+      const yy = String(date.getFullYear()).slice(-2);
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+
+      document.getElementById("manualLink").innerHTML =
+        `※ 取説はこちら：${yy}/${mm}/${dd} UP版`;
+    }
+  })
+  .catch(error => {
+    console.log("更新日取得失敗", error);
+  });
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./service-worker.js');
 
