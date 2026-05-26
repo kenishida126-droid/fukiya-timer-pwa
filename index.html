@@ -158,12 +158,45 @@ if ('serviceWorker' in navigator) {
     if (event.data && event.data.type === 'CACHE_UPDATED') {
       alert(
         '吹矢Timer_PWA が更新されました。\n' +
-        '通信が発生しますので、Wi-Fi 環境下で\n' +
+        '通信が発生しますので、Wi‑Fi 環境下で\n' +
         'しばらく起動したままにしてください。'
       );
     }
   });
 }
+
+/* === Keyboard対応 === */
+document.addEventListener('keydown', function(event) {
+
+  // Spaceキーでページスクロール防止
+  if (event.code === 'Space') {
+    event.preventDefault();
+  }
+
+  switch(event.key.toLowerCase()) {
+
+    // 1-key：Official version
+    case '1':
+      location.href = 'official/index.html';
+      break;
+
+    // 2-key：Arrows timer
+    case '2':
+      location.href = 'extra/index.html';
+      break;
+
+    // 3-key：Circle timer
+    case '3':
+      location.href = 'gemini/index.html';
+      break;
+
+    // M-key：manual.pdf
+    case 'm':
+      window.open('manual.pdf', '_blank');
+      break;
+
+  }
+});
 </script>
 
 <!-- Credit -->
