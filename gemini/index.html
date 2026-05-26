@@ -116,8 +116,8 @@
         <div id="snap-point"></div>
         
         <div id="header-container">
-            <span id="title-main">スポーツ吹矢タイマー</span><br>
-            <span id="title-sub">《by Ken.ishida & Gemini》</span>
+            <span id="title-main">Circle timer - ver.03</span><br>
+            <span id="title-sub">《 by Ken.Ishida 》</span>
         </div>
 
         <div id="timer-display" onclick="handleTap()">03:05</div>
@@ -650,6 +650,45 @@
     if(origReset) origReset.apply(this,arguments);
   }
 })();
+
+/* === Keyboard対応 === */
+document.addEventListener('keydown', function(e){
+
+    // Spaceキーのページスクロール防止
+    if(e.code === 'Space'){
+        e.preventDefault();
+    }
+
+    // START / RESET
+    if(e.code === 'Space' || e.code === 'Enter'){
+        handleTap();
+    }
+
+    // Mic ON/OFF
+    else if(e.key === 'm' || e.key === 'M'){
+        toggleMic({ stopPropagation: ()=>{} });
+    }
+
+    // メトロノーム ON/OFF
+    else if(e.key === '1'){
+        toggleMetro(1);
+    }
+    else if(e.key === '2'){
+        toggleMetro(2);
+    }
+    else if(e.key === '3'){
+        toggleMetro(3);
+    }
+    else if(e.key === '4'){
+        toggleMetro(4);
+    }
+
+    // メトロノーム停止
+    else if(e.key === '0'){
+        clearMetro();
+    }
+});
+
 </script>
 </body>
 </html>
