@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Extra Ver.01 練習専用簡易版</title>
+<title>Arrows timer</title>
 
 <style>
 html, body {
@@ -11,7 +11,6 @@ html, body {
   padding: 0;
   background: #000;
   color: #fff;
-  font-family: "MS PGothic","MS Pゴシック",monospace;
   text-align: center;
   -webkit-user-select: none;
   user-select: none;
@@ -19,9 +18,8 @@ html, body {
 
 /* ===== タイトル ===== */
 #title { margin-top: 30px; line-height: 1.2; }
-#title-main { font-size: 32px; }
-#title-sub  { font-size: 20px; }
-#title-sign { font-size: 20px; }
+  #title-main { display: inline-block; font-size: 9.5vw; font-weight: bold; line-height: 1.1; transform: scaleX(0.9); }
+  #title-sign { display: block; font-family: sans-serif; font-size: 7vw; opacity: 0.9; margin-top: 1.0vh; }
 
 /* ===== タイマー ===== */
 #timer {
@@ -97,15 +95,18 @@ html, body {
   color: #00ff00;
   pointer-events: none;
 }
+/* Extra：Android Chrome用 アドレスバー退避余白 */
+.extra-bottom-spacer {
+  height: 120px;   /* 60～150pxで微調整 */
+}
 </style>
 </head>
 
 <body>
 
 <div id="title">
-  <div id="title-main">スポーツ吹矢タイマー</div>
-  <div id="title-sub">《Extra Ver.01～練習専用簡易版》</div>
-  <div id="title-sign">～ by Ken.Ishida ～</div>
+  <div id="title-main">Arrows timer - ver.01</div>
+  <div id="title-sign">《 by Ken.Ishida 》</div>
 </div>
 
 <div id="timer" class="timer-lime">3:05</div>
@@ -305,7 +306,29 @@ shotpace.onclick = ()=>{
 
 updateTimer();
 arrowsOff();
-</script>
 
+/* ===== Keyboard対応 ===== */
+document.addEventListener('keydown', function(e){
+
+  // Spaceキーのページスクロール防止
+  if(e.code === 'Space'){
+  e.preventDefault();
+  }
+
+  // START / RESET
+  if(e.code === 'Space' || e.code === 'Enter'){
+  timer.click();
+  }
+
+  // Shot Pace ON / OFF
+  else if(e.key === 'a' || e.key === 'A'){
+  if(!running){
+  shotpace.click();
+  }
+}
+});
+
+</script>
+<div class="extra-bottom-spacer"></div>
 </body>
 </html>
