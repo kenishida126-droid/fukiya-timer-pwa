@@ -1668,24 +1668,45 @@ function handleRemoteSingleButton(){
   }
 }
 
-// Bluetooth Keyboard対応
-// any-key初回検知 + 各種キー操作
+let lastKey = '';
+let lastKeyTime = 0;
 
+// Bluetooth Keyboard対応
 document.addEventListener('keydown', (e)=>{
 
-  // 長押しrepeat無効
-  if(e.repeat) return;
+  const key = e.key;
+
+  // 長押し連打ガード（Android Bluetooth対応）
+  const now = Date.now();
+
+  // PC系 repeat
+  if(
+    e.repeat &&
+    key !== 'ArrowRight' &&
+    key !== 'ArrowLeft'
+  ){
+    return;
+  }
+
+  if(
+    key === lastKey &&
+    now - lastKeyTime < 750
+  ){
+    return;
+  }
+
+  lastKey = key;
+  lastKeyTime = now;
 
   // 初回リモコン検知（any-key）
-if(!remoteDetected){
-  remoteDetected = true;
-  updateRoundLabel();
+  if(!remoteDetected){
+    remoteDetected = true;
+    updateRoundLabel();
 
-  // 初回any-keyは接続確認のみ
-  return;
-}
+    // 初回any-keyは接続確認のみ
+    return;
+  }
 
-  const key = e.key;
 
   // ===== Space/Enter：既存動作維持 =====
   if(
