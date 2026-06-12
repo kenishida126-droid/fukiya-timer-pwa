@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width,
+               initial-scale=1.0,
+               maximum-scale=1.0,
+               user-scalable=no">
+
+<title>Official Landscape ver.01 by Ken.Ishida</title>
+
+<style>
+
+html{
+    min-height:101vh;
+}
+
+body{
+    margin:0;
+    background:#000;
+    color:#fff;
+
+    overflow-y:auto;
+    overflow-x:hidden;
+
+/* -----  テキスト選択を禁止  ----- */
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+}
+
+/* =====================
+   メイン
+===================== */
+
+#main{
+
+    width:100vw;
+    height:92vh;
+
+    display:grid;
+
+    grid-template-columns:
+        75%
+        25%;
+}
+
+/* PCのみ少し広げる */
+@media (min-width: 1000px){
+
+    #main{
+        grid-template-columns:
+            80%
+            20%;
+    }
+
+}
+
+/* =====================
+   左パネル
+===================== */
+
+#leftPanel{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    overflow:hidden;
+}
+
+/* =====================
+   タイトル
+===================== */
+
+#title{
+    width:100%;
+    height:8vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+#title h1{
+    margin:0;
+    color:white;
+    font-size:clamp(
+        18px,
+        2vw,
+        42px
+    );
+    font-weight:bold;
+}
+
+#titleMain{
+    color:#ffffaa;
+    font-size:1.15em;
+    font-weight:bold;
+}
+
+#titleAuthor{
+    color:white;
+    font-size:1em;
+}
+
+/* =====================
+   タイマーエリア
+===================== */
+
+#timerArea{
+
+    flex:1;
+
+    width:100%;
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+}
+
+#time{
+    font-family:
+        Arial Black,
+        Impact,
+        sans-serif;
+    color:#ffd700;
+    font-weight:900;
+    font-size:min(
+        54vw,
+        78vh
+    );
+    line-height:.85;
+    letter-spacing:-0.01em;
+    text-shadow:
+        0 1px 0 #fff6b0,
+        0 2px 0 #ffe97a,
+        0 3px 0 #ffd700,
+        0 4px 0 #e0b800,
+        0 5px 0 #c89d00,
+        0 6px 0 #9a7600,
+        0 12px 25px rgba(0,0,0,.90),
+        0 0 25px rgba(255,215,0,.35);
+}
+
+/* 通常点滅 */
+@keyframes blink { 0%,50%,100% { opacity: 1; } 25%,75% { opacity: 0; } }
+.blink { animation: blink 1.0s infinite; }
+
+/* 高速点滅 */
+@keyframes fastBlink { 0%,50%,100% { opacity: 1; } 25%,75% { opacity: 0; } }
+.fast-blink { animation: fastBlink 0.6s infinite; }
+
+/* pulse（ゆらぎ：1回） */
+
+@keyframes pulse {
+
+    0% {
+        transform:scale(1.3);
+        text-shadow:0 0 10px rgba(255,255,255,0.8);
+    }
+
+    50% {
+        transform:scale(1.55);
+        text-shadow:0 0 30px rgba(255,255,255,1);
+    }
+
+    100% {
+        transform:scale(1.3);
+        text-shadow:0 0 10px rgba(255,255,255,0.8);
+    }
+}
+
+.pulse{
+    animation:pulse 0.5s ease-in-out 1;
+}
+
+/* =====================
+   右パネル
+===================== */
+
+#rightPanel{
+
+    border-left:
+        2px solid white;
+
+    display:grid;
+
+    grid-template-rows:
+        20%
+        20%
+        20%
+        20%
+        20%;
+}
+
+/* =====================
+   ラウンド表示
+===================== */
+
+#roundLabel{
+
+    display:flex;
+
+    justify-content:center;
+    align-items:center;
+
+    user-select:none;
+    -webkit-user-select:none;
+    -webkit-touch-callout:none;
+
+    color:#ffe45c;
+
+    font-weight:900;
+
+    font-size:
+        clamp(
+            24px,
+            2vw,
+            48px
+        );
+
+    border-bottom:
+        2px solid white;
+
+    text-shadow:
+        0 0 10px rgba(255,215,0,.6);
+
+    cursor:pointer;
+}
+
+/* =====================
+   ラウンド巨大表示
+===================== */
+#roundOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.85);/* 不透明度85% */
+  color:#00ff00;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  font-size:min(95vw,95vh);
+  font-weight:bold;
+  z-index:99999;
+  pointer-events:none;
+}
+
+@keyframes roundPulse{
+  0%{
+    transform:scale(1);
+  }
+  45%{
+    transform:scale(1.35);
+  }
+  100%{
+    transform:scale(1);
+  }
+}
+
+.roundPulse{
+  display:inline-block;
+  animation:
+    roundPulse
+    0.8s
+    cubic-bezier(.2,1.7,.4,1)
+    1;
+}
+
+/* =====================
+   ボタン共通
+===================== */
+
+.ctrlBtn{
+
+    width:90%;
+    height:75%;
+
+    margin:auto;
+
+    border:none;
+
+    border-radius:20px;
+
+    cursor:pointer;
+
+    font-weight:bold;
+
+    font-size:
+        clamp(
+            22px,
+            2vw,
+            42px
+        );
+
+    box-shadow:
+        inset 0 3px 0 rgba(255,255,255,.5),
+        inset 0 -4px 8px rgba(0,0,0,.35),
+        0 6px 12px rgba(0,0,0,.8);
+
+    transition:.1s;
+}
+
+.ctrlBtn:active{
+
+    transform:
+        translateY(4px);
+
+    box-shadow:
+        inset 0 5px 10px rgba(0,0,0,.6);
+}
+
+/* =====================
+   開始
+===================== */
+
+#startBtn{
+
+    background:
+        linear-gradient(
+            #8cff00,
+            #008000,
+            #006400
+        );
+
+    color:white;
+}
+
+#startBtn.locked{
+
+    box-shadow:
+        inset 0 6px 12px rgba(0,0,0,.55);
+
+    transform:
+        translateY(3px);
+}
+
+/* =====================
+   撥ね矢 OFF
+===================== */
+
+#bounceBtn{
+
+    background:
+        linear-gradient(
+            #cfcfcf,
+            #a0a0a0,
+            #707070
+        );
+
+    color:black;
+}
+
+#bounceBtn.on{
+
+    background:
+        linear-gradient(
+            #ffff66,
+            #ffd700,
+            #c09000
+        );
+
+    color:red;
+}
+
+#bounceBtn.locked{
+
+    transform:translateY(3px);
+
+    box-shadow:
+        inset 0 6px 12px rgba(0,0,0,.55);
+}
+
+/* =====================
+   解除
+===================== */
+
+#resetBtn{
+
+    background:
+        linear-gradient(
+            #ff8888,
+            #ff0000,
+            #880000
+        );
+
+    color:white;
+}
+
+/* =====================
+   筒清掃指示 ON
+===================== */
+
+#cleanBtn{
+
+    background:
+        linear-gradient(
+            #00ff00,
+            #00cc00,
+            #008000
+        );
+
+    color:black;
+}
+
+#cleanBtn.off{
+
+    background:
+        linear-gradient(
+            #cfcfcf,
+            #a0a0a0,
+            #707070
+        );
+
+    color:black;
+}
+
+#cleanBtn.locked{
+
+    transform:translateY(3px);
+
+    box-shadow:
+        inset 0 6px 12px rgba(0,0,0,.55);
+}
+
+
+</style>
+</head>
+
+<body>
+
+<div id="main">
+
+    <div id="leftPanel">
+
+
+        <div id="title">
+            <h1>
+                <span id="titleMain">
+                    《 Official Landscape ver.01 》
+                </span>
+                <span id="titleAuthor">
+                    ～by Ken.Ishida～
+                </span>
+            </h1>
+
+</div>
+
+        <div id="timerArea">
+
+            <div id="time">
+                3:00
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="rightPanel">
+
+        <div id="roundLabel">
+            練習ラウンド
+        </div>
+
+        <button
+            id="startBtn"
+            class="ctrlBtn">
+            開　始
+        </button>
+
+        <button
+            id="bounceBtn"
+            class="ctrlBtn">
+            撥ね矢
+        </button>
+
+        <button
+            id="resetBtn"
+            class="ctrlBtn">
+            解　除
+        </button>
+
+        <button
+            id="cleanBtn"
+            class="ctrlBtn">
+            筒清掃指示
+        </button>
+
+    </div>
+
+</div>
+
+<audio id="audioStart0" src="start-0.mp3" preload="auto"></audio>
+<audio id="audioStart1" src="start-1.mp3" preload="auto"></audio>
+<audio id="audioStart2" src="start-2.mp3" preload="auto"></audio>
+<audio id="audioStart3" src="start-3.mp3" preload="auto"></audio>
+<audio id="audioStart4" src="start-4.mp3" preload="auto"></audio>
+<audio id="audioStart5" src="start-5.mp3" preload="auto"></audio>
+<audio id="audioStart6" src="start-6.mp3" preload="auto"></audio>
+
+<audio id="audio30" src="30sec.mp3" preload="auto"></audio>
+
+<audio id="audioEnd" src="end.mp3" preload="auto"></audio>
+
+<audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
+
+<audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
+
+<audio id="audioClean" src="clean.mp3" preload="auto"></audio>
+
+<audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
+
+<script>
+
+/* ===== Ver.01 Step1 ===== */
+const audio30 =
+    document.getElementById("audio30");
+const audioEnd =
+    document.getElementById("audioEnd");
+const audioEndHaneya =
+    document.getElementById("audioEndHaneya");
+const audioEndTandoku =
+    document.getElementById("audioEndTandoku");
+const audioClean =
+    document.getElementById("audioClean");
+const audioEndEarly =
+    document.getElementById("audioEndEarly");
+
+const audioStart0 =
+    document.getElementById("audioStart0");
+const audioStart1 =
+    document.getElementById("audioStart1");
+const audioStart2 =
+    document.getElementById("audioStart2");
+const audioStart3 =
+    document.getElementById("audioStart3");
+const audioStart4 =
+    document.getElementById("audioStart4");
+const audioStart5 =
+    document.getElementById("audioStart5");
+const audioStart6 =
+    document.getElementById("audioStart6");
+
+const startAudios = [
+    audioStart0,
+    audioStart1,
+    audioStart2,
+    audioStart3,
+    audioStart4,
+    audioStart5,
+    audioStart6
+];
+
+function updateStartButtonReady(){
+    const audioStart =
+        startAudios[roundIndex];
+    if(audioStart.readyState >= 4){
+        startBtn.classList.remove(
+            "audioNotReady"
+        );
+        startBtn.classList.remove(
+            "locked"
+        );
+    }else{
+        startBtn.classList.add(
+            "audioNotReady"
+        );
+        startBtn.classList.add(
+            "locked"
+        );
+        audioStart.addEventListener(
+            "canplaythrough",
+            ()=>{
+                startBtn.classList.remove(
+                    "audioNotReady"
+                );
+                startBtn.classList.remove(
+                    "locked"
+                );
+            },
+            { once:true }
+        );
+    }
+}
+
+const timeDiv = document.getElementById("time");
+const startBtn  = document.getElementById("startBtn");
+const resetBtn  = document.getElementById("resetBtn");
+const bounceBtn = document.getElementById("bounceBtn");
+const cleanBtn  = document.getElementById("cleanBtn");
+
+const rounds = [
+  "練習ラウンド",
+  "第１ラウンド",
+  "第２ラウンド",
+  "第３ラウンド",
+  "第４ラウンド",
+  "第５ラウンド",
+  "最終ラウンド"
+];
+let roundIndex = 0;
+const roundLabel =
+    document.getElementById("roundLabel");
+
+let timer = null;
+let remaining = 180;
+let started = false;
+let cleanOn = true;
+let bounceOn = false;
+let pulseFired = {
+    p305:false,
+    p300:false,
+    p030:false,
+    p010:false
+    };
+let currentAudioStart = null;
+let audioStartTimeout = null;
+let iosAudioUnlocked = false;
+let wakeLock = null;
+
+async function enableWakeLock(){
+    try{
+        wakeLock =
+            await navigator.wakeLock.request(
+                "screen"
+            );
+    }catch(e){
+        console.log(
+            "WakeLock取得失敗"
+        );
+    }
+}
+
+function disableWakeLock(){
+    if(wakeLock){
+        wakeLock.release();
+        wakeLock = null;
+    }
+}
+
+function unlockIosAudio(){
+    if(iosAudioUnlocked) return;
+    const list = [
+        audio30,
+        audioEnd,
+        audioEndHaneya,
+        audioEndTandoku,
+        audioClean,
+        audioEndEarly,
+
+        audioStart0,
+        audioStart1,
+        audioStart2,
+        audioStart3,
+        audioStart4,
+        audioStart5,
+        audioStart6
+    ];
+    list.forEach(a=>{
+        if(!a) return;
+        try{
+            a.muted = true;
+            const p = a.play();
+            if(p && p.then){
+                p.then(()=>{
+                    a.pause();
+                    a.currentTime = 0;
+                    a.muted = false;
+                });
+            }
+        }catch(e){}
+    });
+    iosAudioUnlocked = true;
+}
+
+function doPulse(){
+    timeDiv.classList.remove("pulse");
+    void timeDiv.offsetWidth;
+    timeDiv.classList.add("pulse");
+}
+
+/* ===== 開始ビープ音 ===== */
+function start_beep(){
+    const audioCtx =
+        new (
+            window.AudioContext ||
+            window.webkitAudioContext
+        )();
+    const osc =
+        audioCtx.createOscillator();
+    const gain =
+        audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(
+        2100,
+        audioCtx.currentTime
+    );
+    gain.gain.setValueAtTime(
+        0.5,
+        audioCtx.currentTime
+    );
+    gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioCtx.currentTime + 1.5
+    );
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    audioCtx.resume();
+    osc.start();
+    osc.stop(audioCtx.currentTime + 1.5);
+}
+
+/* 表示更新 */
+function updateRoundLabel(){
+    roundLabel.textContent =
+        rounds[roundIndex];
+}
+
+/* ===== ラウンド番号巨大表示 ===== */
+function showRoundOverlay(num){
+    const overlay =
+        document.getElementById(
+            "roundOverlay"
+        );
+    overlay.innerHTML =
+        `<span class="roundPulse">${num}</span>`;
+    overlay.style.display = "flex";
+    setTimeout(()=>{
+        overlay.style.display =
+            "none";
+    },1000);
+}
+
+function updateDisplay(){
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    timeDiv.textContent =
+        `${m}:${s.toString().padStart(2,"0")}`;
+    timeDiv.classList.remove(
+        "pulse",
+        "blink",
+        "fast-blink"
+    );
+
+    /* 3:05 */
+    if(started && remaining === 185){
+        timeDiv.style.color = "#00ff00";
+        if(!pulseFired.p305){
+            pulseFired.p305 = true;
+            doPulse();
+        }
+        return;
+    }
+
+    /* 3:04～3:01 */
+    if(started && remaining >= 181){
+        timeDiv.style.color = "#00ff00";
+        return;
+    }
+
+    /* 3:00 */
+    if(started && remaining === 180){
+        timeDiv.style.color = "#ffd700";
+        if(!pulseFired.p300){
+            pulseFired.p300 = true;
+            doPulse();
+        }
+        return;
+    }
+
+    /* 2:59～0:31 */
+    if(remaining >= 31){
+        timeDiv.style.color = "#ffd700";
+        return;
+    }
+
+    /* 0:30 */
+    if(started && remaining === 30){
+        timeDiv.style.color = "#ff0000";
+        if(!pulseFired.p030){
+            pulseFired.p030 = true;
+            doPulse();
+        }
+        return;
+    }
+
+    /* 0:29～0:11 */
+    if(remaining >= 11){
+        timeDiv.style.color = "#ff0000";
+        return;
+    }
+
+    /* 0:10 */
+    if(started && remaining === 10){
+        timeDiv.style.color = "#ff0000";
+        if(!pulseFired.p010){
+            pulseFired.p010 = true;
+            doPulse();
+        }
+        return;
+    }
+
+    /* 0:09～0:01 */
+    if(remaining >= 1){
+        timeDiv.style.color = "#ff0000";
+        timeDiv.classList.add("blink");
+        return;
+    }
+
+    /* 0:00 */
+    timeDiv.style.color = "#00ff00";
+    timeDiv.classList.add("fast-blink");
+}
+
+function updateCleanButton(){
+
+    if(cleanOn){
+
+        cleanBtn.classList.remove("off");
+        cleanBtn.classList.add("locked");
+
+    }else{
+
+        cleanBtn.classList.add("off");
+        cleanBtn.classList.remove("locked");
+    }
+}
+
+function updateBounceButton(){
+
+    if(bounceOn){
+
+        if(!started && remaining === 0){
+
+            bounceBtn.textContent = "⬇撥ね矢有";
+
+        }else{
+
+            bounceBtn.textContent = "撥ね矢有";
+        }
+
+        bounceBtn.classList.add("on");
+        bounceBtn.classList.add("locked");
+
+    }else{
+
+        bounceBtn.textContent = "撥ね矢";
+
+        bounceBtn.classList.remove("on");
+        bounceBtn.classList.remove("locked");
+    }
+
+    updateResetButton();
+}
+
+function updateResetButton(){
+
+    if(
+        bounceOn &&
+        !started &&
+        remaining === 0
+    ){
+
+        resetBtn.textContent = "撥矢／終了";
+
+        resetBtn.style.background = "blue";
+        resetBtn.style.color = "white";
+
+    }else{
+
+        resetBtn.textContent = "解　除";
+
+        resetBtn.style.background = "";
+        resetBtn.style.color = "";
+    }
+}
+
+/* 開始 */
+function startTimer(){
+    if(started) return;
+    enableWakeLock();
+
+    started = true;
+    unlockIosAudio();
+    start_beep();
+
+    pulseFired = {
+        p305:false,
+        p300:false,
+        p030:false,
+        p010:false
+    };
+
+    startBtn.classList.add("locked");
+    remaining = 185;   // 3:05
+    updateDisplay();
+
+/* start-x.mp3 */
+const audioStart =
+    startAudios[roundIndex];
+currentAudioStart = audioStart;
+audioStart.currentTime = 0;
+const scheduleStartAudio = ()=>{
+    const dur =
+        audioStart.duration || 0;
+    const playAt =
+        180 + dur;
+    const delaySeconds =
+        remaining - playAt;
+    const delayMs =
+        Math.max(
+            0,
+            Math.round(
+                delaySeconds * 1000
+            )
+        );
+    if(audioStartTimeout){
+        clearTimeout(
+            audioStartTimeout
+        );
+        audioStartTimeout = null;
+    }
+    if(delayMs === 0){
+        audioStart.play()
+            .catch(()=>{});
+    }else{
+        audioStartTimeout =
+            setTimeout(()=>{
+                audioStart.play()
+                    .catch(()=>{});
+                audioStartTimeout = null;
+            },delayMs);
+    }
+};
+
+if(audioStart.readyState >= 1){
+    scheduleStartAudio();
+}else{
+    audioStart.addEventListener(
+        "loadedmetadata",
+        scheduleStartAudio,
+        { once:true }
+    );
+}
+
+    timer = setInterval(()=>{
+        remaining--;
+        updateDisplay();
+
+/* 30秒音声 */
+if(remaining === 30){
+    audio30.currentTime = 0;
+    audio30.play().catch(()=>{});
+}
+
+/* 終了 */
+if(remaining <= 0){
+    clearInterval(timer);
+    timer = null;
+    remaining = 0;
+    updateDisplay();
+
+    if(audioStartTimeout){
+        clearTimeout(audioStartTimeout);
+        audioStartTimeout = null;
+    }
+
+    if(currentAudioStart){
+        try{
+            currentAudioStart.pause();
+            currentAudioStart.currentTime = 0;
+        }catch(e){}
+        currentAudioStart = null;
+    }
+
+    if(bounceOn){
+        audioEndHaneya.currentTime = 0;
+        audioEndHaneya.play().catch(()=>{});
+
+    }else{
+        audioEnd.currentTime = 0;
+        audioEnd.play().catch(()=>{});
+        if(cleanOn){
+            audioEnd.addEventListener(
+                "ended",
+                function once(){
+                    setTimeout(()=>{
+                        audioClean.currentTime = 0;
+                        audioClean.play()
+                            .catch(()=>{});
+                    },1000);
+                },
+                { once:true }
+            );
+        }
+    }
+    started = false;
+    if(!bounceOn){
+    disableWakeLock();
+    }
+    updateBounceButton();
+    }
+
+    },1000);
+}
+
+function speakRemaining(sec){
+    if(!("speechSynthesis" in window)) return;
+    const msg = new SpeechSynthesisUtterance(`${sec}秒、残ってました。` );
+    msg.lang = "ja-JP";
+    msg.rate = 1.0;
+    msg.pitch = 1.0;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(msg);
+}
+
+function handleEarlyEnd(){
+    if(!started) return;
+    const remainSec = remaining;
+    if(timer){ clearInterval(timer); timer = null; }
+    if(audioStartTimeout){ clearTimeout( audioStartTimeout ); audioStartTimeout = null; }
+    if(currentAudioStart){
+        try{
+            currentAudioStart.pause();
+            currentAudioStart.currentTime = 0;
+        }catch(e){}
+        currentAudioStart = null;
+    }
+    started = false;
+    disableWakeLock();
+    startBtn.classList.remove(
+        "locked"
+    );
+    bounceOn = false;
+    pulseFired = {
+        p305:false,
+        p300:false,
+        p030:false,
+        p010:false
+    };
+    audioEndEarly.currentTime = 0;
+    audioEndEarly.play()
+        .catch(()=>{});
+    audioEndEarly.addEventListener(
+        "ended",
+        ()=>{
+            speakRemaining(
+                remainSec
+            );
+        },
+        { once:true }
+    );
+    remaining = 180;
+    updateBounceButton();
+    updateDisplay();
+}
+
+
+/* 解除 */
+function resetTimer(){
+    if(audioStartTimeout){
+        clearTimeout(
+            audioStartTimeout
+        );
+        audioStartTimeout = null;
+    }
+    if(currentAudioStart){
+        try{
+            currentAudioStart.pause();
+            currentAudioStart.currentTime = 0;
+        }catch(e){}
+        currentAudioStart = null;
+    }
+    if(timer){
+        clearInterval(timer);
+        timer = null;
+    }
+    started = false;
+    disableWakeLock();
+    startBtn.classList.remove("locked");
+    updateStartButtonReady();
+    remaining = 180;
+    bounceOn = false;
+    updateBounceButton();
+    updateDisplay();
+}
+
+/* ボタン */
+timeDiv.addEventListener(
+    "click",
+    handleEarlyEnd
+);
+
+startBtn.addEventListener(
+    "click",
+    ()=>{
+        if(
+            startBtn.classList.contains(
+                "audioNotReady"
+            )
+        ){
+            return;
+        }
+        if(
+            startBtn.classList.contains(
+                "locked"
+            )
+        ){
+            return;
+        }
+        unlockIosAudio();
+        setTimeout(()=>{
+            if(!timer){
+                startTimer();
+            }
+        },100);
+    }
+);
+
+resetBtn.addEventListener("click",()=>{
+    /* 撥ね矢処理終了 */
+    if(
+        bounceOn &&
+        !started &&
+        remaining === 0
+    ){
+        audioEndTandoku.currentTime = 0;
+        audioEndTandoku.play()
+            .catch(()=>{});
+        if(cleanOn){
+            audioEndTandoku.addEventListener(
+                "ended",
+                function once(){
+                    setTimeout(()=>{
+                        audioClean.currentTime = 0;
+                        audioClean.play()
+                            .catch(()=>{});
+                    },1000);
+                    audioEndTandoku.removeEventListener(
+                        "ended",
+                        once
+                    );
+                },
+                { once:true }
+            );
+            audioClean.addEventListener(
+                "ended",
+                function cleanOnce(){
+                    resetTimer();
+                    audioClean.removeEventListener(
+                        "ended",
+                        cleanOnce
+                    );
+                },
+                { once:true }
+            );
+        }else{
+            audioEndTandoku.addEventListener(
+                "ended",
+                function once(){
+                    resetTimer();
+                    audioEndTandoku.removeEventListener(
+                        "ended",
+                        once
+                    );
+                },
+                { once:true }
+            );
+        }
+        return;
+    }
+    resetTimer();
+});
+
+cleanBtn.addEventListener("click",()=>{
+
+    cleanOn = !cleanOn;
+
+    updateCleanButton();
+});
+
+bounceBtn.addEventListener("click",()=>{
+
+    if(!started){
+        return;
+    }
+
+    bounceOn = !bounceOn;
+
+    updateBounceButton();
+});
+
+let roundPressTimer = null;
+let roundLongPress = false;
+let roundMenuEl = null;
+
+function handleRoundShortTap(){
+    if(started) return;
+    roundIndex++;
+    if(roundIndex >= rounds.length){
+        roundIndex = 0;
+    }
+    updateRoundLabel();
+    updateStartButtonReady();
+}
+
+function closeRoundMenu(){
+    if(!roundMenuEl) return;
+    roundMenuEl.remove();
+    roundMenuEl = null;
+    document.removeEventListener(
+        "click",
+        outsideClose
+    );
+}
+
+function outsideClose(e){
+    if(
+        e.target === roundLabel ||
+        roundLabel.contains(e.target)
+    ){
+        return;
+    }
+    if(
+        roundMenuEl &&
+        !roundMenuEl.contains(e.target)
+    ){
+        closeRoundMenu();
+    }
+}
+
+function showRoundMenu(){
+    if(roundMenuEl) return;
+    const rect =
+        roundLabel.getBoundingClientRect();
+    roundMenuEl =
+        document.createElement("div");
+    roundMenuEl.style.position = "fixed";
+    roundMenuEl.style.left = "50%";
+    roundMenuEl.style.transform =
+        "translateX(-50%)";
+    roundMenuEl.style.top =
+        rect.bottom + "px";
+    roundMenuEl.style.width = "70vw";
+    roundMenuEl.style.maxWidth = "95vw";
+    roundMenuEl.style.background = "#111";
+    roundMenuEl.style.border =
+        "1px solid #888";
+    roundMenuEl.style.zIndex = "9999";
+    roundMenuEl.style.maxHeight =
+        "70vh";
+    roundMenuEl.style.overflowY =
+        "auto";
+    rounds.forEach((r,i)=>{
+        const item =
+            document.createElement("div");
+        item.textContent = r;
+        item.style.padding =
+            "8px 12px";
+        item.style.fontSize =
+            "20px";
+        item.style.cursor =
+            "pointer";
+        item.style.userSelect =
+            "none";
+        if(i === roundIndex){
+            item.style.background =
+                "#333";
+            item.style.color =
+                "#00ff00";
+        }
+        item.addEventListener(
+            "click",
+            ()=>{
+                if(started) return;
+                roundIndex = i;
+                updateRoundLabel();
+                updateStartButtonReady();
+                closeRoundMenu();
+            }
+        );
+        roundMenuEl.appendChild(item);
+    });
+    document.body.appendChild(
+        roundMenuEl
+    );
+    setTimeout(()=>{
+
+        document.addEventListener(
+            "click",
+            outsideClose
+        );
+
+    },100);
+}
+
+/* ラウンド切替 */
+
+roundLabel.addEventListener(
+    "pointerdown",
+    ()=>{
+        if(started) return;
+        if(remaining === 0) return;
+        roundLongPress = false;
+        roundPressTimer =
+            setTimeout(()=>{
+                roundLongPress = true;
+                showRoundMenu();
+            },500);
+    }
+);
+
+roundLabel.addEventListener(
+    "pointerup",
+    ()=>{
+        clearTimeout(
+            roundPressTimer
+        );
+        if(!roundLongPress){
+            handleRoundShortTap();
+        }
+    }
+);
+
+roundLabel.addEventListener(
+    "pointerleave",
+    ()=>{
+        clearTimeout(
+            roundPressTimer
+        );
+    }
+);
+
+
+/* 初期表示 */
+updateDisplay();
+updateCleanButton();
+updateBounceButton();
+updateRoundLabel();
+updateStartButtonReady();
+
+/* ===== K/B対応 ===== */
+let lastKey = '';
+let lastKeyTime = 0;
+
+/* 起動時のみ縦画面チェック */
+let startupWarningShown = false;
+if(window.innerHeight > window.innerWidth){
+    startupWarningShown = true;
+    const msg =
+        document.createElement("div");
+    msg.id = "startupWarning";
+
+    msg.innerHTML =
+    "横画面モードで<br>ご利用ください";
+    msg.style.textAlign = "center";
+    msg.style.lineHeight = "1.4";
+    msg.style.position = "fixed";
+    msg.style.top = "0";
+    msg.style.left = "0";
+
+    msg.style.width = "100vw";
+    msg.style.height = "100vh";
+
+    msg.style.display = "flex";
+    msg.style.justifyContent = "center";
+    msg.style.alignItems = "center";
+
+    msg.style.background = "#000";
+    msg.style.color = "#fff";
+
+    msg.style.fontSize = "10vw";
+    msg.style.fontWeight = "bold";
+
+    msg.style.zIndex = "99999";
+
+    document.body.appendChild(msg);
+
+    window.addEventListener(
+        "resize",
+        function removeWarning(){
+            if(
+                window.innerWidth >
+                window.innerHeight
+            ){
+                msg.remove();
+                window.removeEventListener(
+                    "resize",
+                    removeWarning
+                );
+            }
+        }
+    );
+}
+
+// Bluetooth Keyboard対応
+document.addEventListener('keydown',(e)=>{
+
+    const key = e.key;
+    const now = Date.now();
+
+    /* 長押し連打ガード */
+
+    if(e.repeat){
+        return;
+    }
+
+    if(
+        key === lastKey &&
+        now - lastKeyTime < 750
+    ){
+        return;
+    }
+
+    lastKey = key;
+    lastKeyTime = now;
+
+    /* Space / Enter */
+
+    if(
+        key === ' ' ||
+        e.code === 'Space' ||
+        e.code === 'Enter'
+    ){
+
+        e.preventDefault();
+
+        if(
+            !started &&
+            remaining >= 180
+        ){
+            startBtn.click();
+
+        }else if(
+            started &&
+            remaining > 0
+        ){
+            bounceBtn.click();
+
+        }else if(
+            !started &&
+            remaining === 0
+        ){
+            resetBtn.click();
+        }
+
+        return;
+    }
+
+    switch(key){
+
+        /* 開始 */
+        case 's':
+        case 'S':
+            startBtn.click();
+            break;
+
+        /* 撥ね矢 */
+        case 'b':
+        case 'B':
+        case 'h':
+        case 'H':
+            bounceBtn.click();
+            break;
+
+        /* 筒清掃指示 */
+        case 'c':
+        case 'C':
+            cleanBtn.click();
+            break;
+
+        /* 解除 */
+        case 'r':
+        case 'R':
+        case 'e':
+        case 'E':
+            resetBtn.click();
+            break;
+
+        /* 強制終了 */
+        case 't':
+        case 'T':
+        case 'x':
+        case 'X':
+        case 'z':
+        case 'Z':
+
+            if(started){
+                handleEarlyEnd();
+            }
+            break;
+    }
+
+    /* ラウンド直接選択 */
+    if(/^[0-6]$/.test(key)){
+        if(
+            started ||
+            remaining === 0
+        ){
+            return;
+        }
+        roundIndex = Number(key);
+        updateRoundLabel();
+        updateStartButtonReady();
+        showRoundOverlay(key);
+    }
+
+    /* 現ラウンド表示 */
+    if(
+        key === 'n' ||
+        key === 'N'
+    ){
+        if(
+            typeof showRoundOverlay ===
+            "function"
+        ){
+            showRoundOverlay(
+                roundIndex
+            );
+        }
+    }
+
+});
+
+</script>
+
+<div id="roundOverlay"></div>
+
+</body>
+</html>
