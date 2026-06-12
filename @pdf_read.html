@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>PDF.js test</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+
+</head>
+<body style="background:#000;color:#fff;font-family:sans-serif;">
+
+<h2>PDF.js manual.pdf test</h2>
+
+<div id="result">loading...</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.js";
+
+async function test() {
+  try {
+    const pdf = await pdfjsLib.getDocument("manual.pdf").promise;
+
+    const page = await pdf.getPage(1);
+    const content = await page.getTextContent();
+
+    const text = content.items.map(i => i.str).join(" ");
+
+    console.log("PDF TEXT:", text); // ←重要デバッグ
+
+    const match = text.match(/(\d{4})年(\d{2})月(\d{2})日版/);
+
+    if (!match) {
+      document.getElementById("result").innerText =
+        "日付が見つかりませんでした";
+      return;
+    }
+
+    const yy = match[1].slice(-2);
+    const mm = match[2];
+    const dd = match[3];
+
+    document.getElementById("result").innerText =
+      `※ 取説はこちら：${yy}/${mm}/${dd} UP版`;
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("result").innerText =
+      "PDF読み込み失敗";
+  }
+}
+
+test();
+</script>
+
+</body>
+</html>
