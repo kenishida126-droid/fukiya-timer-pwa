@@ -3,121 +3,183 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スポーツ吹矢タイマー MENU</title>
+<title>吹矢Timer MENU</title>
 <link rel="manifest" href="manifest.json">
+
 <style>
   body {
-    margin:0;
-    padding:0;
-    background-color:#000;
+    margin: 0;
+    padding: 0;
+    background-color: #000;
     font-family: sans-serif;
     color: #fff;
-    text-align:center;
+    text-align: center;
     -webkit-user-select: none;
     user-select: none;
   }
 
   h1, h2 {
-    margin:0.1em 0;
-    color: gold;
+    margin: 0.1em 0;
     animation: fadeIn 1s ease-out;
   }
 
   h1 {
-    font-size: 1.5em;
+    font-size: 1.4em;
+    color: gold;
     margin-top: 0.8em;
   }
 
   h2 {
+    font-size: 1.2em;
     font-weight: normal;
-    font-size:1.2em;
+    color: white;
+  }
+
+  .category-title {
+    width: 80%;
+    max-width: 400px;
+    margin: 0.5em auto 0.2em auto;
+    text-align: left;
+    color: gold;
+    font-size: 1.15em;
+    font-weight: bold;
   }
 
   .version-box {
-    background-color:#222;
-    margin: 0.5em auto;
-    padding: 1em;
+    background-color: #222;
+    margin: 0.35em auto;
+    padding: 0.7em;
     width: 80%;
-    max-width:400px;
-    border-radius:10px;
-    cursor:pointer;
+    max-width: 400px;
+    border-radius: 10px;
+    cursor: pointer;
     transition: all 0.3s ease;
   }
 
-  .version-title {
-    font-size:1.4em;
-    font-weight:bold;
-    text-align:center;
-    animation: slideIn 0.5s ease-out;
-  }
-
-  .version-subtitle {
-    font-size:1.2em;
-    text-align:center;
-    margin-top:0.2em;
-  }
-
-  .version-subtitle1 {
-    font-size:1.2em;
-    text-align:center;
-    margin-top:0.2em;
-  }
-
-  .version-subtitle2 {
-    font-size:1.2em;
-    text-align:center;
-    margin-top:0.2em;
-  }
-
-  .version-attention {
-    font-size:1.1em;
-    color: gold;
-    margin-top:0.2em;
-  }
-
   .version-box:hover {
-    background-color:#444;
+    background-color: #444;
     transform: scale(1.05);
   }
 
+  .version-title {
+    font-size:1.35em;
+    font-weight:bold;
+    text-align:left;
+    animation: slideIn 0.5s ease-out;
+  }
+
+  .circle-note {
+    width: 80%;
+    max-width: 400px;
+    margin: 0.3em auto 0.8em auto;
+    text-align: center;
+  }
+
+  .circle-note1 {
+    font-size: 1.1em;
+  }
+
+  .circle-note2 {
+    font-size: 1.0em;
+    color: gold;
+    margin-top: 0.2em;
+  }
+
+  .credit-box {
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 420px;
+    margin: 1.0em auto 3em auto;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+    color: #fff;
+    font-size: 1.1em;
+    font-family: monospace;
+    text-align: left;
+    background: rgba(255,255,255,0.03);
+  }
+  .credit-title{
+    margin-bottom:0.4em;
+    margin-left:2.4em;
+  }
+  .credit-link{
+    margin-left:3.6em;
+    line-height:1.6;
+  }
+  .credit-support1{
+    margin-top:0.2em;
+    margin-left:2.4em;
+    color:gold;
+    font-weight:bold;
+  }
+  .credit-support2{
+    margin-top:0.2em;
+    margin-left:5.6em;
+    color:gold;
+    font-weight:bold;
+  }
+
   @keyframes fadeIn {
-    0% {opacity:0;}
-    100% {opacity:1;}
+    0% { opacity: 0; }
+    100% { opacity: 1; }
   }
 
   @keyframes slideIn {
-    0% {transform: translateY(20px); opacity:0;}
-    100% {transform: translateY(0); opacity:1;}
+    0% {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
-
 </style>
 </head>
+
 <body>
 
-<h1>≪ スポーツ吹矢タイマー ≫</h1>
+<h1>≪ 吹矢Timer MENU ver.02 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
+
+<div class="category-title">★競技会向け</div>
 
 <div class="version-box" onclick="location.href='official/index.html'">
   <div class="version-title">
-  Ⅰ．Official version <span style="font-size:0.7em; color:#aaa;">(標準)</span>
+    &nbsp;Ⅰ．Official Portrait Ed.
   </div>
-  <div class="version-subtitle">《 競技向けタイマー 》</div>
 </div>
+
+<div class="version-box" onclick="location.href='official/landscape.html'">
+  <div class="version-title">
+    &nbsp;Ⅱ．Official Landscape Ed.
+  </div>
+</div>
+
+<div class="category-title">★自主練向け</div>
 
 <div class="version-box" onclick="location.href='extra/index.html'">
   <div class="version-title">
-  Ⅱ．Arrows timer <span style="font-size:0.7em; color:#aaa;">(自主練用)</span>
+    &nbsp;Ⅲ．Arrows Timer
   </div>
-  <div class="version-subtitle">《 旧称: Extra version 》</div>
 </div>
 
 <div class="version-box" onclick="location.href='gemini/index.html'">
   <div class="version-title">
-  Ⅲ．Circle timer <span style="font-size:0.7em; color:#aaa;">(音声認識)</span>
+    &nbsp;Ⅳ．Circle Timer
+    <span style="font-size:0.7em; color:#aaa;">
+      （音声認識可）
+    </span>
   </div>
-  <div class="version-subtitle1">《 旧称: Gemin version 》</div>
-  <div class="version-subtitle2">「スタート/開始/始め」を認識</div>
-  <div class="version-attention">※ iPhone では音声認識未対応です</div>
+</div>
+
+<div class="circle-note">
+  <div class="circle-note1">
+    「スタート / 開始 / 始め」を認識
+  </div>
+  <div class="circle-note2">
+    ※ iPhoneでは音声認識未対応です
+  </div>
 </div>
 
 <!-- ▼ 取扱説明書リンク -->
@@ -130,7 +192,23 @@
   </a>
 </div>
 
+<!-- Credit -->
+<div class="credit-box">
+  <div class="credit-title">Voiced by</div>
+  <div class="credit-link">https://CoeFont.cloud</div>
+  <div class="credit-link">https://ondoku3.com/ja/</div>
+
+  <div class="credit-support1">
+    Programming support:
+  </div>
+
+  <div class="credit-support2">
+    ChatGPT & Gemini
+  </div>
+</div>
+
 <script>
+
 // manual.pdf => GitHub 日付を"※ 取説はこちら：yy/mm/dd UP版"と表記
 fetch("manual.pdf", { method: "HEAD" })
   .then(response => {
@@ -158,7 +236,7 @@ if ('serviceWorker' in navigator) {
     if (event.data && event.data.type === 'CACHE_UPDATED') {
       alert(
         '吹矢Timer_PWA が更新されました。\n' +
-        '通信が発生しますので、Wi‑Fi 環境下で\n' +
+        '通信が発生しますので、Wi-Fi 環境下で\n' +
         'しばらく起動したままにしてください。'
       );
     }
@@ -175,18 +253,23 @@ document.addEventListener('keydown', function(event) {
 
   switch(event.key.toLowerCase()) {
 
-    // 1-key：Official version
+    // 1-key：Official Portrait Edition
     case '1':
       location.href = 'official/index.html';
       break;
 
-    // 2-key：Arrows timer
+    // 2-key：Official Landscape Edition
     case '2':
+      location.href = 'official/landscape.html';
+      break;
+
+    // 3-key：Arrows Timer
+    case '3':
       location.href = 'extra/index.html';
       break;
 
-    // 3-key：Circle timer
-    case '3':
+    // 4-key：Circle Timer
+    case '4':
       location.href = 'gemini/index.html';
       break;
 
@@ -194,55 +277,9 @@ document.addEventListener('keydown', function(event) {
     case 'm':
       window.open('manual.pdf', '_blank');
       break;
-
   }
 });
 </script>
-
-<!-- Credit -->
-<div class="credit-box">
-  <div class="credit-title">Voiced by</div>
-  <div class="credit-link">https://CoeFont.cloud</div>
-  <div class="credit-link">https://ondoku3.com/ja/</div>
-  <div class="credit-support1">Programming support:</div>
-  <div class="credit-support2">ChatGPT & Gemini</div>
-</div>
-
-<style>
-.credit-box{
-  border:1px solid #888;
-  width:80%;
-  max-width:420px;
-  margin:1.0em auto 3em auto;
-  padding:0.8em 1em;
-  border-radius:4px;
-  color:#fff;
-  font-size:1.1em;
-  font-family: monospace;
-  text-align:left;
-  background: rgba(255,255,255,0.03);
-}
-.credit-title{
-  margin-bottom:0.4em;
-  margin-left:2.4em;
-}
-.credit-link{
-  margin-left:3.6em;
-  line-height:1.6;
-}
-.credit-support1{
-  margin-top:0.2em;
-  margin-left:2.4em;
-  color:gold;
-  font-weight:bold;
-}
-.credit-support2{
-  margin-top:0.2em;
-  margin-left:5.6em;
-  color:gold;
-  font-weight:bold;
-}
-</style>
 
 </body>
 </html>
