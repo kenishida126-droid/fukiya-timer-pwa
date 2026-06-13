@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10.5 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10.6 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -150,14 +150,14 @@ body{
   box-shadow: 0 6px 12px rgba(0,0,0,0.35), inset 0 2px 4px rgba(255,255,255,0.12);
   transition: all 0.12s ease; display:flex; align-items:center; justify-content:center;
 }
-/*4ボタン、斜光/キラキラ/輝き、2026/06/10 抑止中
+/*4ボタン、斜光/キラキラ/輝き、2026/06/13 再開
 /* ----- 修正点 (斜光輝き強化: Ver.05.8準拠へ復活) ----- */
 /* ::before shine をやや強め、内側ハイライトを併せて復活（Ver.05.8準拠の見え方へ） */
-/*.btn::before{
-/*  content:''; position:absolute; top:0; left:-75%; width:150%; height:100%;
-/*  background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
-/*  transform: skewX(-20deg); pointer-events:none; animation: shine 2.2s infinite linear;
-/*}
+.btn::before{
+  content:''; position:absolute; top:0; left:-75%; width:150%; height:100%;
+  background: linear-gradient(120deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
+  transform: skewX(-20deg); pointer-events:none; animation: shine 2.2s infinite linear;
+}
 
 /* ----- end 修正 ----- */
 @keyframes shine{ 0% { left:-75%; } 100% { left:100%; } }
@@ -314,7 +314,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.10.5 Ken.Ishida≫</h2>
+      <h2>≪Ver.10.6 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
