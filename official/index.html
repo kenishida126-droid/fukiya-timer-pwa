@@ -717,7 +717,10 @@ function startTimer(){
     remaining--;
     updateDisplay();
 
-    if(remaining === 30) audio30.play().catch(()=>{});
+    if(remaining === 30){
+       audio30.currentTime = 0;
+       audio30.play().catch(()=>{});
+    }
 
     if(remaining === 0){
       setBounceVisual();
@@ -730,6 +733,7 @@ function startTimer(){
         audioEndHaneya.play().catch(()=>{});
         // keep wakeLock until user handles reset (per spec)
       } else {
+        audioEnd.currentTime = 0;
         audioEnd.play().catch(()=>{});
         if(cleanOn){
           audioEnd.addEventListener('ended', function once(){ setTimeout(()=>{ audioClean.play().catch(()=>{}); },1000); audioEnd.removeEventListener('ended', once); }, { once:true });
