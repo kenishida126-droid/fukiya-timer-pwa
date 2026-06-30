@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10.5 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.10.5a Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -306,15 +306,75 @@ body {
   animation: roundPulse 0.8s cubic-bezier(.2,1.7,.4,1) 1;
 }
 
+/* 起動時オーバレイ */
+#startupOverlay{
+  position:fixed;
+  inset:0;
+
+  background:rgba(0,0,0,0.65);
+
+  display:flex;
+  justify-content:center;
+  align-items:center;
+
+  z-index:999999;
+}
+
+/* 鍵アイコン */
+#startupBtn{
+  font-size:120px;
+  user-select:none;
+  cursor:pointer;
+  transition:
+      transform 1.2s ease,
+      opacity 1.2s ease;
+}
+
+#startupBtn img{
+  width: min(35vw,200px);
+  height: auto;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* TAP時 */
+#startupBtn.unlock{
+  transform:scale(2.5);
+  opacity:0;
+}
+
+/* ===== 南京錠解錠中アニメーション ===== */
+@keyframes lockShake {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-5deg); }
+  40%  { transform: rotate(5deg); }
+  60%  { transform: rotate(-5deg); }
+  80%  { transform: rotate(5deg); }
+  100% { transform: rotate(0deg); }
+}
+.unlocking {
+  animation: lockShake 0.5s infinite;
+}
+
 </style>
 </head>
 <body>
+  <div id="startupOverlay">
+  <div id="startupBtn">
+    <img
+      id="startupImg"
+      src="key_lock.png"
+      alt="lock">
+  </div>
+  </div>
+
   <div id="overlay"></div>
 
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪Ver.10.5 Ken.Ishida≫</h2>
+      <h2>≪ ver.10.5a Whistle版 ≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -396,6 +456,10 @@ body {
   <!--
   <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
   -->
+  
+  <!-- Web Audio API:start_beep()→mp3file -->
+  <audio id="audioWhistleStart" src="whistle_start.mp3" preload="auto"></audio>
+  <audio id="audioWhistleEnd"   src="whistle_end.mp3"   preload="auto"></audio>
 
 <script>
 /* ===== 状態変数 ===== */
@@ -406,6 +470,12 @@ let audioStartTimeout = null;
 let currentAudioStart = null;
 let wakeLock = null;
 let startTimerTimeout = null;   // ←追加
+let audioUnlockBusy = false;    // ←追加(ver.10.5a)
+/* == key_unlock.png 先読み == */
+const preloadUnlock =
+  new Image();
+preloadUnlock.src =
+  'key_unlock.png';
 
 const rounds = [
   "練習ラウンド",
@@ -468,6 +538,8 @@ const audioEnd = document.getElementById('audioEnd');
 const audioEndHaneya = document.getElementById('audioEndHaneya');
 const audioEndTandoku = document.getElementById('audioEndTandoku');
 const audioClean = document.getElementById('audioClean');
+const audioWhistleStart = document.getElementById('audioWhistleStart');
+const audioWhistleEnd = document.getElementById('audioWhistleEnd');
 
 const startAudios = [
   document.getElementById('audioStart0'),
@@ -523,6 +595,15 @@ window.addEventListener('load', ()=>{
 });
 
 const timeOverlay = document.getElementById('timeOverlay');
+const startupOverlay =
+    document.getElementById(
+        'startupOverlay'
+    );
+
+const startupBtn =
+    document.getElementById(
+        'startupBtn'
+    );
 
 /* === iOS audio unlock (必須) ===
    iOS Safari は「最初のユーザー操作」で
@@ -531,27 +612,79 @@ const timeOverlay = document.getElementById('timeOverlay');
    無音再生→即停止してアンロックする。
 */
 let iosAudioUnlocked = false;
-function unlockIosAudio(){
+async function unlockIosAudio(){
   if(iosAudioUnlocked) return;
+  audioUnlockBusy = true;
   const list = [
-    audio30,
-    audioEnd,
-    audioEndHaneya,
-    audioEndTandoku,
-    audioClean
-    // ,audioEndEarly
+    audioWhistleStart,  //0.8秒
+    audioWhistleEnd,    //1.4秒
+    audio30,            //1.5秒
+    audioEnd,           //2.3秒
+    audioEndHaneya,     //6.0秒
+    audioEndTandoku,    //1.0秒
+    audioClean          //2.1秒
+    // ,audioEndEarly   //3.5秒
   ];
-  list.forEach(a=>{
-
+  const jobs = list.map(async a=>{
     if(!a) return;
     try{
       a.muted = true;
       const p = a.play();
-      if(p && p.then) p.then(()=>{ a.pause(); a.currentTime = 0; a.muted = false; });
+      if(p){
+        await p;
+      }
+      a.pause();
+      a.currentTime = 0;
+      a.muted = false;
     }catch(e){}
   });
+  await Promise.all(jobs);
   iosAudioUnlocked = true;
-} /* overlay element */
+  audioUnlockBusy = false;
+}
+
+startupBtn.addEventListener(
+  'click',
+  async ()=>{
+    startupBtn.classList.add(
+      'unlocking'
+    );
+    const startTime =
+      performance.now();
+    await unlockIosAudio();
+    const elapsed =
+      performance.now() -
+      startTime;
+    const minTime = 1500;
+    if(elapsed < minTime){
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            minTime - elapsed
+          )
+      );
+    }
+    warmupSpeech();
+    startupBtn.classList.remove(
+      'unlocking'
+    );
+    document.getElementById(
+      'startupImg'
+    ).src = 'key_unlock.png';
+    setTimeout(()=>{
+      startupBtn.classList.add(
+        'unlock'
+      );
+    },100);
+    setTimeout(()=>{
+      startupOverlay.style.display =
+        'none';
+    },1200);
+  }
+);
+
+/* overlay element */
 const mainTitle = document.getElementById('mainTitle'); /* タイトル要素 */
 
 /* helper: format time */
@@ -746,8 +879,22 @@ function startTimer(){
         audioEndHaneya.play().catch(()=>{});
         // keep wakeLock until user handles reset (per spec)
       } else {
+
+    audioWhistleEnd.currentTime = 0;
+    audioWhistleEnd.play().catch(()=>{});
+    audioWhistleEnd.addEventListener(
+      'ended',
+      function once(){
         audioEnd.currentTime = 0;
         audioEnd.play().catch(()=>{});
+        audioWhistleEnd.removeEventListener(
+          'ended',
+          once
+        );
+      },
+      { once:true }
+    );
+
         if(cleanOn){
           audioEnd.addEventListener('ended', function once(){ setTimeout(()=>{ audioClean.play().catch(()=>{}); },1000); audioEnd.removeEventListener('ended', once); }, { once:true });
         }
@@ -783,7 +930,20 @@ function resetAction(){
   // --- 0:00 & 撥ね矢ON時の特別処理（音は必要）---
   if(bounceOn && remaining === 0){
 
-    audioEndTandoku.play().catch(()=>{});
+    audioWhistleEnd.currentTime = 0;
+    audioWhistleEnd.play().catch(()=>{});
+    audioWhistleEnd.addEventListener(
+      'ended',
+      function once(){
+        audioEndTandoku.currentTime = 0;
+        audioEndTandoku.play().catch(()=>{});
+        audioWhistleEnd.removeEventListener(
+          'ended',
+          once
+        );
+      },
+      { once:true }
+    );
 
     audioEndTandoku.addEventListener('ended', ()=>{
     if(cleanOn){
@@ -1133,27 +1293,8 @@ bounceBtn.addEventListener('click', ()=>{
 
 /* start/reset wiring */
 /* ===== Ver.08.1 追加: start_beep ===== */
-function start_beep() {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+/* === function start_beep() ver.10.5aで廃棄、mp3で対応=== */
 
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = "square";
-  osc.frequency.setValueAtTime(2100, audioCtx.currentTime);
-
-  gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.5);
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  audioCtx.resume(); // iPhone対策
-  osc.start();
-  osc.stop(audioCtx.currentTime + 1.5);
-}
-
-/* start/reset wiring */
 startBtn.addEventListener('click', ()=>{
 if(
     startBtn.classList.contains(
@@ -1162,18 +1303,24 @@ if(
 ){
     return;
 }
+if(audioUnlockBusy){
+  return;
+}
 
-  warmupSpeech();
+//  warmupSpeech();
   if(startBtn.classList.contains('locked')) return; // ←追加
 
   // iOS 対策: ユーザー操作中に audio をアンロック
-  unlockIosAudio();
+//  unlockIosAudio();
 
   // 開始ビープ前に押込み維持
   startBtn.classList.add('pressed');
 
   // Ver.08.1: 開始ビープ
-  start_beep();
+  //start_beep();
+
+  audioWhistleStart.currentTime = 0;
+  audioWhistleStart.play().catch(()=>{});
 
   // 上級テク: 少し遅らせてタイマー開始（ビープ優先）
   if(startTimerTimeout){
@@ -1745,17 +1892,21 @@ function handleEarlyEnd(){
   }
   */
 
-  if(audioEndTandoku){
-    audioEndTandoku.currentTime = 0;
-    const p = audioEndTandoku.play();
+  if(audioWhistleEnd){
+    audioWhistleEnd.currentTime = 0;
+    const p = audioWhistleEnd.play();
     if(p && p.catch){ p.catch(()=>{}); }
-    audioEndTandoku.addEventListener('ended', ()=>{
+    audioWhistleEnd.addEventListener('ended', ()=>{
+      audioEndTandoku.currentTime = 0;
+      const p2 = audioEndTandoku.play();
+      if(p2 && p2.catch){ p2.catch(()=>{}); }
+      audioEndTandoku.addEventListener('ended', ()=>{
         speakRemaining(remainSec);
+      }, { once:true });
     }, { once:true });
   } else {
-    console.warn('audioEndTandoku が見つかりません');
+    console.warn('audioWhistleEnd が見つかりません');
   }
-
 
   started = false;
 
