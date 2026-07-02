@@ -454,9 +454,7 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
-  <!--
   <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
-  -->
   
   <!-- Web Audio API:start_beep()→mp3file -->
   <audio id="audioWhistleStart" src="whistle_start.mp3" preload="auto"></audio>
@@ -538,6 +536,7 @@ const audio30 = document.getElementById('audio30');
 const audioEnd = document.getElementById('audioEnd');
 const audioEndHaneya = document.getElementById('audioEndHaneya');
 const audioEndTandoku = document.getElementById('audioEndTandoku');
+const audioEndEarly = document.getElementById('audioEndEarly');
 const audioClean = document.getElementById('audioClean');
 const audioWhistleStart = document.getElementById('audioWhistleStart');
 const audioWhistleEnd = document.getElementById('audioWhistleEnd');
@@ -623,8 +622,8 @@ async function unlockIosAudio(){
     audioEnd,           //2.3秒
     audioEndHaneya,     //6.0秒
     audioEndTandoku,    //1.0秒
-    audioClean          //2.1秒
-    // ,audioEndEarly   //3.5秒
+    audioClean,         //2.1秒
+    audioEndEarly       //2.1秒
   ];
   const jobs = list.map(async a=>{
     if(!a) return;
@@ -1852,22 +1851,6 @@ mainTitle.addEventListener('click', async (ev)=>{
 })();
 
 /* ===== Ver.09 フル統合版（Ver.08.2 + 早期終了機能） ===== */
-
-/* ===== 追加：早期終了用Audio ===== */
-// HTMLに以下を追加すること
-// <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
-// const audioEndEarly = document.getElementById('audioEndEarly');
-
-/* ★重要：iOS用アンロック対象に追加すること
-   既存の unlockIosAudio() 内の list に audioEndEarly を追加してください
-   例：
-   const list = [audio30,audioEnd,audioEndHaneya,audioEndTandoku,audioClean,audioEndEarly];
-*/
-
-/* ===== 既存コードはそのまま使用（省略） ===== */
-/* ※ここに謙さんの1028行コードをそのまま貼る */
-
-/* ===== 追加：早期終了処理 ===== */
 function handleEarlyEnd(){
   if(!started) return;
 
@@ -1880,34 +1863,16 @@ function handleEarlyEnd(){
     currentAudioStart = null;
   }
 
-  /*
   if(audioEndEarly){
-    audioEndEarly.currentTime = 0;
-    const p = audioEndEarly.play();
-    if(p && p.catch){ p.catch(()=>{}); }
-    audioEndEarly.addEventListener('ended', ()=>{
-        speakRemaining(remainSec);
-    }, { once:true });
-  } else {
-    console.warn('audioEndEarly が見つかりません');
-  }
-  */
-
-  if(audioWhistleEnd){
-    audioWhistleEnd.currentTime = 0;
-    const p = audioWhistleEnd.play();
-    if(p && p.catch){ p.catch(()=>{}); }
-    audioWhistleEnd.addEventListener('ended', ()=>{
-      audioEndTandoku.currentTime = 0;
-      const p2 = audioEndTandoku.play();
-      if(p2 && p2.catch){ p2.catch(()=>{}); }
-      audioEndTandoku.addEventListener('ended', ()=>{
-        speakRemaining(remainSec);
-      }, { once:true });
-    }, { once:true });
-  } else {
-    console.warn('audioWhistleEnd が見つかりません');
-  }
+  audioEndEarly.currentTime = 0;
+  const p = audioEndEarly.play();
+  if(p && p.catch){ p.catch(()=>{}); }
+  audioEndEarly.addEventListener('ended', ()=>{
+    speakRemaining(remainSec);
+  }, { once:true });
+} else {
+  console.warn('audioEndEarly が見つかりません');
+}
 
   started = false;
 
