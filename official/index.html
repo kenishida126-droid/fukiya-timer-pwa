@@ -375,7 +375,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>《ver.10.5a-260703-1》</h2>
+      <h2>《ver.10.5a Ken.Ishida》</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -616,7 +616,7 @@ async function unlockIosAudio(){
   if(iosAudioUnlocked) return;
   audioUnlockBusy = true;
   const list = [
-    audioEndHaneya,     //6.0秒→4.5秒短縮版(260703)
+    //audioEndHaneya,     //6.0秒→4.5秒短縮版(260703)
     audioEnd,           //2.3秒
     audioEndEarly,      //2.1秒
     audioEndTandoku,    //1.0秒
@@ -1320,40 +1320,49 @@ bounceBtn.addEventListener('click', ()=>{
 /* === function start_beep() ver.10.5aで廃棄、mp3で対応=== */
 
 startBtn.addEventListener('click', ()=>{
-if(
-    startBtn.classList.contains(
-        "audioNotReady"
-    )
-){
+  if(
+      startBtn.classList.contains(
+          "audioNotReady"
+      )
+  ){
+      return;
+  }
+  if(audioUnlockBusy){
     return;
-}
-if(audioUnlockBusy){
-  return;
-}
-
+  }
 //  warmupSpeech();
-  if(startBtn.classList.contains('locked')) return; // ←追加
-
-  // iOS 対策: ユーザー操作中に audio をアンロック
-//  unlockIosAudio();
-
+  if(startBtn.classList.contains('locked')) return;
+  // ===== end_haneya専用アンロック =====
+  try{
+    if(audioEndHaneya){
+      audioEndHaneya.muted = true;
+      audioEndHaneya.currentTime = 0;
+      audioEndHaneya.play().catch(()=>{});
+      setTimeout(()=>{
+        try{
+          audioEndHaneya.pause();
+          audioEndHaneya.currentTime = 0;
+          audioEndHaneya.muted = false;
+        }catch(e){}
+      },100);
+    }
+  }catch(e){
+    console.warn(
+      'audioEndHaneya unlock error',
+      e
+    );
+  }
   // 開始ビープ前に押込み維持
   startBtn.classList.add('pressed');
-
-  // Ver.08.1: 開始ビープ
-  //start_beep();
-
+  // Ver.10.5a
   audioWhistleStart.currentTime = 0;
   audioWhistleStart.play().catch(()=>{});
-
   // 上級テク: 少し遅らせてタイマー開始（ビープ優先）
   if(startTimerTimeout){
     clearTimeout(startTimerTimeout);
   }
-
   startTimerTimeout = setTimeout(()=>{
     startTimerTimeout = null;
-
     if(!timer){
       startTimer();
     }
