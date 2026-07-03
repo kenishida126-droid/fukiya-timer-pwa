@@ -375,7 +375,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>《ver.10.5a Ken.Ishida》</h2>
+      <h2>《ver.10.5a-260703-1》</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -616,27 +616,51 @@ async function unlockIosAudio(){
   if(iosAudioUnlocked) return;
   audioUnlockBusy = true;
   const list = [
-    audioWhistleStart,  //0.8秒
-    audioWhistleEnd,    //1.4秒
-    audio30,            //1.5秒
+    audioEndHaneya,     //6.0秒→4.5秒短縮版(260703)
     audioEnd,           //2.3秒
-    audioEndHaneya,     //6.0秒
+    audioEndEarly,      //2.1秒
     audioEndTandoku,    //1.0秒
     audioClean,         //2.1秒
-    audioEndEarly       //2.1秒
+    audioWhistleStart,  //0.8秒
+    audioWhistleEnd,    //1.4秒
+    audio30             //1.5秒
   ];
   const jobs = list.map(async a=>{
     if(!a) return;
     try{
+      a.currentTime = 0;
       a.muted = true;
-      const p = a.play();
-      if(p){
-        await p;
-      }
+      await new Promise(async (resolve,reject)=>{
+        const endedHandler = ()=>{
+          a.removeEventListener(
+            'ended',
+            endedHandler
+          );
+          resolve();
+        };
+        a.addEventListener(
+          'ended',
+          endedHandler,
+          { once:true }
+        );
+        try{
+          const p = a.play();
+          if(p) await p;
+        }catch(e){
+          reject(e);
+        }
+      });
       a.pause();
       a.currentTime = 0;
       a.muted = false;
-    }catch(e){}
+    }catch(e){
+      console.error(
+        'unlock error:',
+        a?.id,
+        e
+      );
+      throw e;
+    }
   });
   await Promise.all(jobs);
   iosAudioUnlocked = true;
