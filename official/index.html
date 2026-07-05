@@ -375,7 +375,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>《ver.10.5a Ken.Ishida》</h2>
+      <h2>《ver.10.5a 260705-1》</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -454,11 +454,9 @@ body {
   <audio id="audioEndHaneya" src="end_haneya.mp3" preload="auto"></audio>
   <audio id="audioEndTandoku" src="end_tandoku.mp3" preload="auto"></audio>
   <audio id="audioClean" src="clean.mp3" preload="auto"></audio>
-  <audio id="audioEndEarly" src="end_early.mp3" preload="auto"></audio>
-  
+
   <!-- Web Audio API:start_beep()→mp3file -->
   <audio id="audioWhistleStart" src="whistle_start.mp3" preload="auto"></audio>
-  <audio id="audioWhistleEnd"   src="whistle_end.mp3"   preload="auto"></audio>
 
 <script>
 /* ===== 状態変数 ===== */
@@ -536,10 +534,8 @@ const audio30 = document.getElementById('audio30');
 const audioEnd = document.getElementById('audioEnd');
 const audioEndHaneya = document.getElementById('audioEndHaneya');
 const audioEndTandoku = document.getElementById('audioEndTandoku');
-const audioEndEarly = document.getElementById('audioEndEarly');
 const audioClean = document.getElementById('audioClean');
 const audioWhistleStart = document.getElementById('audioWhistleStart');
-const audioWhistleEnd = document.getElementById('audioWhistleEnd');
 
 const startAudios = [
   document.getElementById('audioStart0'),
@@ -616,13 +612,9 @@ async function unlockIosAudio(){
   if(iosAudioUnlocked) return;
   audioUnlockBusy = true;
   const list = [
-    //audioEndHaneya,     //6.0秒→4.5秒短縮版(260703)
     audioEnd,           //2.3秒
-    audioEndEarly,      //2.1秒
     audioEndTandoku,    //1.0秒
     audioClean,         //2.1秒
-    audioWhistleStart,  //0.8秒
-    audioWhistleEnd,    //1.4秒
     audio30             //1.5秒
   ];
   const jobs = list.map(async a=>{
@@ -837,18 +829,14 @@ function startTimer(){
     // legacy: start from 185 so that 3:05 pulse appears as before
     remaining = 185;
   }
-
   updateDisplay();
   enableWakeLock();
-
   startBtn.classList.add('pressed');
   startBtn.classList.add('locked');
-
   // start audio that should finish exactly when remaining reaches 180
   const audioStart = startAudios[roundIndex];
   currentAudioStart = audioStart;
   audioStart.currentTime = 0;
-
   const scheduleStartAudio = ()=>{
       const dur = audioStart.duration || 0;
       const playAt = 180 + dur;
@@ -857,12 +845,10 @@ function startTimer(){
           0,
           Math.round(delaySeconds * 1000)
       );
-
       if(audioStartTimeout){
           clearTimeout(audioStartTimeout);
           audioStartTimeout = null;
       }
-
       if(delayMs === 0){
           audioStart.play().catch(()=>{});
       }else{
@@ -872,7 +858,6 @@ function startTimer(){
           }, delayMs);
       }
   };
-
   if(audioStart.readyState >= 1){
       scheduleStartAudio();
   }else{
@@ -882,57 +867,36 @@ function startTimer(){
           { once:true }
       );
   }
-
   timer = setInterval(()=>{
     remaining--;
     updateDisplay();
-
     if(remaining === 30){
        audio30.currentTime = 0;
        audio30.play().catch(()=>{});
     }
-
     if(remaining === 0){
       setBounceVisual();
       clearInterval(timer); timer=null;
       if(audioStartTimeout){ clearTimeout(audioStartTimeout); audioStartTimeout=null; }
       if(currentAudioStart){ try{ currentAudioStart.pause(); currentAudioStart.currentTime=0; }catch(e){} currentAudioStart=null; }
-
       if(bounceOn){
         // 撥ね矢 ON -> play end_haneya
         audioEndHaneya.play().catch(()=>{});
         // keep wakeLock until user handles reset (per spec)
       } else {
-
-    audioWhistleEnd.currentTime = 0;
-    audioWhistleEnd.play().catch(()=>{});
-    audioWhistleEnd.addEventListener(
-      'ended',
-      function once(){
-        audioEnd.currentTime = 0;
-        audioEnd.play().catch(()=>{});
-        audioWhistleEnd.removeEventListener(
-          'ended',
-          once
-        );
-      },
-      { once:true }
-    );
-
+    audioEnd.currentTime = 0;
+    audioEnd.play().catch(()=>{});
         if(cleanOn){
           audioEnd.addEventListener('ended', function once(){ setTimeout(()=>{ audioClean.play().catch(()=>{}); },1000); audioEnd.removeEventListener('ended', once); }, { once:true });
         }
         disableWakeLock();
       }
-
       started = false;
       // clear start pressed visuals
-
       // After countdown finishes, selection remains cleared (we treat selection only pre-start)
       selectedStartSeconds = null;
       selectionIndex = -1;
     }
-
     if(remaining < 0){
       clearInterval(timer); timer=null;
       started = false;
@@ -953,21 +917,8 @@ function resetAction(){
 
   // --- 0:00 & 撥ね矢ON時の特別処理（音は必要）---
   if(bounceOn && remaining === 0){
-
-    audioWhistleEnd.currentTime = 0;
-    audioWhistleEnd.play().catch(()=>{});
-    audioWhistleEnd.addEventListener(
-      'ended',
-      function once(){
-        audioEndTandoku.currentTime = 0;
-        audioEndTandoku.play().catch(()=>{});
-        audioWhistleEnd.removeEventListener(
-          'ended',
-          once
-        );
-      },
-      { once:true }
-    );
+    audioEndTandoku.currentTime = 0;
+    audioEndTandoku.play().catch(()=>{});
 
     audioEndTandoku.addEventListener('ended', ()=>{
     if(cleanOn){
@@ -1896,15 +1847,15 @@ function handleEarlyEnd(){
     currentAudioStart = null;
   }
 
-  if(audioEndEarly){
-  audioEndEarly.currentTime = 0;
-  const p = audioEndEarly.play();
+  if(audioEndTandoku){                               //基audioEndEarly
+  audioEndTandoku.currentTime = 0;                   //基audioEndEarly
+  const p = audioEndTandoku.play();                  //基audioEndEarly
   if(p && p.catch){ p.catch(()=>{}); }
-  audioEndEarly.addEventListener('ended', ()=>{
+  audioEndTandoku.addEventListener('ended', ()=>{    //基audioEndEarly
     speakRemaining(remainSec);
   }, { once:true });
 } else {
-  console.warn('audioEndEarly が見つかりません');
+  console.warn('audioEndTandoku が見つかりません');  //基audioEndEarly
 }
 
   started = false;
