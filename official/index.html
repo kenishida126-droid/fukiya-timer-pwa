@@ -375,7 +375,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>《ver.10.5a 260705-1》</h2>
+      <h2>≪ver.10.5a Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -662,6 +662,7 @@ async function unlockIosAudio(){
 startupBtn.addEventListener(
   'click',
   async ()=>{
+    warmupSpeech();          // ★最優先(26/07/07移動)
     startupBtn.classList.add(
       'unlocking'
     );
@@ -681,7 +682,6 @@ startupBtn.addEventListener(
           )
       );
     }
-    warmupSpeech();
     startupBtn.classList.remove(
       'unlocking'
     );
@@ -1847,15 +1847,15 @@ function handleEarlyEnd(){
     currentAudioStart = null;
   }
 
-  if(audioEndTandoku){                               //基audioEndEarly
-  audioEndTandoku.currentTime = 0;                   //基audioEndEarly
-  const p = audioEndTandoku.play();                  //基audioEndEarly
+  if(audioEndTandoku){
+  audioEndTandoku.currentTime = 0;
+  const p = audioEndTandoku.play();
   if(p && p.catch){ p.catch(()=>{}); }
-  audioEndTandoku.addEventListener('ended', ()=>{    //基audioEndEarly
+  audioEndTandoku.addEventListener('ended', ()=>{
     speakRemaining(remainSec);
   }, { once:true });
 } else {
-  console.warn('audioEndTandoku が見つかりません');  //基audioEndEarly
+  console.warn('audioEndTandoku が見つかりません');
 }
 
   started = false;
