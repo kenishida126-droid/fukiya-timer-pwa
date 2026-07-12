@@ -775,37 +775,6 @@ function warmupSpeech(){
     }catch(e){}
 }
 
-/* ===== 開始ビープ音 ===== */
-function start_beep(){
-    const audioCtx =
-        new (
-            window.AudioContext ||
-            window.webkitAudioContext
-        )();
-    const osc =
-        audioCtx.createOscillator();
-    const gain =
-        audioCtx.createGain();
-    osc.type = "square";
-    osc.frequency.setValueAtTime(
-        2100,
-        audioCtx.currentTime
-    );
-    gain.gain.setValueAtTime(
-        0.5,
-        audioCtx.currentTime
-    );
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        audioCtx.currentTime + 1.5
-    );
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    audioCtx.resume();
-    osc.start();
-    osc.stop(audioCtx.currentTime + 1.5);
-}
-
 /* 表示更新 */
 function updateRoundLabel(){
     roundLabel.textContent =
@@ -1050,12 +1019,10 @@ if(remaining <= 0){
     timer = null;
     remaining = 0;
     updateDisplay();
-
     if(audioStartTimeout){
         clearTimeout(audioStartTimeout);
         audioStartTimeout = null;
     }
-
     if(currentAudioStart){
         try{
             currentAudioStart.pause();
@@ -1063,11 +1030,9 @@ if(remaining <= 0){
         }catch(e){}
         currentAudioStart = null;
     }
-
     if(bounceOn){
         audioEndHaneya.currentTime = 0;
         audioEndHaneya.play().catch(()=>{});
-
     }else{
         audioEnd.currentTime = 0;
         audioEnd.play().catch(()=>{});
@@ -1091,7 +1056,6 @@ if(remaining <= 0){
     }
     updateBounceButton();
     }
-
     },1000);
 }
 
@@ -1153,7 +1117,6 @@ function handleEarlyEnd(){
     updateBounceButton();
     updateDisplay();
 }
-
 
 /* 解除 */
 function resetTimer(){
@@ -1288,20 +1251,37 @@ resetBtn.addEventListener("click",()=>{
 });
 
 cleanBtn.addEventListener("click",()=>{
-
     cleanOn = !cleanOn;
-
     updateCleanButton();
 });
 
 bounceBtn.addEventListener("click",()=>{
-
     if(!started){
         return;
     }
-
     bounceOn = !bounceOn;
-
+/* ===== end_haneya専用アンロック(26/07/12) ===== */
+if(bounceOn){
+    try{
+        if(audioEndHaneya){
+            audioEndHaneya.muted = true;
+            audioEndHaneya.currentTime = 0;
+            audioEndHaneya.play().catch(()=>{});
+            setTimeout(()=>{
+                try{
+                    audioEndHaneya.pause();
+                    audioEndHaneya.currentTime = 0;
+                    audioEndHaneya.muted = false;
+                }catch(e){}
+            },100);
+        }
+    }catch(e){
+        console.warn(
+            'audioEndHaneya unlock error',
+            e
+        );
+    }
+}
     updateBounceButton();
 });
 
@@ -1400,12 +1380,10 @@ function showRoundMenu(){
         roundMenuEl
     );
     setTimeout(()=>{
-
         document.addEventListener(
             "click",
             outsideClose
         );
-
     },100);
 }
 
@@ -1454,6 +1432,17 @@ updateBounceButton();
 updateRoundLabel();
 updateStartButtonReady();
 
+/* iPhone対応で追加(開始釦がlockされたまま対応：26/07/11) */
+window.addEventListener(
+    "load",
+    ()=>{
+        startAudios.forEach(audio=>{
+            audio.load();
+        });
+        updateStartButtonReady();
+    }
+);
+
 /* ===== K/B対応 ===== */
 let lastKey = '';
 let lastKeyTime = 0;
@@ -1465,7 +1454,6 @@ if(window.innerHeight > window.innerWidth){
     const msg =
         document.createElement("div");
     msg.id = "startupWarning";
-
     msg.innerHTML =
     "横画面モードで<br>ご利用ください";
     msg.style.textAlign = "center";
@@ -1473,24 +1461,17 @@ if(window.innerHeight > window.innerWidth){
     msg.style.position = "fixed";
     msg.style.top = "0";
     msg.style.left = "0";
-
     msg.style.width = "100vw";
     msg.style.height = "100vh";
-
     msg.style.display = "flex";
     msg.style.justifyContent = "center";
     msg.style.alignItems = "center";
-
     msg.style.background = "#000";
     msg.style.color = "#fff";
-
     msg.style.fontSize = "10vw";
     msg.style.fontWeight = "bold";
-
     msg.style.zIndex = "99999";
-
     document.body.appendChild(msg);
-
     window.addEventListener(
         "resize",
         function removeWarning(){
@@ -1510,55 +1491,44 @@ if(window.innerHeight > window.innerWidth){
 
 // Bluetooth Keyboard対応
 document.addEventListener('keydown',(e)=>{
-
     const key = e.key;
     const now = Date.now();
-
     /* 長押し連打ガード */
-
     if(e.repeat){
         return;
     }
-
     if(
         key === lastKey &&
         now - lastKeyTime < 750
     ){
         return;
     }
-
     lastKey = key;
     lastKeyTime = now;
 
     /* Space / Enter */
-
     if(
         key === ' ' ||
         e.code === 'Space' ||
         e.code === 'Enter'
     ){
-
         e.preventDefault();
-
         if(
             !started &&
             remaining >= 180
         ){
             startBtn.click();
-
         }else if(
             started &&
             remaining > 0
         ){
             bounceBtn.click();
-
         }else if(
             !started &&
             remaining === 0
         ){
             resetBtn.click();
         }
-
         return;
     }
 
