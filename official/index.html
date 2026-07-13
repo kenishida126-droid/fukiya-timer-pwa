@@ -322,6 +322,7 @@ body {
 
 /* 鍵アイコン */
 #startupBtn{
+  position:relative;
   font-size:120px;
   user-select:none;
   cursor:pointer;
@@ -337,6 +338,30 @@ body {
   display: block;
   user-select: none;
   pointer-events: none;
+}
+
+#tapMeText{
+  position:absolute;
+  left:50%;
+  top:84%;
+  transform:
+      translate(-50%,-50%);
+  color:lime;
+  font-weight:bold;
+  font-size:
+      clamp(
+          32px,
+          4vw,
+          64px
+      );
+  white-space:nowrap;
+  text-shadow:
+      -2px -2px 0 #000,
+       2px -2px 0 #000,
+      -2px  2px 0 #000,
+       2px  2px 0 #000;
+  pointer-events:none;
+  z-index:10;
 }
 
 /* TAP時 */
@@ -367,6 +392,9 @@ body {
       id="startupImg"
       src="key_lock.png"
       alt="lock">
+  <div id="tapMeText">
+     Please tap me !
+  </div>
   </div>
   </div>
 
@@ -468,6 +496,7 @@ let currentAudioStart = null;
 let wakeLock = null;
 let startTimerTimeout = null;   // ←追加
 let audioUnlockBusy = false;    // ←追加(ver.10.5a)
+let startupUnlocked = false;    // ←追加(ver.10.5a)
 /* == key_unlock.png 先読み == */
 const preloadUnlock =
   new Image();
@@ -662,6 +691,9 @@ async function unlockIosAudio(){
 startupBtn.addEventListener(
   'click',
   async ()=>{
+  document.getElementById(
+    "tapMeText"
+  ).style.display = "none";
     warmupSpeech();          // ★最優先(26/07/07移動)
     startupBtn.classList.add(
       'unlocking'
@@ -688,6 +720,7 @@ startupBtn.addEventListener(
     document.getElementById(
       'startupImg'
     ).src = 'key_unlock.png';
+    startupUnlocked = true;
     setTimeout(()=>{
       startupBtn.classList.add(
         'unlock'
@@ -1961,6 +1994,9 @@ let lastKeyTime = 0;
 
 // Bluetooth Keyboard対応
 document.addEventListener('keydown', (e)=>{
+if(!startupUnlocked){
+    return;
+}
 
   const key = e.key;
 

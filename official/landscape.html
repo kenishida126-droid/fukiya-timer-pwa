@@ -440,6 +440,7 @@ body{
 }
 /* 南京錠 */
 #startupBtn{
+    position:relative;
     font-size:120px;
     user-select:none;
     cursor:pointer;
@@ -456,6 +457,30 @@ body{
     display:block;
     user-select:none;
     pointer-events:none;
+}
+
+#tapMeText{
+    position:absolute;
+    left:50%;
+    top:84%;
+    transform:
+        translate(-50%,-50%);
+    color:lime;
+    font-weight:bold;
+    font-size:
+        clamp(
+            32px,
+            4vw,
+            64px
+        );
+    white-space:nowrap;
+    text-shadow:
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
+    pointer-events:none;
+    z-index:10;
 }
 
 /* 解錠アニメ */
@@ -505,6 +530,9 @@ body{
       src="key_lock.png"
       alt="lock"
     >
+    <div id="tapMeText">
+      Please tap me !
+    </div>
   </div>
 </div>
 
@@ -676,6 +704,7 @@ let currentAudioStart = null;
 let audioStartTimeout = null;
 let iosAudioUnlocked = false;
 let audioUnlockBusy = false;    //追加；260710
+let startupUnlocked = false;    //追加；260713
 let wakeLock = null;
 let startTimerTimeout = null;
 
@@ -1491,6 +1520,7 @@ if(window.innerHeight > window.innerWidth){
 
 // Bluetooth Keyboard対応
 document.addEventListener('keydown',(e)=>{
+if(!startupUnlocked){return;}
     const key = e.key;
     const now = Date.now();
     /* 長押し連打ガード */
@@ -1619,6 +1649,9 @@ const startupBtn =
 startupBtn.addEventListener(
     "click",
     async ()=>{
+    document.getElementById(
+        "tapMeText"
+    ).style.display = "none";
         warmupSpeech();
         startupBtn.classList.add(
             "unlocking"
@@ -1646,6 +1679,7 @@ startupBtn.addEventListener(
             "startupImg"
         ).src =
             "key_unlock.png";
+        startupUnlocked = true;
         setTimeout(()=>{
             startupBtn.classList.add(
                 "unlock"
