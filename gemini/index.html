@@ -116,7 +116,7 @@
         <div id="snap-point"></div>
         
         <div id="header-container">
-            <span id="title-main">Circle timer - ver.03</span><br>
+            <span id="title-main">Circle timer - ver.03a</span><br>
             <span id="title-sub">《 by Ken.Ishida 》</span>
         </div>
 
@@ -156,6 +156,18 @@
         const display = document.getElementById('timer-display'), micButton = document.getElementById('mic-button');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
+        document.addEventListener(
+            'touchstart',
+            async () => {
+                if (audioCtx.state !== 'running') {
+                    try {
+                        await audioCtx.resume();
+                    } catch(e){}
+                }
+            },
+            { once:true }
+        );
+
         // ★ メトロノーム
         // ★ メトロノーム（4種・排他）
         let currentMetro = 0;
@@ -170,8 +182,17 @@
             currentMetro = 0;
         }
 
-        function toggleMetro(n){
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        async function toggleMetro(n){
+            try{
+                if(audioCtx.state !== 'running'){
+                    await audioCtx.resume();
+                }
+            }catch(e){}
+            unlockAudio();
+            if(currentMetro === n){
+                clearMetro();
+                return;
+            }
 
             if(currentMetro === n){
                 clearMetro();
@@ -188,6 +209,12 @@
             if(n===2) el.classList.add('on-yellow');
             if(n===3) el.classList.add('on-lime');
             if(n===4) el.classList.add('on-aqua');
+
+            // 初回は即鳴らす
+            if(n===1) beep1();
+            else if(n===2) beep2();
+            else if(n===3) beep3();
+            else if(n===4) beep4();
 
             metroTimer = setInterval(function(){
                 if(n===1) beep1();
@@ -289,14 +316,28 @@
         }
         
 
-        function playTapSound() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        async function playTapSound() {
+            try{
+                if(audioCtx.state !== 'running'){
+                    await audioCtx.resume();
+                }
+            }catch(e){}
+            unlockAudio();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(
+                880,
+                audioCtx.currentTime
+            );
+            gain.gain.setValueAtTime(
+                0.1,
+                audioCtx.currentTime
+            );
+            gain.gain.exponentialRampToValueAtTime(
+                0.01,
+                audioCtx.currentTime + 0.1
+            );
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
