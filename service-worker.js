@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260731-3';
+const CACHE_NAME = 'fukiya-timer-pwa-20260731-4';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -22,6 +22,10 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/other/index.html',
   '/fukiya-timer-pwa/gemini/',
   '/fukiya-timer-pwa/gemini/index.html',
+
+  // official images
+  '/fukiya-timer-pwa/official/key_lock.png',
+  '/fukiya-timer-pwa/official/key_unlock.png',
 
   // official mp3
   '/fukiya-timer-pwa/official/start-0.mp3',
@@ -76,13 +80,18 @@ self.addEventListener('activate', event => {
       );
 
       // ② 更新通知を送る（必要ならクライアントで reload 可能）
-      const clientsList = await self.clients.matchAll({ type: 'window' });
+      const clientsList = await self.clients.matchAll({
+        includeUncontrolled: true,
+        type: 'window'
+      });
+
       for (const client of clientsList) {
         client.postMessage({
           type: 'CACHE_UPDATED',
           cacheName: CACHE_NAME
         });
       }
+
     })()
   );
   self.clients.claim();
