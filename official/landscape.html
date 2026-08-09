@@ -1636,50 +1636,63 @@ const startupBtn =
     document.getElementById(
         "startupBtn"
     );
+
+async function unlockStartup(){
+  document.getElementById(
+    "tapMeText"
+  ).style.display = "none";
+  warmupSpeech();
+  startupBtn.classList.add(
+    'unlocking'
+  );
+  const startTime =
+    performance.now();
+  await unlockIosAudio();
+  const elapsed =
+    performance.now() -
+    startTime;
+  const minTime = 1500;
+  if(elapsed < minTime){
+    await new Promise(
+      resolve =>
+        setTimeout(
+          resolve,
+          minTime - elapsed
+        )
+    );
+  }
+  startupBtn.classList.remove(
+    'unlocking'
+  );
+  document.getElementById(
+    'startupImg'
+  ).src = 'key_unlock.png';
+  startupUnlocked = true;
+  setTimeout(()=>{
+    startupBtn.classList.add(
+      'unlock'
+    );
+  },100);
+  setTimeout(()=>{
+    startupOverlay.style.display =
+      'none';
+  },1200);
+}
+
+/* 南京錠tap */
 startupBtn.addEventListener(
-    "click",
-    async ()=>{
-    document.getElementById(
-        "tapMeText"
-    ).style.display = "none";
-        warmupSpeech();
-        startupBtn.classList.add(
-            "unlocking"
-        );
-        const startTime =
-            performance.now();
-        await unlockIosAudio();
-        const elapsed =
-            performance.now() -
-            startTime;
-        const minTime = 1500;
-        if(elapsed < minTime){
-            await new Promise(
-                resolve=>
-                    setTimeout(
-                        resolve,
-                        minTime - elapsed
-                    )
-            );
-        }
-        startupBtn.classList.remove(
-            "unlocking"
-        );
-        document.getElementById(
-            "startupImg"
-        ).src =
-            "key_unlock.png";
-        startupUnlocked = true;
-        setTimeout(()=>{
-            startupBtn.classList.add(
-                "unlock"
-            );
-        },100);
-        setTimeout(()=>{
-            startupOverlay.style.display =
-                "none";
-        },1200);
+  'click',
+  unlockStartup
+);
+
+/* K/B any key */
+document.addEventListener(
+  'keydown',
+  () => {
+    if(!startupUnlocked){
+      unlockStartup();
     }
+  }
 );
 
 </script>
