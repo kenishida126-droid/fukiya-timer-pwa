@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.10.5a Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.11.0 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -42,7 +42,7 @@ body{
   text-align:center;
   display:flex;
   flex-direction:column;
-  transition:background-image 0.35s ease;
+  transition:background-image 0.35s ease, transform 0.2s ease;
   position:relative;
   overflow:auto;
   -webkit-overflow-scrolling: touch;
@@ -379,6 +379,15 @@ body {
   animation: lockShake 0.5s infinite;
 }
 
+/* ===== 180°逆さま補正 Ver.11.0 ===== */
+/* Android/Chromeの自動回転OFF時、加速度センサーで縦逆さまを検出 */
+/* 左右回転はNG、回転はスマホを手前に倒す様に縦回転させて反転させる事 */
+
+body.upsideDown{
+  transform:rotate(180deg);
+  transform-origin:center center;
+}
+
 </style>
 </head>
 <body>
@@ -399,7 +408,7 @@ body {
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.10.5a Ken.Ishida≫</h2>
+      <h2>≪ver.11.0 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -684,7 +693,67 @@ async function unlockIosAudio(){
   audioUnlockBusy = false;
 }
 
+
+
+/* ===== Ver.10.5b：縦逆さま自動補正 ===== */
+let orientationSensorStarted = false;
+
+async function startOrientationSensor(){
+  if(orientationSensorStarted) return;
+
+  // iOS Safari等で必要なセンサー許可
+  if(
+    typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
+  ){
+    try{
+      const permission = await DeviceMotionEvent.requestPermission();
+      if(permission !== 'granted') return;
+    }catch(e){
+      console.warn('DeviceMotion permission error', e);
+      return;
+    }
+  }
+
+  window.addEventListener('devicemotion', handleOrientationMotion, true);
+  orientationSensorStarted = true;
+}
+
+function handleOrientationMotion(event){
+  const acc = event.accelerationIncludingGravity;
+  if(!acc) return;
+
+  const x = acc.x || 0;
+  const y = acc.y || 0;
+
+  // 縦／横を加速度から判定
+  const isPortrait = Math.abs(y) > Math.abs(x);
+
+  if(!isPortrait){
+    // 横向きでは逆さま補正を解除
+    document.body.classList.remove('upsideDown');
+    return;
+  }
+
+  // F-52Gで確認済み：y > 0 = 縦・正立、y < 0 = 縦・逆さま
+  if(y > 0){
+    document.body.classList.remove('upsideDown');
+  }else{
+    document.body.classList.add('upsideDown');
+  }
+}
+
+// 画面が横向きになった場合も逆さま補正を解除
+window.addEventListener('resize', ()=>{
+  if(window.innerWidth > window.innerHeight){
+    document.body.classList.remove('upsideDown');
+  }
+});
+
 async function unlockStartup(){
+  // Ver.10.5b：起動時のユーザー操作を利用してセンサーを開始
+  startOrientationSensor();
+
   document.getElementById(
     "tapMeText"
   ).style.display = "none";
