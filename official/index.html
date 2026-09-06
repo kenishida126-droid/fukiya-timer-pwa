@@ -379,7 +379,7 @@ body {
   animation: lockShake 0.5s infinite;
 }
 
-/* ===== 180°逆さま補正 Ver.11.0 ===== */
+/* ===== 180°逆さま補正 Ver.11.1 ===== */
 /* Android/Chromeの自動回転OFF時、加速度センサーで縦逆さまを検出 */
 /* 左右回転はNG、回転はスマホを手前に倒す様に縦回転させて反転させる事 */
 
@@ -408,7 +408,7 @@ body.upsideDown{
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.11.0 Ken.Ishida≫</h2>
+      <h2>≪ver.11.1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -695,10 +695,23 @@ async function unlockIosAudio(){
 
 
 
-/* ===== Ver.11.0：縦逆さま自動補正 ===== */
+/* ===== Ver.11.1：縦逆さま自動補正 ===== */
 /* Android/Chromeのみ有効。iPhone/iOSでは補正処理を行わない。 */
+/*
+   正立／逆さまの切替は「直立状態から±30°以内」を確認ゾーンとする。
+   30°を超えている途中の姿勢（平置きを含む）では状態を変更しない。
+   そのため、平置き時の振動で反転せず、逆さま状態から平置きにしても
+   逆さま表示を保持する。
+*/
 const isAndroidDevice = /Android/i.test(navigator.userAgent);
 let orientationSensorStarted = false;
+
+// 現在の表示状態を保持する
+let orientationState = 'upright';       // 'upright' / 'upsideDown'
+let orientationCandidate = null;
+let orientationCandidateSince = 0;
+const ORIENTATION_CONFIRM_MS = 350;
+const ORIENTATION_ZONE_DEG = 30;
 
 async function startOrientationSensor(){
   // 180°逆さま補正はAndroidのみ
@@ -717,27 +730,88 @@ function handleOrientationMotion(event){
 
   const x = acc.x || 0;
   const y = acc.y || 0;
+  const z = acc.z || 0;
 
   // 縦／横を加速度から判定
   const isPortrait = Math.abs(y) > Math.abs(x);
 
   if(!isPortrait){
-    // 横向きでは逆さま補正を解除
-    document.body.classList.remove('upsideDown');
+    // 横向き・平置き付近では表示状態だけ一旦補正解除。
+    // 内部の正立／逆さま状態は変更しない。
+    // これにより、逆さま状態から平置きにしても
+    // 「正立」へ勝手に戻らず、現在の状態を保持する。
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
     return;
   }
 
-  // F-52Gで確認済み：y > 0 = 縦・正立、y < 0 = 縦・逆さま
-  if(y > 0){
-    document.body.classList.remove('upsideDown');
-  }else{
-    document.body.classList.add('upsideDown');
+  /*
+    y方向を「縦方向の重力成分」として、直立からの傾きを算出。
+    0°  = 正立／逆さまの直立状態
+    90° = 平置き
+
+    「正立から30°以内」または「逆さまから30°以内」だけを
+    切替確認ゾーンとし、その中に350ms継続した場合だけ状態を変更する。
+    それ以外（特に平置き付近）は現在状態を保持する。
+  */
+  const absY = Math.abs(y);
+  const absZ = Math.abs(z);
+  const tiltFromVertical =
+    Math.atan2(absZ, absY) * 180 / Math.PI;
+
+  let targetState = null;
+
+  // 正立側の確認ゾーン：直立から30°以内
+  if(y > 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
+    targetState = 'upright';
+  }
+  // 逆さま側の確認ゾーン：逆さま直立から30°以内
+  else if(y < 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
+    targetState = 'upsideDown';
+  }
+
+  // 30°～150°相当の中間姿勢（平置きを含む）は状態を変更しない
+  if(targetState === null){
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    // 中間姿勢では状態を変えない。ただし現在の状態を表示には反映する。
+    document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
+    return;
+  }
+
+  // すでに同じ状態なら何もしない
+  if(targetState === orientationState){
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
+    return;
+  }
+
+  // 切替候補を350ms継続して初めて確定
+  if(orientationCandidate !== targetState){
+    orientationCandidate = targetState;
+    orientationCandidateSince = performance.now();
+    return;
+  }
+
+  if(performance.now() - orientationCandidateSince >= ORIENTATION_CONFIRM_MS){
+    orientationState = targetState;
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+
+    if(orientationState === 'upright'){
+      document.body.classList.remove('upsideDown');
+    }else{
+      document.body.classList.add('upsideDown');
+    }
   }
 }
 
-// 画面が横向きになった場合も逆さま補正を解除
+// 画面が横向きになった場合も、内部の正立／逆さま状態は保持する。
 window.addEventListener('resize', ()=>{
   if(window.innerWidth > window.innerHeight){
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
     document.body.classList.remove('upsideDown');
   }
 });
