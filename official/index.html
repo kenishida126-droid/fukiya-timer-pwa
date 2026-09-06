@@ -695,31 +695,23 @@ async function unlockIosAudio(){
 
 
 
-/* ===== Ver.10.5b：縦逆さま自動補正 ===== */
+/* ===== Ver.11.0：縦逆さま自動補正 ===== */
+/* Android/Chromeのみ有効。iPhone/iOSでは補正処理を行わない。 */
+const isAndroidDevice = /Android/i.test(navigator.userAgent);
 let orientationSensorStarted = false;
 
 async function startOrientationSensor(){
+  // 180°逆さま補正はAndroidのみ
+  if(!isAndroidDevice) return;
   if(orientationSensorStarted) return;
-
-  // iOS Safari等で必要なセンサー許可
-  if(
-    typeof DeviceMotionEvent !== 'undefined' &&
-    typeof DeviceMotionEvent.requestPermission === 'function'
-  ){
-    try{
-      const permission = await DeviceMotionEvent.requestPermission();
-      if(permission !== 'granted') return;
-    }catch(e){
-      console.warn('DeviceMotion permission error', e);
-      return;
-    }
-  }
 
   window.addEventListener('devicemotion', handleOrientationMotion, true);
   orientationSensorStarted = true;
 }
 
 function handleOrientationMotion(event){
+  if(!isAndroidDevice) return;
+
   const acc = event.accelerationIncludingGravity;
   if(!acc) return;
 
