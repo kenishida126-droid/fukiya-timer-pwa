@@ -808,12 +808,25 @@ function handleOrientationMotion(event){
       document.body.classList.add('upsideDown');
     }
 
-    // ===== Ver.11.1：正立／反転の切替時にスクロール位置を先頭へ戻す =====
-    // どちらの状態でも、切替後はタイトルが見える位置から再表示する。
+    // ===== Ver.11.1：正立／反転の切替時に表示位置を自動調整 =====
+    // 正立：画面先頭へ戻してタイトルを表示
+    // 反転：180°回転したタイトルは画面下側へ移動するため、
+    //       「下方ドラッグした時」と同じ位置まで自動スクロールする。
     requestAnimationFrame(()=>{
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
+      if(orientationState === 'upsideDown'){
+        const maxScroll = Math.max(
+          document.documentElement.scrollHeight - window.innerHeight,
+          document.body.scrollHeight - window.innerHeight,
+          0
+        );
+        window.scrollTo(0, maxScroll);
+        document.documentElement.scrollTop = maxScroll;
+        document.body.scrollTop = maxScroll;
+      }else{
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
     });
   }
 }
