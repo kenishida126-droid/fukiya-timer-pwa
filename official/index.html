@@ -264,9 +264,12 @@ body {
 }
 
 @media (display-mode: standalone) {
+  /* ===== Ver.11.1：PWAでも上下ドラッグによるスクロールを許可 ===== */
   html, body {
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     height: 100%;
+    touch-action: pan-y;
   }
 }
 
