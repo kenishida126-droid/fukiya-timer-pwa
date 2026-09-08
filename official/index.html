@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.11.0 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.11.1 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -807,6 +807,14 @@ function handleOrientationMotion(event){
     }else{
       document.body.classList.add('upsideDown');
     }
+
+    // ===== Ver.11.1：正立／反転の切替時にスクロール位置を先頭へ戻す =====
+    // どちらの状態でも、切替後はタイトルが見える位置から再表示する。
+    requestAnimationFrame(()=>{
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
   }
 }
 
