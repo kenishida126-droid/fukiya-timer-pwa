@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.11.1 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.11.1a Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -411,7 +411,7 @@ body.upsideDown{
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.11.1 Ken.Ishida≫</h2>
+      <h2>≪ver.11.1a Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -698,15 +698,13 @@ async function unlockIosAudio(){
 
 
 
-/* ===== Ver.11.1：縦逆さま自動補正 ===== */
-/* Android/Chromeのみ有効。iPhone/iOSでは補正処理を行わない。 */
+/* ===== Ver.11.1a：縦逆さま自動補正（Android / iPhone対応） ===== */
 /*
    正立／逆さまの切替は「直立状態から±30°以内」を確認ゾーンとする。
    30°を超えている途中の姿勢（平置きを含む）では状態を変更しない。
    そのため、平置き時の振動で反転せず、逆さま状態から平置きにしても
    逆さま表示を保持する。
 */
-const isAndroidDevice = /Android/i.test(navigator.userAgent);
 let orientationSensorStarted = false;
 
 // 現在の表示状態を保持する
@@ -717,17 +715,28 @@ const ORIENTATION_CONFIRM_MS = 350;
 const ORIENTATION_ZONE_DEG = 30;
 
 async function startOrientationSensor(){
-  // 180°逆さま補正はAndroidのみ
-  if(!isAndroidDevice) return;
   if(orientationSensorStarted) return;
+
+  // iPhone/iPad等、requestPermission() が必要な環境では
+  // 南京錠タップ（ユーザー操作）を起点にセンサー許可を取得する。
+  if(
+    typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
+  ){
+    try{
+      const permission = await DeviceMotionEvent.requestPermission();
+      if(permission !== 'granted') return;
+    }catch(e){
+      console.warn('DeviceMotion permission error', e);
+      return;
+    }
+  }
 
   window.addEventListener('devicemotion', handleOrientationMotion, true);
   orientationSensorStarted = true;
 }
 
 function handleOrientationMotion(event){
-  if(!isAndroidDevice) return;
-
   const acc = event.accelerationIncludingGravity;
   if(!acc) return;
 
