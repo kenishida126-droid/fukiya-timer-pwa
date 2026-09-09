@@ -264,7 +264,7 @@ body {
 }
 
 @media (display-mode: standalone) {
-  /* ===== Ver.11.1：PWAでも上下ドラッグによるスクロールを許可 ===== */
+  /* ===== Ver.11.1a：PWAでも上下ドラッグによるスクロールを許可 ===== */
   html, body {
     overflow-y: auto !important;
     overflow-x: hidden !important;
@@ -707,6 +707,10 @@ async function unlockIosAudio(){
 */
 let orientationSensorStarted = false;
 
+// Androidは現行ロジックをそのまま使用。
+// iPhone/iPadではY方向の判定を反転して扱う。
+const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
 // 現在の表示状態を保持する
 let orientationState = 'upright';       // 'upright' / 'upsideDown'
 let orientationCandidate = null;
@@ -766,7 +770,11 @@ function handleOrientationMotion(event){
     切替確認ゾーンとし、その中に350ms継続した場合だけ状態を変更する。
     それ以外（特に平置き付近）は現在状態を保持する。
   */
-  const absY = Math.abs(y);
+  // Android：現行ロジックそのまま。
+  // iPhone/iPad：Yの判定だけ反転する。
+  const orientationY = isIOSDevice ? -y : y;
+
+  const absY = Math.abs(orientationY);
   const absZ = Math.abs(z);
   const tiltFromVertical =
     Math.atan2(absZ, absY) * 180 / Math.PI;
@@ -774,11 +782,11 @@ function handleOrientationMotion(event){
   let targetState = null;
 
   // 正立側の確認ゾーン：直立から30°以内
-  if(y > 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
+  if(orientationY > 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
     targetState = 'upright';
   }
   // 逆さま側の確認ゾーン：逆さま直立から30°以内
-  else if(y < 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
+  else if(orientationY < 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG){
     targetState = 'upsideDown';
   }
 
@@ -817,7 +825,7 @@ function handleOrientationMotion(event){
       document.body.classList.add('upsideDown');
     }
 
-    // ===== Ver.11.1：正立／反転の切替時に表示位置を自動調整 =====
+    // ===== Ver.11.1a：正立／反転の切替時に表示位置を自動調整 =====
     // 正立：画面先頭へ戻してタイトルを表示
     // 反転：180°回転したタイトルは画面下側へ移動するため、
     //       「下方ドラッグした時」と同じ位置まで自動スクロールする。
