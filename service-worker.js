@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260914-2';
+const CACHE_NAME = 'fukiya-timer-pwa-20260914-10';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -59,7 +59,31 @@ const PRECACHE_URLS = [
 --------------------------------------------------------- */
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
+
+    /*
+     * すでに同じ CACHE_NAME が存在するか確認する。
+     * 存在しない場合は、新しいキャッシュの作成開始として
+     * CACHE_START をクライアントへ通知する。
+     */
+    const existingCaches = await caches.keys();
+    const isNewCache = !existingCaches.includes(CACHE_NAME);
+
+    if (isNewCache) {
+      const clientsList = await self.clients.matchAll({
+        includeUncontrolled: true,
+        type: 'window'
+      });
+
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'CACHE_START',
+          cacheName: CACHE_NAME
+        });
+      }
+    }
+
     const cache = await caches.open(CACHE_NAME);
+
     for (const url of PRECACHE_URLS) {
       try {
         await cache.add(url);
@@ -70,6 +94,7 @@ self.addEventListener('install', event => {
       }
     }
   })());
+
   self.skipWaiting();
 });
 
@@ -80,28 +105,69 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
-      // ① 古いキャッシュを削除
+
+      /*
+       * 今回のCACHE_NAME以前に、
+       * Fukiya Timer PWAのキャッシュが存在していたか確認する。
+       *
+       * 初回インストール：
+       *   以前のキャッシュなし → CACHE_UPDATEDを送らない
+       *
+       * 更新：
+       *   以前のキャッシュあり → CACHE_UPDATEDを送る
+       */
       const keys = await caches.keys();
+
+      const hadPreviousCache = keys.some(
+        k =>
+          k.startsWith('fukiya-timer-pwa-') &&
+          k !== CACHE_NAME
+      );
+
+      // ① 古いキャッシュを削除
       await Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       );
 
-      // ② 更新通知を送る（必要ならクライアントで reload 可能）
-      const clientsList = await self.clients.matchAll({
-        includeUncontrolled: true,
-        type: 'window'
-      });
+      // ② 更新時のみ CACHE_UPDATED を通知
+      if (hadPreviousCache) {
 
-      for (const client of clientsList) {
-        client.postMessage({
-          type: 'CACHE_UPDATED',
-          cacheName: CACHE_NAME
+        const clientsList = await self.clients.matchAll({
+          includeUncontrolled: true,
+          type: 'window'
         });
+
+        for (const client of clientsList) {
+          client.postMessage({
+            type: 'CACHE_UPDATED',
+            cacheName: CACHE_NAME
+          });
+        }
       }
 
     })()
   );
+
   self.clients.claim();
+});
+
+/* ---------------------------------------------------------
+   message
+   ・現在のCACHE状態を問い合わせ
+--------------------------------------------------------- */
+self.addEventListener('message', event => {
+
+  if (!event.data) return;
+
+  if (event.data.type === 'GET_CACHE_STATUS') {
+
+    if (event.source) {
+      event.source.postMessage({
+        type: 'CACHE_STATUS',
+        cacheName: CACHE_NAME
+      });
+    }
+  }
 });
 
 /* ---------------------------------------------------------
@@ -114,8 +180,14 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // index.html は常に最新を取得
-  if (url.pathname.endsWith('index.html') || url.pathname === '/fukiya-timer-pwa/') {
-    event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+  if (
+    url.pathname.endsWith('index.html') ||
+    url.pathname === '/fukiya-timer-pwa/'
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match(event.request))
+    );
     return;
   }
 
@@ -123,7 +195,9 @@ self.addEventListener('fetch', event => {
   if (url.pathname.endsWith('.mp3')) {
     event.respondWith(
       caches.open(CACHE_NAME).then(cache =>
-        cache.match(url.pathname).then(res => res || fetch(event.request))
+        cache.match(url.pathname).then(
+          res => res || fetch(event.request)
+        )
       )
     );
     return;
@@ -131,6 +205,8 @@ self.addEventListener('fetch', event => {
 
   // それ以外はキャッシュ優先 → ネットワーク
   event.respondWith(
-    caches.match(event.request).then(res => res || fetch(event.request))
+    caches.match(event.request).then(
+      res => res || fetch(event.request)
+    )
   );
 });
