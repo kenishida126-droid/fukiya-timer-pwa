@@ -28,6 +28,27 @@
     animation: fadeIn 1s ease-out;
   }
 
+  /* ===== PWA キャッシュ状態ドット ===== */
+  #cacheStatus {
+    display: none;
+    position: fixed;
+    top: 8px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: lime;
+  }
+
+  #cacheStatus.updating {
+    background: red;
+    animation: cacheBlink 0.7s infinite;
+  }
+
+  @keyframes cacheBlink {
+    50% { opacity: 0; }
+  }
+
   h1 {
     font-size: 1.4em;
     color: gold;
@@ -124,6 +145,28 @@
     font-weight:bold;
   }
 
+
+  /* ===== CACHE 状態マーク ===== */
+  #cacheStatus {
+    display: none;
+    position: fixed;
+    top: 8px;
+    right: 10px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: lime;
+  }
+
+  #cacheStatus.updating {
+    background: red;
+    animation: cacheBlink 0.7s infinite;
+  }
+
+  @keyframes cacheBlink {
+    50% { opacity: 0; }
+  }
+
   @keyframes fadeIn {
     0% { opacity: 0; }
     100% { opacity: 1; }
@@ -144,7 +187,9 @@
 
 <body>
 
-<h1>≪ 吹矢Timer MENU ver.03 ≫</h1>
+<div id="cacheStatus"></div>
+
+<h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
 
 <div class="category-title">★ 競技会向け</div>
@@ -231,19 +276,46 @@
 
 <script>
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js');
+/* =========================================================
+   PWA / Web 判定
+   =========================================================
+   service-worker.js の存在で判定する。
+   一般Web版には service-worker.js がないため、
+   iPhoneで「ホーム画面に追加」してもPWA扱いしない。
+*/
+const cacheStatus = document.getElementById('cacheStatus');
+fetch('./service-worker.js', { method: 'HEAD', cache: 'no-store' })
+  .then(response => {
+    if (!response.ok) return;
 
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data && event.data.type === 'CACHE_UPDATED') {
-      alert(
-        '吹矢Timer_PWA が更新されました。\n' +
-        '通信が発生しますので、Wi-Fi 環境下で\n' +
-        'しばらく起動したままにしてください。'
-      );
+    /* PWA版：起動直後は空白 */
+    if (cacheStatus) cacheStatus.style.display = 'block';
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (!event.data || !cacheStatus) return;
+
+        if (event.data.type === 'CACHE_START') {
+          cacheStatus.classList.add('updating');
+        }
+
+        if (event.data.type === 'CACHE_UPDATED') {
+          cacheStatus.classList.remove('updating');
+          cacheStatus.style.background = 'lime';
+
+          alert(
+            '吹矢Timer_PWA が更新されました\n' +
+            '　　　CACHE_UPDATED　　'
+          );
+        }
+      });
+
+      navigator.serviceWorker.register('./service-worker.js');
     }
+  })
+  .catch(() => {
+    /* 一般Web版：何もしない */
   });
-}
 
 /* === Keyboard対応 === */
 document.addEventListener('keydown', function(event) {
