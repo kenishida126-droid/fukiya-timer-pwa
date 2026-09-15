@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260914-11';
+const CACHE_NAME = 'fukiya-timer-pwa-20260915-1';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -50,7 +50,53 @@ const PRECACHE_URLS = [
   // gemini
   '/fukiya-timer-pwa/gemini/start-0.mp3',
   '/fukiya-timer-pwa/gemini/30sec.mp3',
-  '/fukiya-timer-pwa/gemini/end.mp3'
+  '/fukiya-timer-pwa/gemini/end.mp3',
+
+/* --- @test.html(癒やしのページ版)向けファイル群 ---
+   ※ すべて「/fukiya-timer/」からの絶対パス */
+  '/fukiya-timer/',
+  '/fukiya-timer/@test.html',
+  '/fukiya-timer/@music-1.mp3',
+  '/fukiya-timer/@music-2.mp3',
+  '/fukiya-timer/@music-3.mp3',
+  '/fukiya-timer/@music-4.mp3',
+  '/fukiya-timer/@music-5.mp3',
+  '/fukiya-timer/@music-6.mp3',
+  '/fukiya-timer/@music-7.mp3',
+  '/fukiya-timer/@music-8.mp3',
+  '/fukiya-timer/@music-9.mp3',
+  '/fukiya-timer/@music-10.mp3',
+  '/fukiya-timer/@music-11.mp3',
+  '/fukiya-timer/@music-12.mp3',
+  '/fukiya-timer/@music-13.mp3',
+  '/fukiya-timer/@music-14.mp3',
+  '/fukiya-timer/@music-15.mp3',
+  '/fukiya-timer/@music-16.mp3',
+  '/fukiya-timer/@music-17.mp3',
+  '/fukiya-timer/@music-18.mp3',
+  '/fukiya-timer/@music-19.mp3',
+  '/fukiya-timer/@music-20.mp3',
+  '/fukiya-timer/@video.mp4',
+  '/fukiya-timer/@wallpaper-1.jpg',
+  '/fukiya-timer/@wallpaper-2.jpg',
+  '/fukiya-timer/@wallpaper-3.jpg',
+  '/fukiya-timer/@wallpaper-4.jpg',
+  '/fukiya-timer/@wallpaper-5.jpg',
+  '/fukiya-timer/@wallpaper-6.jpg',
+  '/fukiya-timer/@wallpaper-7.jpg',
+  '/fukiya-timer/@wallpaper-8.jpg',
+  '/fukiya-timer/@wallpaper-9.jpg',
+  '/fukiya-timer/@wallpaper-10.jpg',
+  '/fukiya-timer/@wallpaper-11.jpg',
+  '/fukiya-timer/@wallpaper-12.jpg',
+  '/fukiya-timer/@wallpaper-13.jpg',
+  '/fukiya-timer/@wallpaper-14.jpg',
+  '/fukiya-timer/@wallpaper-15.jpg',
+  '/fukiya-timer/@wallpaper-16.jpg',
+  '/fukiya-timer/@wallpaper-17.jpg',
+  '/fukiya-timer/@wallpaper-18.jpg',
+  '/fukiya-timer/@wallpaper-19.jpg',
+  '/fukiya-timer/@wallpaper-20.jpg'
 ];
 
 /* ---------------------------------------------------------
