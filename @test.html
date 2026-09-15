@@ -9,6 +9,7 @@
 <title>吹矢Timer TEST</title>
 
 <style>
+
   * {
     box-sizing: border-box;
   }
@@ -22,7 +23,7 @@
 
   body {
     background-color: #000;
-    background-image: url('@wallpaper.jpg');
+    background-image: url('@wallpaper-1.jpg');
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -36,21 +37,61 @@
     user-select: none;
   }
 
+
+  /* ========================================
+     全体
+     ======================================== */
+
   .container {
     width: 90%;
     max-width: 600px;
+
     margin: 0 auto;
-    padding: 8vh 0 6vh 0;
+
+    padding: 4vh 0 6vh 0;
+  }
+
+
+  /* ========================================
+     日付
+     ======================================== */
+
+  .container {
+    position: relative;
+  }
+
+  /* ========================================
+     壁紙番号
+     既存のGAP内に絶対配置。
+     日付の位置は動かさない。
+     ======================================== */
+  #wallpaperNumber {
+    position: absolute;
+    top: 0.2vh;
+    right: 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1;
+    color: gold;
+    text-shadow: 2px 2px 4px #000, -1px -1px 2px #000;
+    white-space: nowrap;
   }
 
   .date {
     font-size: 2.0em;
     font-weight: bold;
+
     text-shadow:
       2px 2px 4px #000,
       -1px -1px 2px #000;
-    margin-bottom: 1.0em;
+
+    margin-bottom: 0.5em;
   }
+
+
+  /* ========================================
+     メッセージ
+     ======================================== */
 
   .message {
     font-size: 1.18em;
@@ -64,6 +105,11 @@
     margin-bottom: 2.0em;
   }
 
+
+  /* ========================================
+     共通ボタン
+     ======================================== */
+
   .button {
     display: block;
 
@@ -76,7 +122,7 @@
     border: 1px solid rgba(255,255,255,0.7);
     border-radius: 10px;
 
-    background: rgba(0,0,0,0.45);
+    background: rgba(0,0,0,0.20);
     color: #fff;
 
     font-size: 1.3em;
@@ -86,8 +132,9 @@
 
     cursor: pointer;
 
-    transition: background 0.2s ease,
-                transform 0.1s ease;
+    transition:
+      background 0.2s ease,
+      transform 0.1s ease;
 
     -webkit-tap-highlight-color: transparent;
   }
@@ -97,14 +144,199 @@
     background: rgba(255,255,255,0.20);
   }
 
+
+  #musicControl {
+    position: relative;
+    width: 100%;
+  }
+
+  /* ========================================
+     音楽選曲Long-tap案内
+     ======================================== */
+
+  #musicHint {
+    /*
+       最初から場所を確保する。
+       display:noneにはしない。
+    */
+
+    visibility: hidden;
+
+    width: 80%;
+    max-width: 360px;
+
+    /*
+       音楽ボタンに極力近づける。
+    */
+
+    margin: 0 auto;
+
+    height: 1.5em;
+
+    font-size: 1.18em;
+    line-height: 1.5;
+
+    font-weight: bold;
+
+    color: #fff;
+
+    text-shadow:
+      2px 2px 5px #000,
+      -1px -1px 3px #000;
+  }
+
+  /* ========================================
+     音楽タイトル表示
+     ======================================== */
+
+  .musicTitleText {
+  display:block;
+  white-space:nowrap;
+  color:gold;
+}
+
+.musicTitleText.fit {
+  width:100%;
+  text-align:center;
+}
+
+.musicTitleText.scroll {
+  position:absolute;
+  top:0;
+  left:0;
+  width:max-content;
+  animation:musicTitleScroll 10s linear infinite;
+}
+
+@keyframes musicTitleScroll {
+  from { transform:translateX(var(--music-title-start)); }
+  to   { transform:translateX(var(--music-title-end)); }
+}
+    to   { transform: translateX(-100%); }
+  }
+
+
+  /* ========================================
+     音楽ボタン
+     ======================================== */
+
+  #musicButton {
+    /*
+       初期表示／再生中／Pause中で
+       ボタンの高さを固定する。
+    */
+      height: 3.5em;
+      margin-top: -0.05em;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+  }
+
+  /* ========================================
+     音楽選曲メニュー
+     ======================================== */
+
+  #musicMenu {
+    display: none;
+
+    position: absolute;
+    z-index: 1000;
+
+    left: 50%;
+    top: 100%;
+    transform: translateX(-50%);
+
+    width: 80%;
+    max-width: 360px;
+
+    /* 11曲でもページ全体をスクロールさせない */
+    max-height: 50vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+
+    margin-top: -0.4em;
+
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius: 10px;
+
+    background: rgba(0,0,0,0.92);
+
+    box-shadow:
+      0 4px 12px rgba(0,0,0,0.8);
+  }
+
+
+  .musicOption {
+    padding: 0.7em 1em;
+
+    border-bottom:
+      1px solid rgba(255,255,255,0.25);
+
+    color: #fff;
+
+    font-size: 1.05em;
+    font-weight: bold;
+
+    text-shadow:
+      1px 1px 3px #000;
+
+    cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .musicOption:last-child {
+    border-bottom: none;
+  }
+
+  .musicOption:active {
+    background: rgba(255,255,255,0.25);
+  }
+
+  .musicOption.currentMusic {
+    color: lime;
+  }
+
+  .musicOption.currentMusic {
+    color: lime;
+  }
+
+
+  /* ========================================
+     再生／Pause表示
+     ======================================== */
+
+  .music-pause {
+    color: yellow;
+    display: inline-block;
+    transform: rotate(90deg);
+  }
+
+  .music-play {
+    color: lime;
+  }
+
+
+  /* ========================================
+     動画
+     ======================================== */
+
   #videoArea {
     display: none;
+
     width: 90%;
     max-width: 560px;
+
     margin: 1.5em auto;
   }
 
   #relaxVideo {
+    display: block;
     width: 100%;
     height: auto;
     max-height: 60vh;
@@ -115,16 +347,56 @@
       0 0 15px rgba(0,0,0,0.8);
 
     background: #000;
+
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  /*
+     フルスクリーン時
+     縦動画／横動画の元の比率を維持。
+  */
+  #relaxVideo:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0;
+    box-shadow: none;
+    background: #000;
+  }
+
+  #relaxVideo:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    object-fit: contain;
+    border-radius: 0;
+    box-shadow: none;
+    background: #000;
+  }
+
 </style>
 </head>
+
 
 <body>
 
 <div class="container">
 
-  <!-- 日付はJavaScriptで自動表示 -->
+  <!-- 壁紙番号（既存GAP内） -->
+  <div id="wallpaperNumber">- 01 -</div>
+
+  <!-- ========================================
+       日付
+       ======================================== -->
+
   <div class="date" id="date"></div>
+
+
+  <!-- ========================================
+       メッセージ
+       ======================================== -->
 
   <div class="message">
     開発中/修正中の案件はございません<br>
@@ -132,40 +404,136 @@
     どうぞ、ごゆっくりお過ごしください
   </div>
 
-  <!-- 癒やしの音楽 -->
-  <button class="button" id="musicButton">
-    癒やしの音楽<br>
-    ♪「OtoLogic」より ♫
-  </button>
 
-  <!-- 癒やしの動画 -->
+  <!-- ========================================
+       音楽選曲Long-tap案内
+       ======================================== -->
+
+  <div id="musicControl">
+
+    <div id="musicHint">
+      選曲はLong-tap/左右フリック
+    </div>
+
+
+    <!-- ========================================
+         癒やしの音楽
+         ======================================== -->
+
+    <button class="button" id="musicButton">
+      癒やしの音楽<br>
+      ♪「OtoLogic」より ♫
+    </button>
+
+
+    <!-- ========================================
+         Long-tapで展開する音楽メニュー
+         ======================================== -->
+
+    <div id="musicMenu">
+    </div>
+
+  </div>
+
+
+  <!-- ========================================
+       癒やしの動画
+       ======================================== -->
+
   <button class="button" id="videoButton">
     癒やしの動画
   </button>
 
-  <!-- 動画表示エリア -->
+
+  <!-- ========================================
+       動画表示エリア
+       ======================================== -->
+
   <div id="videoArea">
+
     <video id="relaxVideo"
            src="@video.mp4"
            playsinline
            preload="metadata">
     </video>
+
   </div>
 
-  <!-- 戻る -->
+
+  <!-- ========================================
+       戻る
+       ======================================== -->
+
   <button class="button" id="backButton">
     戻る
   </button>
 
+
+
 </div>
 
-<!-- 音楽 -->
+
+<!-- ========================================
+     音楽
+     ======================================== -->
+
 <audio id="relaxMusic"
-       src="@music.mp3"
-       preload="metadata">
+       preload="auto">
 </audio>
 
+
 <script>
+
+
+/* ========================================
+   設定
+   ======================================== */
+
+
+/*
+   音楽ファイル数
+
+   起動時に
+   @music-1.mp3
+   @music-2.mp3
+   …
+   と順番に自動検出する。
+
+   ファイルを追加した場合は、
+   数字を変更する必要はない。
+*/
+
+let musicCount = 0;
+let musicFilesFound = new Set();
+
+/*
+   音楽ファイル数の検出完了フラグ
+   検出中はプルダウンを表示しない。
+*/
+let musicReady = false;
+
+
+/*
+   壁紙ファイル数
+
+   現在は
+
+   @wallpaper-1.jpg
+   @wallpaper-2.jpg
+   @wallpaper-3.jpg
+
+   の3枚。
+*/
+
+const wallpaperCount = 3;
+
+
+/*
+   Long-tap判定時間
+*/
+
+const longTapTime = 600;
+
 
 /* ========================================
    日付表示
@@ -173,97 +541,1667 @@
 
 const now = new Date();
 
-const year = now.getFullYear();
-const month = String(now.getMonth() + 1).padStart(2, '0');
-const day = String(now.getDate()).padStart(2, '0');
+const year =
+  now.getFullYear();
+
+const month =
+  String(now.getMonth() + 1)
+    .padStart(2, '0');
+
+const day =
+  String(now.getDate())
+    .padStart(2, '0');
 
 document.getElementById('date').textContent =
   `${year}年${month}月${day}日現在`;
 
 
 /* ========================================
-   癒やしの音楽
+   音楽
    ======================================== */
 
-const music = document.getElementById('relaxMusic');
-const musicButton = document.getElementById('musicButton');
+const music =
+  document.getElementById('relaxMusic');
 
-musicButton.addEventListener('click', async function() {
+const musicButton =
+  document.getElementById('musicButton');
 
-  if (music.paused) {
+const musicHint =
+  document.getElementById('musicHint');
+
+const musicMenu =
+  document.getElementById('musicMenu');
+
+const musicControl =
+  document.getElementById('musicControl');
+
+
+/* ========================================
+   音楽タイトル
+   再生処理とは完全に独立させる。
+   タイトル取得に失敗しても音楽再生には影響させない。
+   ======================================== */
+
+const musicTitleCache = new Map();
+let musicTitleRequestId = 0;
+const musicTitleDisplayDelay = 5;
+
+/* ========================================
+   Gemini-toolで実績のあるタイトル取得方式
+   ----------------------------------------
+   取得したMP3をBlob → FileReaderでArrayBuffer化し、
+   生バイトからTIT2/TT2を検索する。
+   音楽再生処理とは完全に独立。
+   ======================================== */
+
+function findBytes(haystack, needle) {
+  for (let i = 0; i <= haystack.length - needle.length; i++) {
+    let found = true;
+    for (let j = 0; j < needle.length; j++) {
+      if (haystack[i + j] !== needle[j]) {
+        found = false;
+        break;
+      }
+    }
+    if (found) return i;
+  }
+  return -1;
+  overflow:hidden;
+  position:relative;
+  text-align:center;
+}
+
+function getMusicTitleFromBuffer(buffer) {
+  const uint8 = new Uint8Array(buffer);
+  const view = new DataView(buffer);
+
+  /* ID3v2ヘッダー確認 */
+  if (
+    uint8.length < 10 ||
+    uint8[0] !== 0x49 ||
+    uint8[1] !== 0x44 ||
+    uint8[2] !== 0x33
+  ) {
+    return '';
+  }
+
+  /* Gemini-toolと同じく生バイトからTIT2を検索 */
+  let index = findBytes(uint8, [0x54, 0x49, 0x54, 0x32]);
+  let frameHeaderSize = 10;
+
+  /* ID3v2.2 */
+  if (index === -1) {
+    index = findBytes(uint8, [0x54, 0x54, 0x32]);
+    frameHeaderSize = 6;
+  }
+
+  if (index === -1) return '';
+
+  let frameSize;
+
+  if (frameHeaderSize === 10) {
+    frameSize =
+      (view.getUint8(index + 4) << 24) |
+      (view.getUint8(index + 5) << 16) |
+      (view.getUint8(index + 6) << 8) |
+      view.getUint8(index + 7);
+  } else {
+    frameSize =
+      (view.getUint8(index + 3) << 16) |
+      (view.getUint8(index + 4) << 8) |
+      view.getUint8(index + 5);
+  }
+
+  if (frameSize <= 1) return '';
+
+  const textStart = index + frameHeaderSize;
+  const textEnd = textStart + frameSize;
+
+  if (textStart >= uint8.length || textEnd > uint8.length) return '';
+
+  const encoding = uint8[textStart];
+  const textBytes = uint8.slice(textStart + 1, textEnd);
+
+  let title = '';
+
+  try {
+    if (encoding === 1 || encoding === 2) {
+      title = new TextDecoder('utf-16').decode(textBytes);
+    } else if (encoding === 3) {
+      title = new TextDecoder('utf-8').decode(textBytes);
+    } else {
+      title = new TextDecoder('shift_jis').decode(textBytes);
+    }
+  } catch (error) {
+    return '';
+  }
+
+  return title
+    .replace(/\0/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
+}
+
+function readMusicTitleWithFileReader(blob) {
+  return new Promise(function(resolve) {
+    const reader = new FileReader();
+
+    reader.onload = function() {
+      try {
+        resolve(getMusicTitleFromBuffer(reader.result) || '');
+      } catch (error) {
+        resolve('');
+      }
+    };
+
+    reader.onerror = function() {
+      resolve('');
+    };
 
     try {
-      await music.play();
-      musicButton.textContent = '音楽停止';
-
+      reader.readAsArrayBuffer(blob);
     } catch (error) {
-      console.log('音楽を再生できませんでした:', error);
+      resolve('');
+    }
+  });
+}
+
+async function fetchMusicTitle(number) {
+  if (musicTitleCache.has(number)) {
+    return musicTitleCache.get(number);
+  }
+
+  const file = getMusicFile(number);
+
+  try {
+    /*
+       Gemini-toolのFileReader方式に合わせるため、
+       まずMP3をBlobとして取得し、そのBlobをFileReaderで読む。
+       この処理は音楽再生とは完全に独立している。
+    */
+    const response = await fetch(file, { cache: 'no-store' });
+    if (!response.ok) return '';
+
+    const blob = await response.blob();
+    const title = await readMusicTitleWithFileReader(blob);
+
+    if (title) {
+      musicTitleCache.set(number, title);
     }
 
-  } else {
+    return title;
+  } catch (error) {
+    console.log('音楽タイトル取得に失敗しました:', error);
+    return '';
+  }
+}
 
-    music.pause();
-    music.currentTime = 0;
-    musicButton.textContent = '癒やしの音楽';
+function showMusicLongTapHint() {
+  musicHint.innerHTML = '選曲はLong-tap/左右フリック';
+}
+
+function showMusicTitle(title, allowScroll = true) {
+  if (!title) {
+    showMusicLongTapHint();
+    return;
+  }
+
+  const buttonWidth = musicButton.getBoundingClientRect().width;
+  if (buttonWidth > 0) musicHint.style.width = `${buttonWidth}px`;
+
+  musicHint.innerHTML = "";
+
+  const span = document.createElement("span");
+  span.className = "musicTitleText";
+  span.textContent = `♪${title}♫`;
+  musicHint.appendChild(span);
+
+  const hintWidth = musicHint.clientWidth;
+  const titleWidth = span.scrollWidth;
+
+  if (allowScroll && titleWidth > hintWidth) {
+    span.style.setProperty("--music-title-start", `${hintWidth}px`);
+    span.style.setProperty("--music-title-end", `${-titleWidth}px`);
+    span.classList.add("scroll");
+  } else {
+    span.classList.add("fit");
+  }
+
+  musicHint.style.visibility = "visible";
+}
+
+function syncMusicHintWidth() {
+  const buttonWidth = musicButton.getBoundingClientRect().width;
+  if (buttonWidth > 0) musicHint.style.width = `${buttonWidth}px`;
+}
+
+function updateMusicTitleByTime() {
+  if (musicMode === 'none' || music.paused || !music.src) return;
+
+  if (music.currentTime < musicTitleDisplayDelay) {
+    showMusicLongTapHint();
+    return;
+  }
+
+  const title = musicTitleCache.get(currentMusic);
+  showMusicTitle(title || '');
+}
+
+function prepareMusicTitle(number, requestId) {
+  fetchMusicTitle(number).then(function(title) {
+    if (requestId !== musicTitleRequestId) return;
+    if (currentMusic !== number || musicMode === 'none') return;
+
+    if (!music.paused && music.currentTime >= musicTitleDisplayDelay) {
+      showMusicTitle(title || '');
+    }
+  });
+}
+
+
+
+/*
+   再生モード
+
+   none   ：停止
+   all    ：全曲リピート
+   single ：選択曲リピート
+*/
+
+let musicMode = 'none';
+
+
+/*
+   現在の曲番号
+*/
+
+let currentMusic = 1;
+
+
+/*
+   Long-tap関連
+*/
+
+let pressTimer = null;
+
+let longTapTriggered = false;
+
+
+/* ========================================
+   音楽ファイル名
+   ======================================== */
+
+function getMusicFile(number) {
+
+  return `@music-${number}.mp3`;
+
+}
+
+
+/* ========================================
+   音楽ファイル数を起動時に自動検出
+   ======================================== */
+
+async function detectMusicCount() {
+
+  musicCount = 0;
+  musicFilesFound = new Set();
+
+  /*
+     MP3は最大20個まで確認する。
+     番号に歯抜けがあっても検出する。
+     例：1, 3, 4 が存在する場合も対応。
+  */
+  const maxProbe = 20;
+
+  for (let i = 1; i <= maxProbe; i++) {
+
+    const file = getMusicFile(i);
+
+    const exists = await new Promise((resolve) => {
+
+      const testAudio = new Audio();
+      let finished = false;
+
+      const finish = (result) => {
+        if (finished) return;
+        finished = true;
+        testAudio.removeEventListener('loadedmetadata', onSuccess);
+        testAudio.removeEventListener('canplay', onSuccess);
+        testAudio.removeEventListener('error', onError);
+        testAudio.src = '';
+        resolve(result);
+      };
+
+      const onSuccess = () => finish(true);
+      const onError = () => finish(false);
+
+      testAudio.preload = 'metadata';
+      testAudio.addEventListener('loadedmetadata', onSuccess, { once: true });
+      testAudio.addEventListener('canplay', onSuccess, { once: true });
+      testAudio.addEventListener('error', onError, { once: true });
+      testAudio.src = file;
+      testAudio.load();
+    });
+
+    if (exists) {
+      musicFilesFound.add(i);
+      musicCount = Math.max(musicCount, i);
+    }
 
   }
-});
+
+  /*
+     前回再生曲の存在を確認。
+     ただし起動時の選択は別途すでに行っている。
+     前回曲が存在しなければMusic-1へ変更する。
+  */
+  const savedMusic =
+    localStorage.getItem('fukiyaTestLastMusic');
+
+  const savedNumber = Number(savedMusic);
+
+  if (
+    Number.isInteger(savedNumber) &&
+    savedNumber >= 1 &&
+    savedNumber <= maxProbe &&
+    musicFilesFound.has(savedNumber)
+  ) {
+    currentMusic = savedNumber;
+  }
+  else {
+    currentMusic = 1;
+  }
+
+}
 
 
-/* 音楽終了時 */
-music.addEventListener('ended', function() {
-  musicButton.textContent = '癒やしの音楽';
+/* ========================================
+   現在曲を保存
+   ======================================== */
+
+function saveCurrentMusic() {
+
+  localStorage.setItem(
+    'fukiyaTestLastMusic',
+    String(currentMusic)
+  );
+
+}
+
+
+/* ========================================
+   音楽左右フリック
+   有効範囲：音楽ボタンより上の既存領域全体
+             ＋戻るボタン下方の固定エリア
+   ======================================== */
+
+const musicSwipeBottom =
+  document.getElementById('musicSwipeBottom');
+
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeTracking = false;
+
+const swipeMinX = 50;
+const swipeMaxY = 80;
+
+function musicSwipeStart(event) {
+
+  /* 音楽再生中またはPause中だけ有効 */
+  if (musicMode === 'none' || !music.src) {
+    return;
+  }
+
+  swipeStartX = event.clientX;
+  swipeStartY = event.clientY;
+  swipeTracking = true;
+
+}
+
+async function musicSwipeEnd(event) {
+
+  if (!swipeTracking) {
+    return;
+  }
+
+  swipeTracking = false;
+
+  const dx = event.clientX - swipeStartX;
+  const dy = event.clientY - swipeStartY;
+
+  /* 左右移動が小さい／上下移動が大きい場合は無視 */
+  if (
+    Math.abs(dx) < swipeMinX ||
+    Math.abs(dy) > swipeMaxY
+  ) {
+    return;
+  }
+
+  /* MP3検出完了前は曲送りを行わない */
+  if (!musicReady || musicFilesFound.size === 0) {
+    return;
+  }
+
+  const available =
+    Array.from(musicFilesFound)
+      .sort((a, b) => a - b);
+
+  if (available.length <= 1) {
+    return;
+  }
+
+  let currentIndex =
+    available.indexOf(currentMusic);
+
+  if (currentIndex === -1) {
+    currentIndex = 0;
+  }
+
+  /*
+     右→左：次の曲
+     左→右：前の曲
+  */
+  if (dx < 0) {
+    currentIndex =
+      (currentIndex + 1) % available.length;
+  }
+  else {
+    currentIndex =
+      (currentIndex - 1 + available.length) % available.length;
+  }
+
+  const nextMusic =
+    available[currentIndex];
+
+  /* フリック前の再生状態を保存 */
+  const wasPaused = music.paused;
+
+  /*
+     Pause中なら再生を開始せず、曲だけ変更する。
+     再生モードは musicMode のまま継続する。
+  */
+  if (wasPaused) {
+
+    currentMusic = nextMusic;
+    saveCurrentMusic();
+
+    music.src =
+      getMusicFile(currentMusic);
+
+    music.load();
+
+    showPausedButton();
+
+  }
+  else {
+
+    await playMusic(nextMusic);
+
+  }
+
+}
+
+function musicSwipeCancel() {
+  swipeTracking = false;
+}
+
+/*
+   音楽ボタンより上の既存領域全体をフリック可能にする。
+   70pxの専用領域は追加しないため、元のGAPは変わらない。
+   音楽ボタン／選曲メニューそのものは対象外。
+*/
+
+document.addEventListener('pointerdown', function(event) {
+
+  const buttonRect =
+    musicButton.getBoundingClientRect();
+
+  if (
+    event.clientY >= buttonRect.top ||
+    musicMenu.contains(event.target) ||
+    musicButton.contains(event.target)
+  ) {
+    return;
+  }
+
+  musicSwipeStart(event);
+
 });
+
+document.addEventListener('pointerup', function(event) {
+
+  if (!swipeTracking) {
+    return;
+  }
+
+  musicSwipeEnd(event);
+
+});
+
+document.addEventListener('pointercancel', function() {
+  musicSwipeCancel();
+});
+
+/*
+   Android / iPhoneでは、上方の既存領域について
+   pointerイベントだけに頼らず touchstart / touchend も使用する。
+   専用のフリック領域は作らない。
+*/
+let topTouchTracking = false;
+let topTouchStartX = 0;
+let topTouchStartY = 0;
+
+document.addEventListener('touchstart', function(event) {
+
+  if (musicMode === 'none' || !music.src) return;
+  if (!musicReady || musicFilesFound.size === 0) return;
+  if (musicMenu.contains(event.target) || musicButton.contains(event.target)) return;
+
+  const touch = event.touches[0];
+  const buttonRect = musicButton.getBoundingClientRect();
+
+  if (touch.clientY >= buttonRect.top) return;
+
+  topTouchStartX = touch.clientX;
+  topTouchStartY = touch.clientY;
+  topTouchTracking = true;
+}, { passive: true });
+
+document.addEventListener('touchend', async function(event) {
+
+  if (!topTouchTracking) return;
+  topTouchTracking = false;
+
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - topTouchStartX;
+  const dy = touch.clientY - topTouchStartY;
+
+  if (Math.abs(dx) < swipeMinX || Math.abs(dy) > swipeMaxY) return;
+  if (!musicReady || musicFilesFound.size === 0) return;
+
+  const available = Array.from(musicFilesFound).sort((a, b) => a - b);
+  if (available.length <= 1) return;
+
+  let currentIndex = available.indexOf(currentMusic);
+  if (currentIndex === -1) currentIndex = 0;
+
+  if (dx < 0) {
+    currentIndex = (currentIndex + 1) % available.length;
+  } else {
+    currentIndex = (currentIndex - 1 + available.length) % available.length;
+  }
+
+  const nextMusic = available[currentIndex];
+  const wasPaused = music.paused;
+
+  if (wasPaused) {
+    currentMusic = nextMusic;
+    saveCurrentMusic();
+    music.src = getMusicFile(currentMusic);
+    music.load();
+    showPausedButton();
+  } else {
+    await playMusic(nextMusic);
+  }
+}, { passive: true });
+
+document.addEventListener('touchcancel', function() {
+  topTouchTracking = false;
+}, { passive: true });
+
+
+/*
+   戻るボタンより下の「壁紙領域全部」をフリック可能にする。
+   専用の70px領域は設けない。
+   横方向のタッチ移動をブラウザのジェスチャーに奪われないよう、
+   横移動が確認できた時点でpreventDefault()する。
+*/
+
+let bottomTouchTracking = false;
+let bottomTouchStartX = 0;
+let bottomTouchStartY = 0;
+
+document.addEventListener('touchstart', function(event) {
+
+  if (musicMode === 'none' || !music.src) return;
+  if (!musicReady || musicFilesFound.size === 0) return;
+  if (!event.touches || event.touches.length === 0) return;
+
+  const touch = event.touches[0];
+  const backButton = document.getElementById('backButton');
+
+  if (!backButton) return;
+
+  const backRect = backButton.getBoundingClientRect();
+
+  // 戻るボタンより下の画面全体
+  if (touch.clientY <= backRect.bottom) return;
+
+  bottomTouchStartX = touch.clientX;
+  bottomTouchStartY = touch.clientY;
+  bottomTouchTracking = true;
+
+}, { passive: true });
+
+
+document.addEventListener('touchmove', function(event) {
+
+  if (!bottomTouchTracking) return;
+  if (!event.touches || event.touches.length === 0) return;
+
+  const touch = event.touches[0];
+  const dx = touch.clientX - bottomTouchStartX;
+  const dy = touch.clientY - bottomTouchStartY;
+
+  // 横フリックと判断したらブラウザ側の横ジェスチャーを止める
+  if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) >= 10) {
+    event.preventDefault();
+  }
+
+}, { passive: false });
+
+
+document.addEventListener('touchend', async function(event) {
+
+  if (!bottomTouchTracking) return;
+  bottomTouchTracking = false;
+
+  if (!event.changedTouches || event.changedTouches.length === 0) return;
+
+  const touch = event.changedTouches[0];
+  const dx = touch.clientX - bottomTouchStartX;
+  const dy = touch.clientY - bottomTouchStartY;
+
+  if (Math.abs(dx) < swipeMinX || Math.abs(dy) > swipeMaxY) return;
+  if (!musicReady || musicFilesFound.size === 0) return;
+
+  const available = Array.from(musicFilesFound).sort((a, b) => a - b);
+  if (available.length <= 1) return;
+
+  let currentIndex = available.indexOf(currentMusic);
+  if (currentIndex === -1) currentIndex = 0;
+
+  if (dx < 0) {
+    currentIndex = (currentIndex + 1) % available.length;
+  } else {
+    currentIndex = (currentIndex - 1 + available.length) % available.length;
+  }
+
+  const nextMusic = available[currentIndex];
+  const wasPaused = music.paused;
+
+  if (wasPaused) {
+    currentMusic = nextMusic;
+    saveCurrentMusic();
+    music.src = getMusicFile(currentMusic);
+    music.load();
+    showPausedButton();
+  } else {
+    await playMusic(nextMusic);
+  }
+
+}, { passive: true });
+
+
+document.addEventListener('touchcancel', function() {
+  bottomTouchTracking = false;
+}, { passive: true });
+
+
+/* ========================================
+   再生中表示
+   ======================================== */
+
+function showPlayingButton() {
+
+  musicHint.style.visibility =
+    'visible';
+
+  musicButton.innerHTML =
+    `Music-${currentMusic}<br>
+     <span class="music-pause">〓</span>`;
+
+}
+
+
+/* ========================================
+   Pause表示
+   ======================================== */
+
+function showPausedButton() {
+
+  musicHint.style.visibility =
+    'visible';
+
+  musicButton.innerHTML =
+    `Music-${currentMusic}<br>
+     <span class="music-play">▶</span>`;
+
+}
+
+
+/* ========================================
+   初期表示
+   ======================================== */
+
+function showInitialButton() {
+
+  musicHint.style.visibility =
+    'hidden';
+
+  musicButton.innerHTML =
+    `癒やしの音楽<br>
+     ♪「OtoLogic」より ♫`;
+
+}
+
+
+/* ========================================
+   音楽再生
+   ======================================== */
+
+async function playMusic(number) {
+
+  /*
+     MP3検出完了前でも再生できるようにする。
+     Music-1～Music-20の範囲なら再生を試みる。
+  */
+  if (
+    !Number.isInteger(number) ||
+    number < 1 ||
+    number > 20
+  ) {
+    return;
+  }
+
+  /*
+     音楽再生時は動画を停止。
+     動画の再生位置はリセットする。
+  */
+  if (!video.paused) {
+    video.pause();
+    video.currentTime = 0;
+    videoArea.style.display = 'none';
+    videoButton.textContent = '癒やしの動画';
+  }
+
+  currentMusic = number;
+  saveCurrentMusic();
+
+  music.src =
+    getMusicFile(currentMusic);
+
+  /* タイトル取得は再生開始を待たせない */
+  const titleRequestId = ++musicTitleRequestId;
+  showMusicLongTapHint();
+  prepareMusicTitle(currentMusic, titleRequestId);
+
+  music.load();
+
+  try {
+
+    await music.play();
+
+    showPlayingButton();
+
+  } catch (error) {
+
+    /*
+       起動直後で前回曲の存在確認がまだ終わっておらず、
+       前回曲が存在しなかった場合はMusic-1へ。
+    */
+    if (
+      !musicReady &&
+      currentMusic !== 1
+    ) {
+      currentMusic = 1;
+      saveCurrentMusic();
+      music.src = getMusicFile(1);
+      music.load();
+
+      try {
+        await music.play();
+        showPlayingButton();
+        return;
+      } catch (retryError) {
+        console.log(
+          'Music-1も再生できませんでした:',
+          retryError
+        );
+      }
+    }
+
+    console.log(
+      '音楽を再生できませんでした:',
+      error
+    );
+
+  }
+
+}
+
+
+/* ========================================
+   Pause → 再生
+   ======================================== */
+
+async function resumeMusic() {
+
+  try {
+
+    await music.play();
+
+    showPlayingButton();
+
+  } catch (error) {
+
+    console.log(
+      '音楽を再生できませんでした:',
+      error
+    );
+
+  }
+
+}
+
+
+/* ========================================
+   音楽ボタン short-tap
+   ======================================== */
+
+musicButton.addEventListener(
+  'pointerup',
+  async function(event) {
+
+    event.preventDefault();
+
+    /*
+       Long-tapでメニューを開いた直後のpointerupは
+       short-tapとして処理しない。
+    */
+    if (longTapTriggered) {
+      longTapTriggered = false;
+      return;
+    }
+
+    /*
+       プルダウン表示中のshort-tap
+       → メニューだけ閉じる。
+       再生／停止状態は変化させない。
+    */
+    if (musicMenu.style.display === 'block') {
+      musicMenu.style.display = 'none';
+      return;
+    }
+
+    /* 再生中 → Pause */
+    if (!music.paused) {
+      music.pause();
+      showPausedButton();
+      return;
+    }
+
+    /* Pause状態 → 続きから再生 */
+    if (musicMode !== 'none' && music.src) {
+      await resumeMusic();
+      return;
+    }
+
+    /* 完全停止状態 → Music all play開始 */
+    musicMode = 'all';
+    await playMusic(currentMusic);
+  }
+);
+
+
+/* ========================================
+   Long-tap開始
+   ======================================== */
+
+function startLongTap(event) {
+
+  event.preventDefault();
+
+  longTapTriggered = false;
+
+
+  pressTimer = setTimeout(
+    function() {
+
+      longTapTriggered = true;
+
+      showMusicMenu();
+
+    },
+    longTapTime
+  );
+
+}
+
+
+/* ========================================
+   Long-tap終了
+   ======================================== */
+
+function endLongTap(event) {
+
+  if (pressTimer !== null) {
+
+    clearTimeout(pressTimer);
+
+    pressTimer = null;
+
+  }
+
+}
+
+
+/* ========================================
+   Long-tapイベント
+   ======================================== */
+
+musicButton.addEventListener(
+  'pointerdown',
+  startLongTap
+);
+
+musicButton.addEventListener(
+  'pointerup',
+  endLongTap
+);
+
+musicButton.addEventListener(
+  'pointercancel',
+  endLongTap
+);
+
+musicButton.addEventListener(
+  'pointerleave',
+  endLongTap
+);
+
+
+/*
+   右クリック等を防止
+*/
+
+musicButton.addEventListener(
+  'contextmenu',
+  function(event) {
+
+    event.preventDefault();
+
+  }
+);
+
+
+/* ========================================
+   音楽メニュー作成
+   ======================================== */
+
+function createMusicMenu() {
+
+  musicMenu.innerHTML = '';
+
+  /*
+     Play all Music
+  */
+
+  const allOption =
+    document.createElement('div');
+
+  allOption.className =
+    'musicOption';
+
+  allOption.textContent =
+    'Play all Music';
+
+  allOption.dataset.value =
+    'all';
+
+  musicMenu.appendChild(
+    allOption
+  );
+
+  /*
+     存在するMP3だけを表示する。
+     歯抜けにも対応。
+  */
+  for (
+    let i = 1;
+    i <= musicCount;
+    i++
+  ) {
+
+    if (!musicFilesFound.has(i)) {
+      continue;
+    }
+
+    const option =
+      document.createElement('div');
+
+    option.className =
+      'musicOption';
+
+    option.textContent =
+      `Music-${i}`;
+
+    option.dataset.value =
+      String(i);
+
+    musicMenu.appendChild(
+      option
+    );
+
+  }
+
+}
+
+
+/* ========================================
+   現在曲表示を更新
+   ======================================== */
+
+function updateMusicMenuHighlight() {
+
+  const options =
+    musicMenu.querySelectorAll('.musicOption');
+
+  options.forEach(function(option) {
+
+    option.classList.remove('currentMusic');
+
+    if (
+      option.dataset.value !== 'all' &&
+      Number(option.dataset.value) === currentMusic &&
+      musicMode !== 'none'
+    ) {
+      option.classList.add('currentMusic');
+    }
+
+  });
+
+}
+
+
+/* ========================================
+   音楽メニュー表示
+   ======================================== */
+
+function showMusicMenu() {
+
+  /* 検出完了前は表示しない */
+  if (!musicReady) {
+    return;
+  }
+
+  updateMusicMenuHighlight();
+
+  musicMenu.style.display =
+    'block';
+
+}
+
+
+/* ========================================
+   音楽メニュー選択
+   ======================================== */
+
+musicMenu.addEventListener(
+  'click',
+  async function(event) {
+
+    const option =
+      event.target.closest('.musicOption');
+
+    if (!option) {
+
+      return;
+
+    }
+
+    const value =
+      option.dataset.value;
+
+
+    /*
+       Music all play
+    */
+
+    if (value === 'all') {
+
+      musicMode = 'all';
+
+      /*
+         現在曲から全曲再生
+      */
+
+      await playMusic(currentMusic);
+
+    }
+
+
+    /*
+       個別曲
+    */
+
+    else {
+
+      const number =
+        Number(value);
+
+      if (
+        Number.isInteger(number) &&
+        number >= 1 &&
+        number <= musicCount &&
+        musicFilesFound.has(number)
+      ) {
+
+        musicMode = 'single';
+
+        await playMusic(number);
+
+      }
+
+    }
+
+
+    /*
+       選曲後はメニューを閉じる。
+    */
+
+    musicMenu.style.display =
+      'none';
+
+  }
+);
+
+
+/* ========================================
+   プルダウン以外をtapしたら閉じる
+   ======================================== */
+
+document.addEventListener(
+  'pointerdown',
+  function(event) {
+
+    if (
+      musicMenu.style.display === 'block' &&
+      !musicControl.contains(event.target)
+    ) {
+      musicMenu.style.display = 'none';
+    }
+
+  }
+);
+
+
+/* ========================================
+   音楽終了
+   ======================================== */
+
+music.addEventListener(
+  'ended',
+  async function() {
+
+
+    /*
+       完全停止状態
+    */
+
+    if (musicMode === 'none') {
+
+      showInitialButton();
+
+      return;
+
+    }
+
+
+    /*
+       個別曲
+       → 同じ曲をリピート
+    */
+
+    if (musicMode === 'single') {
+
+      await playMusic(currentMusic);
+
+      return;
+
+    }
+
+
+    /*
+       全曲再生
+       → 次の曲
+    */
+
+    if (musicMode === 'all') {
+
+      const available =
+        Array.from(musicFilesFound)
+          .sort((a, b) => a - b);
+
+      if (available.length === 0) {
+        return;
+      }
+
+      const currentIndex =
+        available.indexOf(currentMusic);
+
+      if (currentIndex === -1) {
+        currentMusic = available[0];
+      }
+      else {
+        currentMusic =
+          available[
+            (currentIndex + 1) %
+            available.length
+          ];
+      }
+
+      await playMusic(currentMusic);
+
+    }
+
+  }
+);
+
+
+/* ========================================
+   音楽初期表示
+   ======================================== */
+
+async function initializeMusic() {
+
+  /*
+     MP3検出はバックグラウンドで行う。
+     検出完了を待たず、音楽ボタンはすぐ使用可能。
+  */
+  detectMusicCount()
+    .then(function() {
+
+      createMusicMenu();
+      musicReady = true;
+
+      /*
+         前回曲が存在しなければMusic-1。
+         すでに再生中なら再生状態は変更しない。
+      */
+      if (
+        music.paused &&
+        musicMode === 'none'
+      ) {
+        showInitialButton();
+      }
+
+    })
+    .catch(function(error) {
+
+      console.log(
+        'MP3検出中にエラーが発生しました:',
+        error
+      );
+
+      musicReady = true;
+      createMusicMenu();
+
+    });
+
+}
+
+/*
+   起動時の選曲は検出完了を待たずに決定する。
+   ①前回再生していたMP3
+   ②①が無ければMusic-1
+   前回情報がなければMusic-1。
+*/
+(function loadInitialMusicSelection() {
+
+  const savedMusic =
+    localStorage.getItem('fukiyaTestLastMusic');
+
+  const savedNumber =
+    Number(savedMusic);
+
+  if (
+    Number.isInteger(savedNumber) &&
+    savedNumber >= 1 &&
+    savedNumber <= 20
+  ) {
+    currentMusic = savedNumber;
+  }
+  else {
+    currentMusic = 1;
+  }
+
+  showInitialButton();
+
+})();
+
+initializeMusic();
+
+/* 5秒後のタイトル表示 */
+music.addEventListener('timeupdate', updateMusicTitleByTime);
+
+
+/* ========================================
+   壁紙
+   ======================================== */
+
+/* @wallpaper-1.jpg ～ @wallpaper-20.jpg
+   番号に歯抜けがあっても対応する。 */
+const maxWallpaperProbe = 20;
+const wallpaperNumber = document.getElementById('wallpaperNumber');
+let wallpaperNumbers = [];
+const wallpaperFiles = {};
+const wallpaperImages = {};
+let currentWallpaper = 1;
+
+function showWallpaperNumber(number) {
+  wallpaperNumber.textContent = `- ${String(number).padStart(2, '0')} -`;
+}
+
+function detectWallpaperFiles() {
+  const probes = [];
+  for (let i = 1; i <= maxWallpaperProbe; i++) {
+    probes.push(new Promise(function(resolve) {
+      const image = new Image();
+      const file = `@wallpaper-${i}.jpg`;
+      image.onload = function() {
+        resolve(image.naturalWidth > 0 ? {number:i, image:image} : null);
+      };
+      image.onerror = function() { resolve(null); };
+      image.src = file;
+    }));
+  }
+  return Promise.all(probes);
+}
+
+async function initializeWallpaper() {
+  const results = await detectWallpaperFiles();
+  wallpaperNumbers = [];
+
+  results.forEach(function(result) {
+    if (!result) return;
+    const number = result.number;
+    wallpaperNumbers.push(number);
+    wallpaperFiles[number] = `@wallpaper-${number}.jpg`;
+    wallpaperImages[number] = result.image;
+  });
+
+  wallpaperNumbers.sort(function(a,b) { return a-b; });
+  if (wallpaperNumbers.length === 0) return;
+
+  const savedNumber = Number(localStorage.getItem('fukiyaTestLastWallpaper'));
+  if (Number.isInteger(savedNumber) && wallpaperNumbers.includes(savedNumber)) {
+    currentWallpaper = savedNumber;
+  } else {
+    currentWallpaper = wallpaperNumbers[0];
+  }
+
+  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
+  showWallpaperNumber(currentWallpaper);
+}
+
+function changeWallpaper() {
+  if (wallpaperNumbers.length === 0) return;
+  const currentIndex = wallpaperNumbers.indexOf(currentWallpaper);
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % wallpaperNumbers.length;
+  const nextWallpaper = wallpaperNumbers[nextIndex];
+  const nextImage = wallpaperImages[nextWallpaper];
+  if (!nextImage || !nextImage.complete || nextImage.naturalWidth === 0) return;
+
+  currentWallpaper = nextWallpaper;
+  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
+  showWallpaperNumber(currentWallpaper);
+  localStorage.setItem('fukiyaTestLastWallpaper', String(currentWallpaper));
+}
+
+initializeWallpaper();
+
+/* 5秒ごと（テスト用） */
+setInterval(changeWallpaper, 5000);
 
 
 /* ========================================
    癒やしの動画
    ======================================== */
 
-const video = document.getElementById('relaxVideo');
-const videoButton = document.getElementById('videoButton');
-const videoArea = document.getElementById('videoArea');
+const video =
+  document.getElementById('relaxVideo');
 
-videoButton.addEventListener('click', async function() {
+const videoButton =
+  document.getElementById('videoButton');
 
-  if (video.paused) {
+const videoArea =
+  document.getElementById('videoArea');
 
-    videoArea.style.display = 'block';
 
-    try {
-      await video.play();
-      videoButton.textContent = '動画停止';
+/*
+   動画ボタン
 
-    } catch (error) {
-      console.log('動画を再生できませんでした:', error);
+   ① ボタンtap
+      小窓を表示して再生。
+
+   ② 小窓の動画tap
+      フルスクリーンへ。
+
+   ③ フルスクリーン中の動画tap
+      フルスクリーンを解除して小窓へ戻る。
+*/
+
+videoButton.addEventListener(
+  'click',
+  async function() {
+
+    if (video.paused) {
+
+      /*
+         動画開始時は音楽を自動停止。
+         再生位置は保持し、動画終了後も自動再開しない。
+      */
+      if (!music.paused) {
+        music.pause();
+        showPausedButton();
+      }
+
+      videoArea.style.display =
+        'block';
+
+      try {
+
+        await video.play();
+
+        videoButton.textContent =
+          '動画停止';
+
+      } catch (error) {
+
+        console.log(
+          '動画を再生できませんでした:',
+          error
+        );
+
+      }
+
     }
 
-  } else {
+    else {
 
-    video.pause();
-    video.currentTime = 0;
-    videoArea.style.display = 'none';
-    videoButton.textContent = '癒やしの動画';
+      video.pause();
+
+      video.currentTime = 0;
+
+      videoArea.style.display =
+        'none';
+
+      videoButton.textContent =
+        '癒やしの動画';
+
+    }
 
   }
-});
+);
 
 
-/* 動画終了時 */
-video.addEventListener('ended', function() {
-  videoButton.textContent = '癒やしの動画';
-  videoArea.style.display = 'none';
-});
+/*
+   動画tap
+   小窓 ⇔ フルスクリーン
+*/
+video.addEventListener(
+  'click',
+  async function() {
+
+    /*
+       フルスクリーン中
+       → フルスクリーン解除
+    */
+    if (
+      document.fullscreenElement === video ||
+      document.webkitFullscreenElement === video
+    ) {
+
+      try {
+
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+
+        else if (
+          document.webkitExitFullscreen
+        ) {
+          document.webkitExitFullscreen();
+        }
+
+      } catch (error) {
+
+        console.log(
+          'フルスクリーン解除に失敗しました:',
+          error
+        );
+
+      }
+
+      return;
+    }
+
+
+    /*
+       小窓表示中
+       → フルスクリーン
+    */
+
+    try {
+
+      if (video.requestFullscreen) {
+        await video.requestFullscreen();
+      }
+
+      else if (
+        video.webkitEnterFullscreen
+      ) {
+        /*
+           iPhone Safari用。
+           Safariのvideo fullscreenへ移行。
+        */
+        video.webkitEnterFullscreen();
+      }
+
+    } catch (error) {
+
+      console.log(
+        'フルスクリーン表示に失敗しました:',
+        error
+      );
+
+    }
+
+  }
+);
+
+
+/*
+   フルスクリーン解除後
+
+   小窓表示を維持。
+   再生はそのまま継続する。
+*/
+document.addEventListener(
+  'fullscreenchange',
+  function() {
+
+    if (!document.fullscreenElement) {
+
+      if (!video.paused) {
+
+        videoArea.style.display =
+          'block';
+
+        videoButton.textContent =
+          '動画停止';
+
+      }
+
+    }
+
+  }
+);
+
+
+/*
+   動画終了時
+*/
+video.addEventListener(
+  'ended',
+  function() {
+
+    /*
+       動画終了時はフルスクリーンも明示的に終了する
+    */
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else if (document.webkitFullscreenElement) {
+      if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } else if (video.webkitDisplayingFullscreen) {
+      if (video.webkitExitFullscreen) {
+        video.webkitExitFullscreen();
+      }
+    }
+
+    videoButton.textContent =
+      '癒やしの動画';
+
+    videoArea.style.display =
+      'none';
+
+  }
+);
 
 
 /* ========================================
    戻る
    ======================================== */
 
-document.getElementById('backButton').addEventListener('click', function() {
-  history.back();
-});
+document
+  .getElementById('backButton')
+  .addEventListener(
+    'click',
+    function() {
 
+      history.back();
+
+    }
+  );
+
+
+window.addEventListener("resize", syncMusicHintWidth);
+window.addEventListener("orientationchange", syncMusicHintWidth);
+syncMusicHintWidth();
 </script>
 
 </body>
