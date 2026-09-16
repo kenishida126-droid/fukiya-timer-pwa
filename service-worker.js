@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260917-1';
+const CACHE_NAME = 'fukiya-timer-pwa-20260917-2';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -77,7 +77,27 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/@music-18.mp3',
   '/fukiya-timer-pwa/@music-19.mp3',
   '/fukiya-timer-pwa/@music-20.mp3',
-  '/fukiya-timer-pwa/@video.mp4'
+  '/fukiya-timer-pwa/@video.mp4',
+  '/fukiya-timer-pwa/@wallpaper-1.jpg',
+  '/fukiya-timer-pwa/@wallpaper-2.jpg',
+  '/fukiya-timer-pwa/@wallpaper-3.jpg',
+  '/fukiya-timer-pwa/@wallpaper-4.jpg',
+  '/fukiya-timer-pwa/@wallpaper-5.jpg',
+  '/fukiya-timer-pwa/@wallpaper-6.jpg',
+  '/fukiya-timer-pwa/@wallpaper-7.jpg',
+  '/fukiya-timer-pwa/@wallpaper-8.jpg',
+  '/fukiya-timer-pwa/@wallpaper-9.jpg',
+  '/fukiya-timer-pwa/@wallpaper-10.jpg',
+  '/fukiya-timer-pwa/@wallpaper-11.jpg',
+  '/fukiya-timer-pwa/@wallpaper-12.jpg',
+  '/fukiya-timer-pwa/@wallpaper-13.jpg',
+  '/fukiya-timer-pwa/@wallpaper-14.jpg',
+  '/fukiya-timer-pwa/@wallpaper-15.jpg',
+  '/fukiya-timer-pwa/@wallpaper-16.jpg',
+  '/fukiya-timer-pwa/@wallpaper-17.jpg',
+  '/fukiya-timer-pwa/@wallpaper-18.jpg',
+  '/fukiya-timer-pwa/@wallpaper-19.jpg',
+  '/fukiya-timer-pwa/@wallpaper-20.jpg'
 ];
 
 /* ---------------------------------------------------------
