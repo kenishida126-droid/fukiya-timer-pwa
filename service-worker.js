@@ -77,7 +77,7 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/@music-18.mp3',
   '/fukiya-timer-pwa/@music-19.mp3',
   '/fukiya-timer-pwa/@music-20.mp3',
-  '/fukiya-timer-pwa/@video.mp4,
+  '/fukiya-timer-pwa/@video.mp4'
 ];
 
 /* ---------------------------------------------------------
