@@ -470,7 +470,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《ver.28》
+    戻る
   </button>
 
 
@@ -1978,22 +1978,87 @@ async function initializeWallpaper() {
     currentWallpaper = wallpaperNumbers[0];
   }
 
-  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
+  /*
+     壁紙を切り替える前に次の画像を完成させる。
+     PWAで新しいbackground-imageへ直接切り替えると、
+     描画の瞬間にbodyの黒背景が見える場合があるため、
+     現在の壁紙を下に残したまま次の壁紙を重ねる。
+     */
+  const firstWallpaper = wallpaperFiles[currentWallpaper];
+  const nextImage = wallpaperImages[currentWallpaper];
+
+  if (nextImage && typeof nextImage.decode === 'function') {
+    nextImage.decode().catch(function() {});
+  }
+
+  document.body.style.backgroundImage =
+    `url('${firstWallpaper}')`;
+
   showWallpaperNumber(currentWallpaper);
 }
 
-function changeWallpaper() {
+async function changeWallpaper() {
   if (wallpaperNumbers.length === 0) return;
+
   const currentIndex = wallpaperNumbers.indexOf(currentWallpaper);
-  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % wallpaperNumbers.length;
+  const nextIndex =
+    currentIndex === -1
+      ? 0
+      : (currentIndex + 1) % wallpaperNumbers.length;
+
   const nextWallpaper = wallpaperNumbers[nextIndex];
   const nextImage = wallpaperImages[nextWallpaper];
-  if (!nextImage || !nextImage.complete || nextImage.naturalWidth === 0) return;
 
+  if (
+    !nextImage ||
+    !nextImage.complete ||
+    nextImage.naturalWidth === 0
+  ) {
+    return;
+  }
+
+  /*
+     次の画像のdecode完了を待つ。
+     待っている間は現在の壁紙を一切変更しない。
+     これによりBlack画面を挟まない。
+  */
+  if (typeof nextImage.decode === 'function') {
+    try {
+      await nextImage.decode();
+    } catch (error) {
+      /* decode失敗時も従来の表示を維持 */
+    }
+  }
+
+  const previousWallpaper = currentWallpaper;
   currentWallpaper = nextWallpaper;
-  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
+
+  /*
+     現在の壁紙を下層、次の壁紙を上層にする。
+     次の画像が描画されるまで現在の壁紙が見える。
+  */
+  document.body.style.backgroundImage =
+    `url('${wallpaperFiles[nextWallpaper]}'), ` +
+    `url('${wallpaperFiles[previousWallpaper]}')`;
+
+  /*
+     次の壁紙が描画される機会を1フレーム与えてから、
+     下層の旧壁紙を外す。
+  */
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      if (currentWallpaper === nextWallpaper) {
+        document.body.style.backgroundImage =
+          `url('${wallpaperFiles[nextWallpaper]}')`;
+      }
+    });
+  });
+
   showWallpaperNumber(currentWallpaper);
-  localStorage.setItem('fukiyaTestLastWallpaper', String(currentWallpaper));
+  localStorage.setItem(
+    'fukiyaTestLastWallpaper',
+    String(currentWallpaper)
+  );
 }
 
 initializeWallpaper();
