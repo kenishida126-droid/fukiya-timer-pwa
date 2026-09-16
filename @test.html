@@ -39,9 +39,10 @@
 
 
   /* ========================================
-     壁紙切替用2重レイヤー
-     旧壁紙を残したまま新壁紙を表示して、
-     切替時のBlack画面を発生させない。
+     Ver.31 壁紙フェイド切替
+     壁紙Aをフェイドアウトし、
+     Blackを最小時間だけ経由して、
+     壁紙Bをフェイドインする。
      ======================================== */
   #wallpaperLayerA,
   #wallpaperLayerB {
@@ -52,6 +53,7 @@
     background-size: cover;
     background-repeat: no-repeat;
     pointer-events: none;
+    opacity: 0;
   }
 
   #wallpaperLayerA {
@@ -502,7 +504,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.30.1》
+    戻る《Ver.31》
   </button>
 
 
@@ -2008,19 +2010,31 @@ function applyWallpaper(number) {
       ? wallpaperLayerB
       : wallpaperLayerA;
 
-  nextLayer.style.backgroundImage =
-    `url('${wallpaperFiles[number]}')`;
+  const file = wallpaperFiles[number];
 
   /*
-     次のレイヤーを表示してから旧レイヤーを隠す。
-     bodyのbackground-imageは直接変更しない。
+     次の壁紙を非表示側レイヤーへセットする。
+     まず旧壁紙を1秒でフェイドアウト。
   */
-  nextLayer.style.opacity = '1';
+  nextLayer.style.backgroundImage =
+    `url('${file}')`;
 
-  requestAnimationFrame(function() {
-    activeWallpaperLayer.style.opacity = '0';
+  nextLayer.style.opacity = '0';
+  activeWallpaperLayer.style.transition =
+    'opacity 1s linear';
+  activeWallpaperLayer.style.opacity = '0';
+
+  /*
+     Black表示時間は最小値。
+     フェイドアウト完了直後、次の壁紙を
+     1秒でフェイドインする。
+  */
+  setTimeout(function() {
+    nextLayer.style.transition =
+      'opacity 1s linear';
+    nextLayer.style.opacity = '1';
     activeWallpaperLayer = nextLayer;
-  });
+  }, 1000);
 }
 
 async function initializeWallpaper() {
@@ -2045,6 +2059,8 @@ async function initializeWallpaper() {
     currentWallpaper = wallpaperNumbers[0];
   }
 
+  wallpaperLayerA.style.transition = 'none';
+  wallpaperLayerB.style.transition = 'none';
   wallpaperLayerA.style.backgroundImage =
     `url('${wallpaperFiles[currentWallpaper]}')`;
   wallpaperLayerA.style.opacity = '1';
