@@ -509,7 +509,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.37》
+    戻る《Ver.38》
   </button>
 
 
@@ -552,7 +552,7 @@ let musicFilesFound = new Set();
 
 /*
    音楽ファイル数の検出完了フラグ
-   検出中はプルダウンを表示しない。
+   Long-tap時に検出する。
 */
 let musicReady = false;
 
@@ -1036,7 +1036,7 @@ function getMusicFile(number) {
 
 
 /* ========================================
-   音楽ファイル数を起動時に自動検出
+   音楽ファイル数をLong-tap時に検出
    ======================================== */
 
 async function detectMusicCount() {
@@ -1045,60 +1045,82 @@ async function detectMusicCount() {
   musicFilesFound = new Set();
 
   /*
-     Ver.37：音楽ファイル一覧の検出は起動時には行わない。
-     初回再生速度を最優先し、メニューを開く時だけ検出する。
-     最大20個、歯抜けにも対応する。
+     MP3は最大20個まで確認する。
+     番号に歯抜けがあっても対応する。
+
+     Ver.37：
+     この検出処理は起動時には実行しない。
+     初回の音楽ボタン操作を最優先し、
+     MP3存在確認はLong-tapで選曲メニューを開く時だけ行う。
   */
   const maxProbe = 20;
 
+  const probes = [];
+
   for (let i = 1; i <= maxProbe; i++) {
 
-    const file = getMusicFile(i);
+    probes.push(
+      fetch(getMusicFile(i), {
+        method: 'HEAD',
+        cache: 'no-store'
+      })
+      .then(function(response) {
+        return response.ok ? i : null;
+      })
+      .catch(function() {
+        return null;
+      })
+    );
 
-    const exists = await new Promise((resolve) => {
-
-      const testAudio = new Audio();
-      let finished = false;
-
-      const finish = (result) => {
-        if (finished) return;
-        finished = true;
-        testAudio.removeEventListener('loadedmetadata', onSuccess);
-        testAudio.removeEventListener('canplay', onSuccess);
-        testAudio.removeEventListener('error', onError);
-        testAudio.src = '';
-        resolve(result);
-      };
-
-      const onSuccess = () => finish(true);
-      const onError = () => finish(false);
-
-      testAudio.preload = 'metadata';
-      testAudio.addEventListener('loadedmetadata', onSuccess, { once: true });
-      testAudio.addEventListener('canplay', onSuccess, { once: true });
-      testAudio.addEventListener('error', onError, { once: true });
-      testAudio.src = file;
-      testAudio.load();
-
-    });
-
-    if (exists) {
-      musicFilesFound.add(i);
-      musicCount = Math.max(musicCount, i);
-    }
   }
 
-  /* 前回曲の存在を確認 */
-  const savedMusic = localStorage.getItem('fukiyaTestLastMusic');
-  const savedNumber = Number(savedMusic);
+  const results =
+    await Promise.all(probes);
 
-  if (Number.isInteger(savedNumber) && savedNumber >= 1 && savedNumber <= maxProbe && musicFilesFound.has(savedNumber)) {
+  results.forEach(function(number) {
+
+    if (number === null) {
+      return;
+    }
+
+    musicFilesFound.add(number);
+
+    musicCount =
+      Math.max(
+        musicCount,
+        number
+      );
+
+  });
+
+  /*
+     前回再生曲の存在を確認。
+     起動時の選択はすでに別途決定している。
+  */
+  const savedMusic =
+    localStorage.getItem(
+      'fukiyaTestLastMusic'
+    );
+
+  const savedNumber =
+    Number(savedMusic);
+
+  if (
+    Number.isInteger(savedNumber) &&
+    savedNumber >= 1 &&
+    savedNumber <= maxProbe &&
+    musicFilesFound.has(savedNumber)
+  ) {
     currentMusic = savedNumber;
-  } else if (musicFilesFound.size > 0) {
-    currentMusic = Math.min(...musicFilesFound);
-  } else {
+  }
+  else if (musicFilesFound.size > 0) {
+    currentMusic =
+      Math.min(...musicFilesFound);
+  }
+  else {
     currentMusic = 1;
   }
+
 }
 
 
@@ -1920,17 +1942,27 @@ function updateMusicMenuHighlight() {
 async function showMusicMenu() {
 
   /*
-     Ver.37：メニューを開く時だけMP3一覧を検出する。
-     起動直後の初回再生とは完全に分離する。
+     初回の音楽再生を優先するため、
+     MP3存在確認はLong-tap時まで行わない。
   */
   if (!musicReady) {
+
     await detectMusicCount();
+
     createMusicMenu();
     musicReady = true;
+
   }
 
   updateMusicMenuHighlight();
 
+  /*
+     先に表示してメニュー上端を取得する。
+     機種によって異なる画面高さ／ナビゲーション領域に
+     合わせて、表示可能な高さだけを確保する。
+     これによりF-51Bでも最下段のMusic-20まで
+     スクロールして表示できる。
+  */
   musicMenu.style.display =
     'block';
 
@@ -2129,14 +2161,14 @@ music.addEventListener(
    音楽初期表示
    ======================================== */
 
-async function initializeMusic() {
+function initializeMusic() {
 
   /*
-     Ver.37：起動時のMP3一覧検出は行わない。
-     初回再生用の先読みだけを最優先する。
-     MP3一覧はLong-tapでメニューを開く時に検出する。
+     Ver.37：
+     起動時にはMP3存在確認を行わない。
+     初回の音楽再生ボタンを最優先する。
+     選曲メニュー用のMP3検出はLong-tap時に行う。
   */
-  musicReady = false;
 
 }
 
@@ -2168,15 +2200,12 @@ async function initializeMusic() {
   showInitialButton();
 
   /* ========================================
-     初回再生の遅延対策
+     Ver.37 初回再生最優先
 
-     前回曲（またはMusic-1）を起動直後から
-     音声要素へセットして先行ロードする。
-     MP3存在確認の完了は待たない。
+     起動時にはMP3の先読みも行わない。
+     最初の音楽ボタンtapで、初めて
+     対象MP3を音声要素へ設定して再生を開始する。
      ======================================== */
-  music.preload = 'auto';
-  music.src = getMusicFile(currentMusic);
-  music.load();
 
 })();
 
