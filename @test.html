@@ -39,7 +39,7 @@
 
 
   /* ========================================
-     Ver.31 壁紙フェイド切替
+     Ver.32 曲目タイトル表示仕様変更・壁紙フェイド切替
      壁紙Aをフェイドアウトし、
      Blackを最小時間だけ経由して、
      壁紙Bをフェイドインする。
@@ -504,7 +504,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.31》
+    戻る《Ver.32》
   </button>
 
 
@@ -619,11 +619,23 @@ const musicControl =
    音楽タイトル
    再生処理とは完全に独立させる。
    タイトル取得に失敗しても音楽再生には影響させない。
+
+   Ver.32 仕様変更
+   ・起動直後の曲頭5秒間 → 操作方法
+   ・Music all playの曲頭5秒間 → 操作方法
+   ・手動選曲／Long-tap／左右フリック → 即タイトル
    ======================================== */
 
 const musicTitleCache = new Map();
 let musicTitleRequestId = 0;
 const musicTitleDisplayDelay = 5;
+
+/*
+   曲目タイトルの表示方式
+   true  ：Long-tap/左右フリック等で選曲したため即タイトル表示
+   false ：起動直後／Music all playの曲頭5秒間は操作方法を表示
+*/
+let musicTitleImmediate = false;
 
 /* ========================================
    Gemini-toolで実績のあるタイトル取得方式
@@ -822,6 +834,12 @@ function syncMusicHintWidth() {
 function updateMusicTitleByTime() {
   if (musicMode === 'none' || !music.src) return;
 
+  /*
+     手動選曲／Long-tap／左右フリックでは
+     曲頭5秒の操作方法表示を行わない。
+  */
+  if (musicTitleImmediate) return;
+
   if (music.currentTime < musicTitleDisplayDelay) {
     if (!music.paused) {
       showMusicLongTapHint();
@@ -847,6 +865,23 @@ function prepareMusicTitle(number, requestId) {
     if (requestId !== musicTitleRequestId) return;
     if (currentMusic !== number || musicMode === 'none') return;
 
+    /*
+       即タイトル表示モードでは、曲頭5秒を待たず
+       タイトル取得完了直後に表示する。
+       Pause中でも選曲直後なら表示する。
+    */
+    if (musicTitleImmediate) {
+      if (musicTitleShownFor !== number) {
+        showMusicTitle(title || '');
+        musicTitleShownFor = number;
+      }
+      return;
+    }
+
+    /*
+       起動直後／Music all playモードでは
+       曲頭5秒間は操作方法を表示する。
+    */
     if (!music.paused && music.currentTime >= musicTitleDisplayDelay) {
       if (musicTitleShownFor !== number) {
         showMusicTitle(title || '');
@@ -1087,6 +1122,19 @@ async function musicSwipeEnd(event) {
     music.src =
       getMusicFile(currentMusic);
 
+    musicTitleShownFor = 0;
+    musicTitleImmediate = true;
+
+    const titleRequestId = ++musicTitleRequestId;
+    const cachedTitle = musicTitleCache.get(currentMusic);
+    if (cachedTitle !== undefined) {
+      showMusicTitle(cachedTitle);
+      musicTitleShownFor = currentMusic;
+    } else {
+      showMusicTitle('');
+    }
+    prepareMusicTitle(currentMusic, titleRequestId);
+
     music.load();
 
     showPausedButton();
@@ -1094,7 +1142,7 @@ async function musicSwipeEnd(event) {
   }
   else {
 
-    await playMusic(nextMusic);
+    await playMusic(nextMusic, 'immediate');
 
   }
 
@@ -1197,10 +1245,24 @@ document.addEventListener('touchend', async function(event) {
     currentMusic = nextMusic;
     saveCurrentMusic();
     music.src = getMusicFile(currentMusic);
+
+    musicTitleShownFor = 0;
+    musicTitleImmediate = true;
+
+    const titleRequestId = ++musicTitleRequestId;
+    const cachedTitle = musicTitleCache.get(currentMusic);
+    if (cachedTitle !== undefined) {
+      showMusicTitle(cachedTitle);
+      musicTitleShownFor = currentMusic;
+    } else {
+      showMusicTitle('');
+    }
+    prepareMusicTitle(currentMusic, titleRequestId);
+
     music.load();
     showPausedButton();
   } else {
-    await playMusic(nextMusic);
+    await playMusic(nextMusic, 'immediate');
   }
 }, { passive: true });
 
@@ -1293,10 +1355,24 @@ document.addEventListener('touchend', async function(event) {
     currentMusic = nextMusic;
     saveCurrentMusic();
     music.src = getMusicFile(currentMusic);
+
+    musicTitleShownFor = 0;
+    musicTitleImmediate = true;
+
+    const titleRequestId = ++musicTitleRequestId;
+    const cachedTitle = musicTitleCache.get(currentMusic);
+    if (cachedTitle !== undefined) {
+      showMusicTitle(cachedTitle);
+      musicTitleShownFor = currentMusic;
+    } else {
+      showMusicTitle('');
+    }
+    prepareMusicTitle(currentMusic, titleRequestId);
+
     music.load();
     showPausedButton();
   } else {
-    await playMusic(nextMusic);
+    await playMusic(nextMusic, 'immediate');
   }
 
 }, { passive: true });
@@ -1359,7 +1435,7 @@ function showInitialButton() {
    音楽再生
    ======================================== */
 
-async function playMusic(number) {
+async function playMusic(number, titleDisplayMode = 'auto') {
 
   /*
      MP3検出完了前でも再生できるようにする。
@@ -1386,6 +1462,17 @@ async function playMusic(number) {
 
   currentMusic = number;
   musicTitleShownFor = 0;
+
+  /*
+     titleDisplayMode
+       'immediate'：手動選曲／Long-tap／左右フリック
+       'hint'     ：起動直後／Music all play
+       'auto'     ：musicModeに従う
+  */
+  musicTitleImmediate =
+    titleDisplayMode === 'immediate' ||
+    (titleDisplayMode === 'auto' && musicMode !== 'all');
+
   saveCurrentMusic();
 
   music.src =
@@ -1393,7 +1480,24 @@ async function playMusic(number) {
 
   /* タイトル取得は再生開始を待たせない */
   const titleRequestId = ++musicTitleRequestId;
-  showMusicLongTapHint();
+
+  if (musicTitleImmediate) {
+    /*
+       キャッシュ済みなら即時に正式タイトルを表示。
+       未取得ならタイトル取得完了時に即時表示する。
+    */
+    const cachedTitle = musicTitleCache.get(currentMusic);
+    if (cachedTitle !== undefined) {
+      showMusicTitle(cachedTitle);
+      musicTitleShownFor = currentMusic;
+    } else {
+      showMusicTitle('');
+    }
+  }
+  else {
+    showMusicLongTapHint();
+  }
+
   prepareMusicTitle(currentMusic, titleRequestId);
 
   music.load();
