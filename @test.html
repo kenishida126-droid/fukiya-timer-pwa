@@ -284,7 +284,12 @@
     width: 80%;
     max-width: 360px;
 
-    /* 11曲でもページ全体をスクロールさせない */
+    /*
+       画面下端のナビゲーションバーに隠れないよう、
+       JavaScriptで「メニュー上端～表示可能な画面下端」
+       の高さを設定する。
+       max-heightは安全側の上限として残す。
+    */
     max-height: 50vh;
     overflow-y: auto;
     overflow-x: hidden;
@@ -601,6 +606,105 @@ document.getElementById('date').textContent =
 
 const music =
   document.getElementById('relaxMusic');
+
+
+/* ========================================
+   音楽再生中のSleep制御
+
+   音楽が「実際に再生中」の間だけWake Lockを取得する。
+   Pause／終了／停止状態ではWake Lockを解除し、
+   端末設定どおりの通常Sleepを許可する。
+
+   ※動画再生時はWake Lockを使用しない。
+   ======================================== */
+let musicWakeLock = null;
+
+async function requestMusicWakeLock() {
+
+  if (!('wakeLock' in navigator)) return;
+
+  try {
+
+    if (musicWakeLock) return;
+
+    musicWakeLock =
+      await navigator.wakeLock.request('screen');
+
+    musicWakeLock.addEventListener(
+      'release',
+      function() {
+        musicWakeLock = null;
+      }
+    );
+
+  } catch (error) {
+
+    console.log(
+      'Wake Lockを取得できませんでした:',
+      error
+    );
+
+  }
+}
+
+async function releaseMusicWakeLock() {
+
+  if (!musicWakeLock) return;
+
+  try {
+    await musicWakeLock.release();
+  } catch (error) {
+    console.log(
+      'Wake Lock解除に失敗しました:',
+      error
+    );
+  }
+
+  musicWakeLock = null;
+}
+
+/* 音楽が再生開始した時だけSleep OFF */
+music.addEventListener(
+  'play',
+  function() {
+    requestMusicWakeLock();
+  }
+);
+
+/* Pauseしたら通常Sleepへ戻す */
+music.addEventListener(
+  'pause',
+  function() {
+    releaseMusicWakeLock();
+  }
+);
+
+/* 終了したら通常Sleepへ戻す */
+music.addEventListener(
+  'ended',
+  function() {
+    releaseMusicWakeLock();
+  }
+);
+
+/*
+   画面再表示時、音楽がまだ実際に再生中なら
+   Wake Lockを再取得する。
+*/
+document.addEventListener(
+  'visibilitychange',
+  function() {
+
+    if (
+      document.visibilityState === 'visible' &&
+      !music.paused &&
+      !music.ended
+    ) {
+      requestMusicWakeLock();
+    }
+
+  }
+);
 
 const musicButton =
   document.getElementById('musicButton');
@@ -1801,8 +1905,37 @@ function showMusicMenu() {
 
   updateMusicMenuHighlight();
 
+  /*
+     先に表示してメニュー上端を取得する。
+     機種によって異なる画面高さ／ナビゲーション領域に
+     合わせて、表示可能な高さだけを確保する。
+     これによりF-51Bでも最下段のMusic-20まで
+     スクロールして表示できる。
+  */
   musicMenu.style.display =
     'block';
+
+  const menuRect =
+    musicMenu.getBoundingClientRect();
+
+  const viewportHeight =
+    window.visualViewport
+      ? window.visualViewport.height
+      : window.innerHeight;
+
+  const bottomMargin = 8;
+
+  const availableHeight =
+    Math.floor(
+      viewportHeight -
+      menuRect.top -
+      bottomMargin
+    );
+
+  if (availableHeight > 0) {
+    musicMenu.style.maxHeight =
+      `${availableHeight}px`;
+  }
 
 }
 
