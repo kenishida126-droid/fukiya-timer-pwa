@@ -509,7 +509,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.38》
+    戻る《Ver.39》
   </button>
 
 
@@ -552,7 +552,7 @@ let musicFilesFound = new Set();
 
 /*
    音楽ファイル数の検出完了フラグ
-   Long-tap時に検出する。
+   検出中はプルダウンを表示しない。
 */
 let musicReady = false;
 
@@ -1036,7 +1036,7 @@ function getMusicFile(number) {
 
 
 /* ========================================
-   音楽ファイル数をLong-tap時に検出
+   音楽ファイル数を起動時に自動検出
    ======================================== */
 
 async function detectMusicCount() {
@@ -1046,64 +1046,57 @@ async function detectMusicCount() {
 
   /*
      MP3は最大20個まで確認する。
-     番号に歯抜けがあっても対応する。
-
-     Ver.37：
-     この検出処理は起動時には実行しない。
-     初回の音楽ボタン操作を最優先し、
-     MP3存在確認はLong-tapで選曲メニューを開く時だけ行う。
+     番号に歯抜けがあっても検出する。
+     例：1, 3, 4 が存在する場合も対応。
   */
   const maxProbe = 20;
 
-  const probes = [];
-
   for (let i = 1; i <= maxProbe; i++) {
 
-    probes.push(
-      fetch(getMusicFile(i), {
-        method: 'HEAD',
-        cache: 'no-store'
-      })
-      .then(function(response) {
-        return response.ok ? i : null;
-      })
-      .catch(function() {
-        return null;
-      })
-    );
+    const file = getMusicFile(i);
+
+    const exists = await new Promise((resolve) => {
+
+      const testAudio = new Audio();
+      let finished = false;
+
+      const finish = (result) => {
+        if (finished) return;
+        finished = true;
+        testAudio.removeEventListener('loadedmetadata', onSuccess);
+        testAudio.removeEventListener('canplay', onSuccess);
+        testAudio.removeEventListener('error', onError);
+        testAudio.src = '';
+        resolve(result);
+      };
+
+      const onSuccess = () => finish(true);
+      const onError = () => finish(false);
+
+      testAudio.preload = 'metadata';
+      testAudio.addEventListener('loadedmetadata', onSuccess, { once: true });
+      testAudio.addEventListener('canplay', onSuccess, { once: true });
+      testAudio.addEventListener('error', onError, { once: true });
+      testAudio.src = file;
+      testAudio.load();
+    });
+
+    if (exists) {
+      musicFilesFound.add(i);
+      musicCount = Math.max(musicCount, i);
+    }
 
   }
 
-  const results =
-    await Promise.all(probes);
-
-  results.forEach(function(number) {
-
-    if (number === null) {
-      return;
-    }
-
-    musicFilesFound.add(number);
-
-    musicCount =
-      Math.max(
-        musicCount,
-        number
-      );
-
-  });
-
   /*
      前回再生曲の存在を確認。
-     起動時の選択はすでに別途決定している。
+     ただし起動時の選択は別途すでに行っている。
+     前回曲が存在しなければMusic-1へ変更する。
   */
   const savedMusic =
-    localStorage.getItem(
-      'fukiyaTestLastMusic'
-    );
+    localStorage.getItem('fukiyaTestLastMusic');
 
-  const savedNumber =
-    Number(savedMusic);
+  const savedNumber = Number(savedMusic);
 
   if (
     Number.isInteger(savedNumber) &&
@@ -1112,10 +1105,6 @@ async function detectMusicCount() {
     musicFilesFound.has(savedNumber)
   ) {
     currentMusic = savedNumber;
-  }
-  else if (musicFilesFound.size > 0) {
-    currentMusic =
-      Math.min(...musicFilesFound);
   }
   else {
     currentMusic = 1;
@@ -1590,38 +1579,18 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   saveCurrentMusic();
 
-  const musicFile =
+  music.src =
     getMusicFile(currentMusic);
 
-  /*
-     起動直後に先読み済みの曲なら、
-     同じsrcを再設定してload()し直さない。
-     先読みした音声をそのまま初回再生に利用する。
-  */
-  const alreadyLoaded =
-    music.src &&
-    music.src === new URL(
-      musicFile,
-      document.baseURI
-    ).href;
-
-  if (!alreadyLoaded) {
-    music.src = musicFile;
-  }
-
-  /*
-     初回再生を最優先する。
-     タイトル取得はMP3本体の再生開始後に行う。
-     これにより、タイトル取得用fetchと
-     初回再生用MP3の読み込みを競合させない。
-  */
-  const titleRequestId =
-    ++musicTitleRequestId;
+  /* タイトル取得は再生開始を待たせない */
+  const titleRequestId = ++musicTitleRequestId;
 
   if (musicTitleImmediate) {
-    const cachedTitle =
-      musicTitleCache.get(currentMusic);
-
+    /*
+       キャッシュ済みなら即時に正式タイトルを表示。
+       未取得ならタイトル取得完了時に即時表示する。
+    */
+    const cachedTitle = musicTitleCache.get(currentMusic);
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
@@ -1633,27 +1602,15 @@ async function playMusic(number, titleDisplayMode = 'auto') {
     showMusicLongTapHint();
   }
 
-  /*
-     起動直後に先読み済みでない曲だけload()する。
-  */
-  if (!alreadyLoaded) {
-    music.load();
-  }
+  prepareMusicTitle(currentMusic, titleRequestId);
+
+  music.load();
 
   try {
 
     await music.play();
 
     showPlayingButton();
-
-    /*
-       再生開始後にタイトル取得を開始する。
-       音楽再生開始を待たせない。
-    */
-    prepareMusicTitle(
-      currentMusic,
-      titleRequestId
-    );
 
   } catch (error) {
 
@@ -1939,19 +1896,11 @@ function updateMusicMenuHighlight() {
    音楽メニュー表示
    ======================================== */
 
-async function showMusicMenu() {
+function showMusicMenu() {
 
-  /*
-     初回の音楽再生を優先するため、
-     MP3存在確認はLong-tap時まで行わない。
-  */
+  /* 検出完了前は表示しない */
   if (!musicReady) {
-
-    await detectMusicCount();
-
-    createMusicMenu();
-    musicReady = true;
-
+    return;
   }
 
   updateMusicMenuHighlight();
@@ -2161,14 +2110,41 @@ music.addEventListener(
    音楽初期表示
    ======================================== */
 
-function initializeMusic() {
+async function initializeMusic() {
 
   /*
-     Ver.37：
-     起動時にはMP3存在確認を行わない。
-     初回の音楽再生ボタンを最優先する。
-     選曲メニュー用のMP3検出はLong-tap時に行う。
+     MP3検出はバックグラウンドで行う。
+     検出完了を待たず、音楽ボタンはすぐ使用可能。
   */
+  detectMusicCount()
+    .then(function() {
+
+      createMusicMenu();
+      musicReady = true;
+
+      /*
+         前回曲が存在しなければMusic-1。
+         すでに再生中なら再生状態は変更しない。
+      */
+      if (
+        music.paused &&
+        musicMode === 'none'
+      ) {
+        showInitialButton();
+      }
+
+    })
+    .catch(function(error) {
+
+      console.log(
+        'MP3検出中にエラーが発生しました:',
+        error
+      );
+
+      musicReady = true;
+      createMusicMenu();
+
+    });
 
 }
 
@@ -2200,12 +2176,15 @@ function initializeMusic() {
   showInitialButton();
 
   /* ========================================
-     Ver.37 初回再生最優先
+     初回再生の遅延対策
 
-     起動時にはMP3の先読みも行わない。
-     最初の音楽ボタンtapで、初めて
-     対象MP3を音声要素へ設定して再生を開始する。
+     前回曲（またはMusic-1）を起動直後から
+     音声要素へセットして先行ロードする。
+     MP3存在確認の完了は待たない。
      ======================================== */
+  music.preload = 'auto';
+  music.src = getMusicFile(currentMusic);
+  music.load();
 
 })();
 
