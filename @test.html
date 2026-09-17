@@ -509,7 +509,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.36》
+    戻る《Ver.37》
   </button>
 
 
@@ -1045,82 +1045,60 @@ async function detectMusicCount() {
   musicFilesFound = new Set();
 
   /*
-     MP3は最大20個まで確認する。
-     番号に歯抜けがあっても対応する。
-
-     Ver.36：
-     起動時はMP3そのものをAudio要素へ読み込まず、
-     HEADで「ファイルが存在するか」だけを確認する。
-     初回再生用のMP3読み込みとの競合を避ける。
+     Ver.37：音楽ファイル一覧の検出は起動時には行わない。
+     初回再生速度を最優先し、メニューを開く時だけ検出する。
+     最大20個、歯抜けにも対応する。
   */
   const maxProbe = 20;
 
-  const probes = [];
-
   for (let i = 1; i <= maxProbe; i++) {
 
-    probes.push(
-      fetch(getMusicFile(i), {
-        method: 'HEAD',
-        cache: 'no-store'
-      })
-      .then(function(response) {
-        return response.ok ? i : null;
-      })
-      .catch(function() {
-        return null;
-      })
-    );
+    const file = getMusicFile(i);
 
-  }
+    const exists = await new Promise((resolve) => {
 
-  const results =
-    await Promise.all(probes);
+      const testAudio = new Audio();
+      let finished = false;
 
-  results.forEach(function(number) {
+      const finish = (result) => {
+        if (finished) return;
+        finished = true;
+        testAudio.removeEventListener('loadedmetadata', onSuccess);
+        testAudio.removeEventListener('canplay', onSuccess);
+        testAudio.removeEventListener('error', onError);
+        testAudio.src = '';
+        resolve(result);
+      };
 
-    if (number === null) {
-      return;
+      const onSuccess = () => finish(true);
+      const onError = () => finish(false);
+
+      testAudio.preload = 'metadata';
+      testAudio.addEventListener('loadedmetadata', onSuccess, { once: true });
+      testAudio.addEventListener('canplay', onSuccess, { once: true });
+      testAudio.addEventListener('error', onError, { once: true });
+      testAudio.src = file;
+      testAudio.load();
+
+    });
+
+    if (exists) {
+      musicFilesFound.add(i);
+      musicCount = Math.max(musicCount, i);
     }
+  }
 
-    musicFilesFound.add(number);
+  /* 前回曲の存在を確認 */
+  const savedMusic = localStorage.getItem('fukiyaTestLastMusic');
+  const savedNumber = Number(savedMusic);
 
-    musicCount =
-      Math.max(
-        musicCount,
-        number
-      );
-
-  });
-
-  /*
-     前回再生曲の存在を確認。
-     起動時の選択はすでに別途決定している。
-  */
-  const savedMusic =
-    localStorage.getItem(
-      'fukiyaTestLastMusic'
-    );
-
-  const savedNumber =
-    Number(savedMusic);
-
-  if (
-    Number.isInteger(savedNumber) &&
-    savedNumber >= 1 &&
-    savedNumber <= maxProbe &&
-    musicFilesFound.has(savedNumber)
-  ) {
+  if (Number.isInteger(savedNumber) && savedNumber >= 1 && savedNumber <= maxProbe && musicFilesFound.has(savedNumber)) {
     currentMusic = savedNumber;
-  }
-  else if (musicFilesFound.size > 0) {
-    currentMusic =
-      Math.min(...musicFilesFound);
-  }
-  else {
+  } else if (musicFilesFound.size > 0) {
+    currentMusic = Math.min(...musicFilesFound);
+  } else {
     currentMusic = 1;
   }
-
 }
 
 
@@ -1939,22 +1917,20 @@ function updateMusicMenuHighlight() {
    音楽メニュー表示
    ======================================== */
 
-function showMusicMenu() {
+async function showMusicMenu() {
 
-  /* 検出完了前は表示しない */
+  /*
+     Ver.37：メニューを開く時だけMP3一覧を検出する。
+     起動直後の初回再生とは完全に分離する。
+  */
   if (!musicReady) {
-    return;
+    await detectMusicCount();
+    createMusicMenu();
+    musicReady = true;
   }
 
   updateMusicMenuHighlight();
 
-  /*
-     先に表示してメニュー上端を取得する。
-     機種によって異なる画面高さ／ナビゲーション領域に
-     合わせて、表示可能な高さだけを確保する。
-     これによりF-51Bでも最下段のMusic-20まで
-     スクロールして表示できる。
-  */
   musicMenu.style.display =
     'block';
 
@@ -2156,38 +2132,11 @@ music.addEventListener(
 async function initializeMusic() {
 
   /*
-     MP3検出はバックグラウンドで行う。
-     検出完了を待たず、音楽ボタンはすぐ使用可能。
+     Ver.37：起動時のMP3一覧検出は行わない。
+     初回再生用の先読みだけを最優先する。
+     MP3一覧はLong-tapでメニューを開く時に検出する。
   */
-  detectMusicCount()
-    .then(function() {
-
-      createMusicMenu();
-      musicReady = true;
-
-      /*
-         前回曲が存在しなければMusic-1。
-         すでに再生中なら再生状態は変更しない。
-      */
-      if (
-        music.paused &&
-        musicMode === 'none'
-      ) {
-        showInitialButton();
-      }
-
-    })
-    .catch(function(error) {
-
-      console.log(
-        'MP3検出中にエラーが発生しました:',
-        error
-      );
-
-      musicReady = true;
-      createMusicMenu();
-
-    });
+  musicReady = false;
 
 }
 
@@ -2377,7 +2326,7 @@ function changeWallpaper() {
 
 initializeWallpaper();
 
-/* 壁紙切替え間隔 単位:ms 15000=15秒 */
+/* 5秒ごと（テスト用） */
 setInterval(changeWallpaper, 15000);
 
 
