@@ -509,7 +509,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る
+    戻る《Ver.35》
   </button>
 
 
@@ -1085,6 +1085,9 @@ async function detectMusicCount() {
       musicFilesFound.add(i);
       musicCount = Math.max(musicCount, i);
     }
+
+    // Ver.35：バックグラウンドでの存在確認の各処理の間に一度処理を譲る。
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
   }
 
@@ -2116,7 +2119,7 @@ async function initializeMusic() {
      MP3検出はバックグラウンドで行う。
      検出完了を待たず、音楽ボタンはすぐ使用可能。
   */
-  detectMusicCount()
+  setTimeout(() => detectMusicCount(), 0)
     .then(function() {
 
       createMusicMenu();
@@ -2575,6 +2578,44 @@ window.addEventListener('resize', syncMusicHintWidth);
 window.addEventListener('orientationchange', syncMusicHintWidth);
 syncMusicHintWidth();
 
+</script>
+
+
+<script>
+/* ===== Ver.35：Webモードのアドレスバー非表示操作 ===== */
+(function setupAddressBarGesture() {
+  if (window.matchMedia &&
+      window.matchMedia('(display-mode: standalone)').matches) {
+    return;
+  }
+
+  let startY = 0;
+  let active = false;
+
+  window.addEventListener('touchstart', function (e) {
+    if (!e.touches || !e.touches.length) return;
+    startY = e.touches[0].clientY;
+    active = true;
+  }, { passive: true });
+
+  window.addEventListener('touchmove', function (e) {
+    if (!active || !e.touches || !e.touches.length) return;
+
+    const dy = startY - e.touches[0].clientY;
+
+    if (window.scrollY <= 2 && dy > 8) {
+      window.scrollTo(0, 1);
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', function () {
+    active = false;
+  }, { passive: true });
+
+  window.addEventListener('touchcancel', function () {
+    active = false;
+  }, { passive: true });
+})();
 </script>
 
 </body>
