@@ -509,7 +509,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.35》
+    戻る《Ver.36》
   </button>
 
 
@@ -1046,60 +1046,64 @@ async function detectMusicCount() {
 
   /*
      MP3は最大20個まで確認する。
-     番号に歯抜けがあっても検出する。
-     例：1, 3, 4 が存在する場合も対応。
+     番号に歯抜けがあっても対応する。
+
+     Ver.36：
+     起動時はMP3そのものをAudio要素へ読み込まず、
+     HEADで「ファイルが存在するか」だけを確認する。
+     初回再生用のMP3読み込みとの競合を避ける。
   */
   const maxProbe = 20;
 
+  const probes = [];
+
   for (let i = 1; i <= maxProbe; i++) {
 
-    const file = getMusicFile(i);
-
-    const exists = await new Promise((resolve) => {
-
-      const testAudio = new Audio();
-      let finished = false;
-
-      const finish = (result) => {
-        if (finished) return;
-        finished = true;
-        testAudio.removeEventListener('loadedmetadata', onSuccess);
-        testAudio.removeEventListener('canplay', onSuccess);
-        testAudio.removeEventListener('error', onError);
-        testAudio.src = '';
-        resolve(result);
-      };
-
-      const onSuccess = () => finish(true);
-      const onError = () => finish(false);
-
-      testAudio.preload = 'metadata';
-      testAudio.addEventListener('loadedmetadata', onSuccess, { once: true });
-      testAudio.addEventListener('canplay', onSuccess, { once: true });
-      testAudio.addEventListener('error', onError, { once: true });
-      testAudio.src = file;
-      testAudio.load();
-    });
-
-    if (exists) {
-      musicFilesFound.add(i);
-      musicCount = Math.max(musicCount, i);
-    }
-
-    // Ver.35：バックグラウンドでの存在確認の各処理の間に一度処理を譲る。
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    probes.push(
+      fetch(getMusicFile(i), {
+        method: 'HEAD',
+        cache: 'no-store'
+      })
+      .then(function(response) {
+        return response.ok ? i : null;
+      })
+      .catch(function() {
+        return null;
+      })
+    );
 
   }
 
+  const results =
+    await Promise.all(probes);
+
+  results.forEach(function(number) {
+
+    if (number === null) {
+      return;
+    }
+
+    musicFilesFound.add(number);
+
+    musicCount =
+      Math.max(
+        musicCount,
+        number
+      );
+
+  });
+
   /*
      前回再生曲の存在を確認。
-     ただし起動時の選択は別途すでに行っている。
-     前回曲が存在しなければMusic-1へ変更する。
+     起動時の選択はすでに別途決定している。
   */
   const savedMusic =
-    localStorage.getItem('fukiyaTestLastMusic');
+    localStorage.getItem(
+      'fukiyaTestLastMusic'
+    );
 
-  const savedNumber = Number(savedMusic);
+  const savedNumber =
+    Number(savedMusic);
 
   if (
     Number.isInteger(savedNumber) &&
@@ -1108,6 +1112,10 @@ async function detectMusicCount() {
     musicFilesFound.has(savedNumber)
   ) {
     currentMusic = savedNumber;
+  }
+  else if (musicFilesFound.size > 0) {
+    currentMusic =
+      Math.min(...musicFilesFound);
   }
   else {
     currentMusic = 1;
@@ -1582,18 +1590,38 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   saveCurrentMusic();
 
-  music.src =
+  const musicFile =
     getMusicFile(currentMusic);
 
-  /* タイトル取得は再生開始を待たせない */
-  const titleRequestId = ++musicTitleRequestId;
+  /*
+     起動直後に先読み済みの曲なら、
+     同じsrcを再設定してload()し直さない。
+     先読みした音声をそのまま初回再生に利用する。
+  */
+  const alreadyLoaded =
+    music.src &&
+    music.src === new URL(
+      musicFile,
+      document.baseURI
+    ).href;
+
+  if (!alreadyLoaded) {
+    music.src = musicFile;
+  }
+
+  /*
+     初回再生を最優先する。
+     タイトル取得はMP3本体の再生開始後に行う。
+     これにより、タイトル取得用fetchと
+     初回再生用MP3の読み込みを競合させない。
+  */
+  const titleRequestId =
+    ++musicTitleRequestId;
 
   if (musicTitleImmediate) {
-    /*
-       キャッシュ済みなら即時に正式タイトルを表示。
-       未取得ならタイトル取得完了時に即時表示する。
-    */
-    const cachedTitle = musicTitleCache.get(currentMusic);
+    const cachedTitle =
+      musicTitleCache.get(currentMusic);
+
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
@@ -1605,15 +1633,27 @@ async function playMusic(number, titleDisplayMode = 'auto') {
     showMusicLongTapHint();
   }
 
-  prepareMusicTitle(currentMusic, titleRequestId);
-
-  music.load();
+  /*
+     起動直後に先読み済みでない曲だけload()する。
+  */
+  if (!alreadyLoaded) {
+    music.load();
+  }
 
   try {
 
     await music.play();
 
     showPlayingButton();
+
+    /*
+       再生開始後にタイトル取得を開始する。
+       音楽再生開始を待たせない。
+    */
+    prepareMusicTitle(
+      currentMusic,
+      titleRequestId
+    );
 
   } catch (error) {
 
@@ -2119,7 +2159,7 @@ async function initializeMusic() {
      MP3検出はバックグラウンドで行う。
      検出完了を待たず、音楽ボタンはすぐ使用可能。
   */
-  setTimeout(() => detectMusicCount(), 0)
+  detectMusicCount()
     .then(function() {
 
       createMusicMenu();
@@ -2337,7 +2377,7 @@ function changeWallpaper() {
 
 initializeWallpaper();
 
-/* 壁紙切替え間隔 単位:ms 15000=15秒 */
+/* 5秒ごと（テスト用） */
 setInterval(changeWallpaper, 15000);
 
 
@@ -2578,44 +2618,6 @@ window.addEventListener('resize', syncMusicHintWidth);
 window.addEventListener('orientationchange', syncMusicHintWidth);
 syncMusicHintWidth();
 
-</script>
-
-
-<script>
-/* ===== Ver.35：Webモードのアドレスバー非表示操作 ===== */
-(function setupAddressBarGesture() {
-  if (window.matchMedia &&
-      window.matchMedia('(display-mode: standalone)').matches) {
-    return;
-  }
-
-  let startY = 0;
-  let active = false;
-
-  window.addEventListener('touchstart', function (e) {
-    if (!e.touches || !e.touches.length) return;
-    startY = e.touches[0].clientY;
-    active = true;
-  }, { passive: true });
-
-  window.addEventListener('touchmove', function (e) {
-    if (!active || !e.touches || !e.touches.length) return;
-
-    const dy = startY - e.touches[0].clientY;
-
-    if (window.scrollY <= 2 && dy > 8) {
-      window.scrollTo(0, 1);
-    }
-  }, { passive: true });
-
-  window.addEventListener('touchend', function () {
-    active = false;
-  }, { passive: true });
-
-  window.addEventListener('touchcancel', function () {
-    active = false;
-  }, { passive: true });
-})();
 </script>
 
 </body>
