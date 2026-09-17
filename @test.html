@@ -23,7 +23,7 @@
 
   body {
     background-color: #000;
-    background-image: none;
+    background-image: url('@wallpaper-1.jpg');
     background-position: center;
     background-size: cover;
     background-repeat: no-repeat;
@@ -37,33 +37,6 @@
     user-select: none;
   }
 
-
-  /* ========================================
-     Ver.32 曲目タイトル表示仕様変更・壁紙フェイド切替
-     壁紙Aをフェイドアウトし、
-     Blackを最小時間だけ経由して、
-     壁紙Bをフェイドインする。
-     ======================================== */
-  #wallpaperLayerA,
-  #wallpaperLayerB {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background-position: center;
-    background-size: cover;
-    background-repeat: no-repeat;
-    pointer-events: none;
-    opacity: 0;
-  }
-
-  #wallpaperLayerA {
-    background-image: url('@wallpaper-1.jpg');
-    opacity: 1;
-  }
-
-  #wallpaperLayerB {
-    opacity: 0;
-  }
 
   /* ========================================
      全体
@@ -85,7 +58,6 @@
 
   .container {
     position: relative;
-    z-index: 1;
   }
 
   /* ========================================
@@ -284,12 +256,7 @@
     width: 80%;
     max-width: 360px;
 
-    /*
-       画面下端のナビゲーションバーに隠れないよう、
-       JavaScriptで「メニュー上端～表示可能な画面下端」
-       の高さを設定する。
-       max-heightは安全側の上限として残す。
-    */
+    /* 11曲でもページ全体をスクロールさせない */
     max-height: 50vh;
     overflow-y: auto;
     overflow-x: hidden;
@@ -418,13 +385,7 @@
 </head>
 
 
-<!-- ========================================
-     Ver.30
-     壁紙切替時のBlack画面対策版
-     ======================================== -->
 <body>
-<div id="wallpaperLayerA"></div>
-<div id="wallpaperLayerB"></div>
 
 <div class="container">
 
@@ -509,7 +470,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.39》
+    戻る《Ver.40》
   </button>
 
 
@@ -607,105 +568,6 @@ document.getElementById('date').textContent =
 const music =
   document.getElementById('relaxMusic');
 
-
-/* ========================================
-   音楽再生中のSleep制御
-
-   音楽が「実際に再生中」の間だけWake Lockを取得する。
-   Pause／終了／停止状態ではWake Lockを解除し、
-   端末設定どおりの通常Sleepを許可する。
-
-   ※動画再生時はWake Lockを使用しない。
-   ======================================== */
-let musicWakeLock = null;
-
-async function requestMusicWakeLock() {
-
-  if (!('wakeLock' in navigator)) return;
-
-  try {
-
-    if (musicWakeLock) return;
-
-    musicWakeLock =
-      await navigator.wakeLock.request('screen');
-
-    musicWakeLock.addEventListener(
-      'release',
-      function() {
-        musicWakeLock = null;
-      }
-    );
-
-  } catch (error) {
-
-    console.log(
-      'Wake Lockを取得できませんでした:',
-      error
-    );
-
-  }
-}
-
-async function releaseMusicWakeLock() {
-
-  if (!musicWakeLock) return;
-
-  try {
-    await musicWakeLock.release();
-  } catch (error) {
-    console.log(
-      'Wake Lock解除に失敗しました:',
-      error
-    );
-  }
-
-  musicWakeLock = null;
-}
-
-/* 音楽が再生開始した時だけSleep OFF */
-music.addEventListener(
-  'play',
-  function() {
-    requestMusicWakeLock();
-  }
-);
-
-/* Pauseしたら通常Sleepへ戻す */
-music.addEventListener(
-  'pause',
-  function() {
-    releaseMusicWakeLock();
-  }
-);
-
-/* 終了したら通常Sleepへ戻す */
-music.addEventListener(
-  'ended',
-  function() {
-    releaseMusicWakeLock();
-  }
-);
-
-/*
-   画面再表示時、音楽がまだ実際に再生中なら
-   Wake Lockを再取得する。
-*/
-document.addEventListener(
-  'visibilitychange',
-  function() {
-
-    if (
-      document.visibilityState === 'visible' &&
-      !music.paused &&
-      !music.ended
-    ) {
-      requestMusicWakeLock();
-    }
-
-  }
-);
-
 const musicButton =
   document.getElementById('musicButton');
 
@@ -723,23 +585,11 @@ const musicControl =
    音楽タイトル
    再生処理とは完全に独立させる。
    タイトル取得に失敗しても音楽再生には影響させない。
-
-   Ver.32 仕様変更
-   ・起動直後の曲頭5秒間 → 操作方法
-   ・Music all playの曲頭5秒間 → 操作方法
-   ・手動選曲／Long-tap／左右フリック → 即タイトル
    ======================================== */
 
 const musicTitleCache = new Map();
 let musicTitleRequestId = 0;
 const musicTitleDisplayDelay = 5;
-
-/*
-   曲目タイトルの表示方式
-   true  ：Long-tap/左右フリック等で選曲したため即タイトル表示
-   false ：起動直後／Music all playの曲頭5秒間は操作方法を表示
-*/
-let musicTitleImmediate = false;
 
 /* ========================================
    Gemini-toolで実績のあるタイトル取得方式
@@ -938,12 +788,6 @@ function syncMusicHintWidth() {
 function updateMusicTitleByTime() {
   if (musicMode === 'none' || !music.src) return;
 
-  /*
-     手動選曲／Long-tap／左右フリックでは
-     曲頭5秒の操作方法表示を行わない。
-  */
-  if (musicTitleImmediate) return;
-
   if (music.currentTime < musicTitleDisplayDelay) {
     if (!music.paused) {
       showMusicLongTapHint();
@@ -969,23 +813,6 @@ function prepareMusicTitle(number, requestId) {
     if (requestId !== musicTitleRequestId) return;
     if (currentMusic !== number || musicMode === 'none') return;
 
-    /*
-       即タイトル表示モードでは、曲頭5秒を待たず
-       タイトル取得完了直後に表示する。
-       Pause中でも選曲直後なら表示する。
-    */
-    if (musicTitleImmediate) {
-      if (musicTitleShownFor !== number) {
-        showMusicTitle(title || '');
-        musicTitleShownFor = number;
-      }
-      return;
-    }
-
-    /*
-       起動直後／Music all playモードでは
-       曲頭5秒間は操作方法を表示する。
-    */
     if (!music.paused && music.currentTime >= musicTitleDisplayDelay) {
       if (musicTitleShownFor !== number) {
         showMusicTitle(title || '');
@@ -1226,19 +1053,6 @@ async function musicSwipeEnd(event) {
     music.src =
       getMusicFile(currentMusic);
 
-    musicTitleShownFor = 0;
-    musicTitleImmediate = true;
-
-    const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
-    if (cachedTitle !== undefined) {
-      showMusicTitle(cachedTitle);
-      musicTitleShownFor = currentMusic;
-    } else {
-      showMusicTitle('');
-    }
-    prepareMusicTitle(currentMusic, titleRequestId);
-
     music.load();
 
     showPausedButton();
@@ -1246,7 +1060,7 @@ async function musicSwipeEnd(event) {
   }
   else {
 
-    await playMusic(nextMusic, 'immediate');
+    await playMusic(nextMusic);
 
   }
 
@@ -1349,24 +1163,10 @@ document.addEventListener('touchend', async function(event) {
     currentMusic = nextMusic;
     saveCurrentMusic();
     music.src = getMusicFile(currentMusic);
-
-    musicTitleShownFor = 0;
-    musicTitleImmediate = true;
-
-    const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
-    if (cachedTitle !== undefined) {
-      showMusicTitle(cachedTitle);
-      musicTitleShownFor = currentMusic;
-    } else {
-      showMusicTitle('');
-    }
-    prepareMusicTitle(currentMusic, titleRequestId);
-
     music.load();
     showPausedButton();
   } else {
-    await playMusic(nextMusic, 'immediate');
+    await playMusic(nextMusic);
   }
 }, { passive: true });
 
@@ -1459,24 +1259,10 @@ document.addEventListener('touchend', async function(event) {
     currentMusic = nextMusic;
     saveCurrentMusic();
     music.src = getMusicFile(currentMusic);
-
-    musicTitleShownFor = 0;
-    musicTitleImmediate = true;
-
-    const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
-    if (cachedTitle !== undefined) {
-      showMusicTitle(cachedTitle);
-      musicTitleShownFor = currentMusic;
-    } else {
-      showMusicTitle('');
-    }
-    prepareMusicTitle(currentMusic, titleRequestId);
-
     music.load();
     showPausedButton();
   } else {
-    await playMusic(nextMusic, 'immediate');
+    await playMusic(nextMusic);
   }
 
 }, { passive: true });
@@ -1539,7 +1325,7 @@ function showInitialButton() {
    音楽再生
    ======================================== */
 
-async function playMusic(number, titleDisplayMode = 'auto') {
+async function playMusic(number) {
 
   /*
      MP3検出完了前でも再生できるようにする。
@@ -1566,17 +1352,6 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   currentMusic = number;
   musicTitleShownFor = 0;
-
-  /*
-     titleDisplayMode
-       'immediate'：手動選曲／Long-tap／左右フリック
-       'hint'     ：起動直後／Music all play
-       'auto'     ：musicModeに従う
-  */
-  musicTitleImmediate =
-    titleDisplayMode === 'immediate' ||
-    (titleDisplayMode === 'auto' && musicMode !== 'all');
-
   saveCurrentMusic();
 
   music.src =
@@ -1584,24 +1359,7 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   /* タイトル取得は再生開始を待たせない */
   const titleRequestId = ++musicTitleRequestId;
-
-  if (musicTitleImmediate) {
-    /*
-       キャッシュ済みなら即時に正式タイトルを表示。
-       未取得ならタイトル取得完了時に即時表示する。
-    */
-    const cachedTitle = musicTitleCache.get(currentMusic);
-    if (cachedTitle !== undefined) {
-      showMusicTitle(cachedTitle);
-      musicTitleShownFor = currentMusic;
-    } else {
-      showMusicTitle('');
-    }
-  }
-  else {
-    showMusicLongTapHint();
-  }
-
+  showMusicLongTapHint();
   prepareMusicTitle(currentMusic, titleRequestId);
 
   music.load();
@@ -1611,6 +1369,12 @@ async function playMusic(number, titleDisplayMode = 'auto') {
     await music.play();
 
     showPlayingButton();
+
+    /*
+       実際に再生が開始された後でMP3存在確認を開始する。
+       初回再生用MP3の読み込みを最優先する。
+    */
+    startMusicDetection();
 
   } catch (error) {
 
@@ -1905,37 +1669,8 @@ function showMusicMenu() {
 
   updateMusicMenuHighlight();
 
-  /*
-     先に表示してメニュー上端を取得する。
-     機種によって異なる画面高さ／ナビゲーション領域に
-     合わせて、表示可能な高さだけを確保する。
-     これによりF-51Bでも最下段のMusic-20まで
-     スクロールして表示できる。
-  */
   musicMenu.style.display =
     'block';
-
-  const menuRect =
-    musicMenu.getBoundingClientRect();
-
-  const viewportHeight =
-    window.visualViewport
-      ? window.visualViewport.height
-      : window.innerHeight;
-
-  const bottomMargin = 8;
-
-  const availableHeight =
-    Math.floor(
-      viewportHeight -
-      menuRect.top -
-      bottomMargin
-    );
-
-  if (availableHeight > 0) {
-    musicMenu.style.maxHeight =
-      `${availableHeight}px`;
-  }
 
 }
 
@@ -2110,32 +1845,33 @@ music.addEventListener(
    音楽初期表示
    ======================================== */
 
-async function initializeMusic() {
+/*
+   起動直後の音楽再生を最優先する。
 
-  /*
-     MP3検出はバックグラウンドで行う。
-     検出完了を待たず、音楽ボタンはすぐ使用可能。
-  */
+   MP3存在確認は起動時には開始しない。
+   初回再生用MP3の読み込みを他のMP3確認処理と競合させないため、
+   最初の再生開始後にバックグラウンドで検出する。
+*/
+let musicDetectionStarted = false;
+
+function startMusicDetection() {
+
+  if (musicDetectionStarted) return;
+  musicDetectionStarted = true;
+
   detectMusicCount()
     .then(function() {
-
       createMusicMenu();
       musicReady = true;
 
-      /*
-         前回曲が存在しなければMusic-1。
-         すでに再生中なら再生状態は変更しない。
-      */
       if (
         music.paused &&
         musicMode === 'none'
       ) {
         showInitialButton();
       }
-
     })
     .catch(function(error) {
-
       console.log(
         'MP3検出中にエラーが発生しました:',
         error
@@ -2143,9 +1879,16 @@ async function initializeMusic() {
 
       musicReady = true;
       createMusicMenu();
-
     });
+}
 
+async function initializeMusic() {
+
+  /*
+     起動時は音楽ボタンを即使用可能にする。
+     MP3存在確認はまだ開始しない。
+  */
+  showInitialButton();
 }
 
 /*
@@ -2227,53 +1970,6 @@ function detectWallpaperFiles() {
   return Promise.all(probes);
 }
 
-const wallpaperLayerA =
-  document.getElementById('wallpaperLayerA');
-
-const wallpaperLayerB =
-  document.getElementById('wallpaperLayerB');
-
-let activeWallpaperLayer = wallpaperLayerA;
-
-/*
-   次の壁紙を非表示側レイヤーへ先にセットする。
-   既にImageとして読み込み済みの壁紙だけを使用する。
-*/
-function applyWallpaper(number) {
-  if (!wallpaperImages[number]) return;
-
-  const nextLayer =
-    activeWallpaperLayer === wallpaperLayerA
-      ? wallpaperLayerB
-      : wallpaperLayerA;
-
-  const file = wallpaperFiles[number];
-
-  /*
-     次の壁紙を非表示側レイヤーへセットする。
-     まず旧壁紙を1秒でフェイドアウト。
-  */
-  nextLayer.style.backgroundImage =
-    `url('${file}')`;
-
-  nextLayer.style.opacity = '0';
-  activeWallpaperLayer.style.transition =
-    'opacity 1s linear';
-  activeWallpaperLayer.style.opacity = '0';
-
-  /*
-     Black表示時間は最小値。
-     フェイドアウト完了直後、次の壁紙を
-     1秒でフェイドインする。
-  */
-  setTimeout(function() {
-    nextLayer.style.transition =
-      'opacity 1s linear';
-    nextLayer.style.opacity = '1';
-    activeWallpaperLayer = nextLayer;
-  }, 1000);
-}
-
 async function initializeWallpaper() {
   const results = await detectWallpaperFiles();
   wallpaperNumbers = [];
@@ -2296,46 +1992,28 @@ async function initializeWallpaper() {
     currentWallpaper = wallpaperNumbers[0];
   }
 
-  wallpaperLayerA.style.transition = 'none';
-  wallpaperLayerB.style.transition = 'none';
-  wallpaperLayerA.style.backgroundImage =
-    `url('${wallpaperFiles[currentWallpaper]}')`;
-  wallpaperLayerA.style.opacity = '1';
-  wallpaperLayerB.style.opacity = '0';
-  activeWallpaperLayer = wallpaperLayerA;
-
+  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
   showWallpaperNumber(currentWallpaper);
 }
 
 function changeWallpaper() {
   if (wallpaperNumbers.length === 0) return;
-
   const currentIndex = wallpaperNumbers.indexOf(currentWallpaper);
-  const nextIndex =
-    currentIndex === -1
-      ? 0
-      : (currentIndex + 1) % wallpaperNumbers.length;
-
+  const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % wallpaperNumbers.length;
   const nextWallpaper = wallpaperNumbers[nextIndex];
   const nextImage = wallpaperImages[nextWallpaper];
-
   if (!nextImage || !nextImage.complete || nextImage.naturalWidth === 0) return;
 
   currentWallpaper = nextWallpaper;
-
-  applyWallpaper(currentWallpaper);
-
+  document.body.style.backgroundImage = `url('${wallpaperFiles[currentWallpaper]}')`;
   showWallpaperNumber(currentWallpaper);
-  localStorage.setItem(
-    'fukiyaTestLastWallpaper',
-    String(currentWallpaper)
-  );
+  localStorage.setItem('fukiyaTestLastWallpaper', String(currentWallpaper));
 }
 
 initializeWallpaper();
 
 /* 5秒ごと（テスト用） */
-setInterval(changeWallpaper, 15000);
+setInterval(changeWallpaper, 5000);
 
 
 /* ========================================
