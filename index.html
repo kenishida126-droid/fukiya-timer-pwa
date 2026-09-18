@@ -185,7 +185,7 @@
 <h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
 
-<div class="category-title">★ 競技会向け《ver.01》</div>
+<div class="category-title">★ 競技会向け</div>
 
 <div class="version-box" onclick="location.href='official/index.html'">
   <div class="version-title">
@@ -349,14 +349,27 @@ if ('serviceWorker' in navigator) {
     /* =====================================================
        CACHE_STATUS
        =====================================================
-       CACHE_STATUSは状態確認用。
-       起動直後に🟢を表示する処理は行わない。
-    */
-    if (event.data.type === 'CACHE_STATUS') {
+  if (event.data.type === 'CACHE_STATUS') {
+    /* =====================================================
+       通常起動時：CACHE_NAMEに変更がなければ🟢を表示
+       ===================================================== */
+    if (!cacheUpdating) {
+      cacheStatus.innerHTML =
+        '<span class="cache-dot"></span>';
 
-      /* 表示は変更しない */
-      return;
+      cacheStatus.style.display = 'block';
+      cacheStatus.classList.remove('updating');
+
+      const dot =
+        cacheStatus.querySelector('.cache-dot');
+
+      if (dot) {
+        dot.style.background = 'lime';
+      }
     }
+
+    return;
+  }
 
 
     /* =====================================================
@@ -401,7 +414,7 @@ if ('serviceWorker' in navigator) {
 
       alert(
         '吹矢Timer_PWA が更新されました\n' +
-        '　　　CACHE_UPDATED　　'
+        '******　CACHE_UPDATED　******'
       );
 
       return;
