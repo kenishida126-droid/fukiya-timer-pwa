@@ -42,7 +42,7 @@
 
   #cacheStatus.updating {
     background: red;
-    animation: cacheBlink 0.7s infinite;
+    animation: cacheBlink 1s infinite;
   }
 
   #cacheElapsed {
@@ -301,11 +301,11 @@ function startCacheElapsed() {
 
   cacheStartTime = Date.now();
   cacheElapsed.style.display = 'block';
-  cacheElapsed.textContent = '0s';
+  cacheElapsed.textContent = '0';
 
   cacheElapsedTimer = setInterval(function() {
     const sec = Math.floor((Date.now() - cacheStartTime) / 1000);
-    cacheElapsed.textContent = `${sec}s`;
+    cacheElapsed.textContent = `${sec}`;
   }, 250);
 }
 
@@ -318,7 +318,7 @@ function stopCacheElapsed() {
   if (cacheStartTime) {
     const sec = Math.floor((Date.now() - cacheStartTime) / 1000);
     cacheElapsed.style.display = 'block';
-    cacheElapsed.textContent = `${sec}s`;
+    cacheElapsed.textContent = `${sec}`;
   }
 }
 
