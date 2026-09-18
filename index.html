@@ -28,41 +28,6 @@
     animation: fadeIn 1s ease-out;
   }
 
-/* ===== PWA キャッシュ状態表示 ===== */
-#cacheStatus {
-  display: none;
-  position: fixed;
-  top: 5px;
-  right: 10px;
-  height: 18px;
-  line-height: 18px;
-  font-size: 14px;
-  font-weight: bold;
-  white-space: nowrap;
-}
-
-#cacheStatus .cache-seconds {
-  margin-right: 4px;
-}
-
-#cacheStatus .cache-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  vertical-align: middle;
-  background: lime;
-}
-
-#cacheStatus.updating .cache-dot {
-  background: red;
-  animation: cacheBlink 1s infinite;
-}
-
-@keyframes cacheBlink {
-  50% { opacity: 0; }
-}
-
   h1 {
     font-size: 1.4em;
     color: gold;
@@ -138,20 +103,24 @@
     text-align: left;
     background: rgba(255,255,255,0.03);
   }
+
   .credit-title{
     margin-bottom:0.4em;
     margin-left:2.4em;
   }
+
   .credit-link{
     margin-left:3.6em;
     line-height:1.6;
   }
+
   .credit-support1{
     margin-top:0.2em;
     margin-left:2.4em;
     color:gold;
     font-weight:bold;
   }
+
   .credit-support2{
     margin-top:0.2em;
     margin-left:5.6em;
@@ -159,10 +128,54 @@
     font-weight:bold;
   }
 
+  /* =========================================================
+     PWA キャッシュ状態表示
+     ========================================================= */
+
+  #cacheStatus {
+    display: none;
+    position: fixed;
+    top: 5px;
+    right: 10px;
+    height: 18px;
+    line-height: 18px;
+    font-size: 14px;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  #cacheStatus .cache-seconds {
+    margin-right: 4px;
+  }
+
+  #cacheStatus .cache-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    vertical-align: middle;
+    background: lime;
+  }
+
+  #cacheStatus.updating .cache-dot {
+    background: red;
+    animation: cacheBlink 1s infinite;
+  }
+
+  @keyframes cacheBlink {
+    50% {
+      opacity: 0;
+    }
+  }
 
   @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
+    0% {
+      opacity: 0;
+    }
+
+    100% {
+      opacity: 1;
+    }
   }
 
   @keyframes slideIn {
@@ -170,6 +183,7 @@
       transform: translateY(20px);
       opacity: 0;
     }
+
     100% {
       transform: translateY(0);
       opacity: 1;
@@ -180,66 +194,113 @@
 
 <body>
 
+<!-- =========================================================
+     CACHE Status
+     ========================================================= -->
 <div id="cacheStatus"></div>
 
-<h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
+
+<h1>≪ 吹矢Timer MENU ver.03 ≫</h1>
+
 <h2>Design/Development: Ken.Ishida</h2>
+
 
 <div class="category-title">★ 競技会向け</div>
 
-<div class="version-box" onclick="location.href='official/index.html'">
+
+<div class="version-box"
+     onclick="location.href='official/index.html'">
+
   <div class="version-title">
     &nbsp;Ⅰ．Official Portrait
-
   </div>
+
 </div>
 
-<div class="version-box" onclick="location.href='official/landscape.html'">
+
+<div class="version-box"
+     onclick="location.href='official/landscape.html'">
+
   <div class="version-title">
     &nbsp;Ⅱ．Official Landscape
   </div>
+
 </div>
+
 
 <div class="category-title">★ 自主練向け</div>
 
-<div class="version-box" onclick="location.href='extra/index.html'">
+
+<div class="version-box"
+     onclick="location.href='extra/index.html'">
+
   <div class="version-title">
     &nbsp;Ⅲ．Arrows timer
   </div>
+
 </div>
 
-<div class="version-box" onclick="location.href='gemini/index.html'">
+
+<div class="version-box"
+     onclick="location.href='gemini/index.html'">
+
   <div class="version-title">
     &nbsp;Ⅳ．Circle timer
+
     <span style="font-size:0.7em; color:#aaa;">
       （音声認識可）
     </span>
+
   </div>
+
 </div>
 
+
 <div class="circle-note">
+
   <div class="circle-note1">
     「スタート / 開始 / 始め」を認識
   </div>
+
   <div class="circle-note2">
     ※ iPhoneでは音声認識未対応です
   </div>
+
 </div>
+
 
 <!-- ▼ 取扱説明書リンク（テキストのみ） -->
+
 <div style="margin-top:0.6em;">
+
   <a href="manual.pdf"
      target="_blank"
-     style="color:gold; text-decoration:underline; font-size:1.1em;">
+     style="color:gold;
+            text-decoration:underline;
+            font-size:1.1em;">
+
     ※ 取扱説明書はこちら：26/08/19 UP版
+
   </a>
+
 </div>
 
+
 <!-- Credit -->
+
 <div class="credit-box">
-  <div class="credit-title">Voiced by</div>
-  <div class="credit-link">https://CoeFont.cloud</div>
-  <div class="credit-link">https://ondoku3.com/ja/</div>
+
+  <div class="credit-title">
+    Voiced by
+  </div>
+
+  <div class="credit-link">
+    https://CoeFont.cloud
+  </div>
+
+  <div class="credit-link">
+    https://ondoku3.com/ja/
+  </div>
 
   <div class="credit-support1">
     Programming support:
@@ -248,24 +309,49 @@
   <div class="credit-support2">
     ChatGPT & Gemini
   </div>
+
 </div>
 
+
 <!-- TEST版リンク -->
+
 <div style="margin-top:0.6em;">
+
   <a href="https://kenishida126-droid.github.io/fukiya-timer/@test.html"
-     style="color:gold; text-decoration:underline; font-size:1.1em;">
+     style="color:gold;
+            text-decoration:underline;
+            font-size:1.1em;">
+
     ※ TEST版Link（@test.html）はこちら
+
   </a>
+
 </div>
-<div style="margin-top:0.5em; color:white; font-size:1.0em; line-height:1.6;">
+
+
+<div style="margin-top:0.5em;
+            color:white;
+            font-size:1.0em;
+            line-height:1.6;">
+
     本 Link は開発/修正中の HTML を<br>
+
     皆様にテストしていただくためのものです<br>
+
     同案件が無い時は Link を tap することで<br>
-    <span style="color:gold; font-weight:bold;">「癒やしのページ」</span><br>
+
+    <span style="color:gold; font-weight:bold;">
+      「癒やしのページ」
+    </span><br>
+
     へ ご案内いたします.....<br>
+
     お時間許す限り、どうぞお立ち寄りください<br>
+
     　　　　　　　　　
+
 </div>
+
 
 <script>
 
@@ -276,10 +362,14 @@
    一般Web版には service-worker.js がないため、
    iPhoneで「ホーム画面に追加」してもCACHEマークは表示しない。
 */
-const cacheStatus = document.getElementById('cacheStatus');
+
+const cacheStatus =
+  document.getElementById('cacheStatus');
 
 let cacheUpdating = false;
+
 let cacheStartTime = 0;
+
 let cacheTimer = null;
 
 
@@ -288,201 +378,344 @@ let cacheTimer = null;
    =========================================================
    MENU.html起動時は、前回の表示を必ずクリアする。
 */
+
 cacheStatus.innerHTML = '';
+
 cacheStatus.style.display = 'none';
 
 
 if ('serviceWorker' in navigator) {
 
-  /* メッセージ受信を先に設定して、CACHE_STARTを取りこぼさない */
-  navigator.serviceWorker.addEventListener('message', event => {
 
-    if (!event.data || !cacheStatus) return;
+  /* =======================================================
+     Service Workerからのメッセージ受信
+     ======================================================= */
 
+  navigator.serviceWorker.addEventListener(
+    'message',
+    event => {
 
-    /* =====================================================
-       CACHE_START
-       ===================================================== */
-    if (event.data.type === 'CACHE_START') {
-
-      cacheUpdating = true;
-      cacheStartTime = Date.now();
-
-      /* 秒数＋赤点を表示 */
-      cacheStatus.innerHTML =
-        '<span class="cache-seconds">0</span>' +
-        '<span class="cache-dot"></span>';
-
-      cacheStatus.style.display = 'block';
-      cacheStatus.classList.add('updating');
-
-
-      /* 既存タイマーがあれば停止 */
-      if (cacheTimer) {
-        clearInterval(cacheTimer);
+      if (!event.data || !cacheStatus) {
+        return;
       }
 
 
-      /* 1秒毎にCaching経過時間を更新 */
-      cacheTimer = setInterval(() => {
+      /* =====================================================
+         CACHE_START
 
-        if (!cacheUpdating) return;
+         新しいCACHE_NAMEによるCaching開始。
+
+         → 経過秒 + 🔴赤点滅
+         ===================================================== */
+
+      if (event.data.type === 'CACHE_START') {
+
+        cacheUpdating = true;
+
+        cacheStartTime = Date.now();
+
+
+        cacheStatus.innerHTML =
+          '<span class="cache-seconds">0</span>' +
+          '<span class="cache-dot"></span>';
+
+
+        cacheStatus.style.display = 'block';
+
+        cacheStatus.classList.add('updating');
+
+
+        if (cacheTimer) {
+
+          clearInterval(cacheTimer);
+
+        }
+
+
+        cacheTimer = setInterval(
+          () => {
+
+            if (!cacheUpdating) {
+              return;
+            }
+
+
+            const elapsed =
+              Math.floor(
+                (Date.now() - cacheStartTime) / 1000
+              );
+
+
+            const seconds =
+              cacheStatus.querySelector(
+                '.cache-seconds'
+              );
+
+
+            if (seconds) {
+
+              seconds.textContent =
+                elapsed;
+
+            }
+
+          },
+          1000
+        );
+
+
+        return;
+      }
+
+
+      /* =====================================================
+         CACHE_STATUS
+
+         通常起動時。
+
+         CACHE_NAMEに変更が無ければ
+         → 🟢 lime点灯
+
+         ただしCaching中なら、
+         CACHE_STARTによる🔴表示を維持する。
+         ===================================================== */
+
+      if (event.data.type === 'CACHE_STATUS') {
+
+
+        if (!cacheUpdating) {
+
+
+          cacheStatus.innerHTML =
+            '<span class="cache-dot"></span>';
+
+
+          cacheStatus.style.display =
+            'block';
+
+
+          cacheStatus.classList.remove(
+            'updating'
+          );
+
+
+          const dot =
+            cacheStatus.querySelector(
+              '.cache-dot'
+            );
+
+
+          if (dot) {
+
+            dot.style.background =
+              'lime';
+
+          }
+
+        }
+
+
+        return;
+      }
+
+
+      /* =====================================================
+         CACHE_UPDATED
+
+         Caching完了。
+
+         → 最終経過秒 + 🟢lime点灯
+         ===================================================== */
+
+      if (event.data.type === 'CACHE_UPDATED') {
+
+
+        cacheUpdating = false;
+
+
+        if (cacheTimer) {
+
+          clearInterval(cacheTimer);
+
+          cacheTimer = null;
+
+        }
+
 
         const elapsed =
           Math.floor(
             (Date.now() - cacheStartTime) / 1000
           );
 
+
         const seconds =
-          cacheStatus.querySelector('.cache-seconds');
+          cacheStatus.querySelector(
+            '.cache-seconds'
+          );
+
 
         if (seconds) {
-          seconds.textContent = elapsed;
+
+          seconds.textContent =
+            elapsed;
+
         }
 
-      }, 1000);
 
-      return;
-    }
-
-
-    /* =====================================================
-       CACHE_STATUS
-       =====================================================
-  if (event.data.type === 'CACHE_STATUS') {
-    /* =====================================================
-       通常起動時：CACHE_NAMEに変更がなければ🟢を表示
-       ===================================================== */
-    if (!cacheUpdating) {
-      cacheStatus.innerHTML =
-        '<span class="cache-dot"></span>';
-
-      cacheStatus.style.display = 'block';
-      cacheStatus.classList.remove('updating');
-
-      const dot =
-        cacheStatus.querySelector('.cache-dot');
-
-      if (dot) {
-        dot.style.background = 'lime';
-      }
-    }
-
-    return;
-  }
-
-
-    /* =====================================================
-       CACHE_UPDATED
-       ===================================================== */
-    if (event.data.type === 'CACHE_UPDATED') {
-
-      cacheUpdating = false;
-
-      if (cacheTimer) {
-        clearInterval(cacheTimer);
-        cacheTimer = null;
-      }
-
-
-      /* 最終的なCaching時間を確定 */
-      const elapsed =
-        Math.floor(
-          (Date.now() - cacheStartTime) / 1000
+        cacheStatus.classList.remove(
+          'updating'
         );
 
-      const seconds =
-        cacheStatus.querySelector('.cache-seconds');
 
-      if (seconds) {
-        seconds.textContent = elapsed;
+        const dot =
+          cacheStatus.querySelector(
+            '.cache-dot'
+          );
+
+
+        if (dot) {
+
+          dot.style.background =
+            'lime';
+
+        }
+
+
+        alert(
+          '吹矢Timer_PWA が更新されました\n' +
+          '　　　CACHE_UPDATED　　'
+        );
+
+
+        return;
       }
 
-
-      /* 赤点滅 → lime点灯 */
-      cacheStatus.classList.remove('updating');
-
-      const dot =
-        cacheStatus.querySelector('.cache-dot');
-
-      if (dot) {
-        dot.style.background = 'lime';
-      }
-
-
-      /* 秒数はそのまま残す */
-
-      alert(
-        '吹矢Timer_PWA が更新されました\n' +
-        '******　CACHE_UPDATED　******'
-      );
-
-      return;
     }
-  });
+  );
 
 
-  /* PWA版なら登録成功、一般Web版なら404等で失敗する */
-  navigator.serviceWorker.register('./service-worker.js')
-    .then(registration => {
+  /* =======================================================
+     Service Worker登録
+     ======================================================= */
 
-      /*
-         CACHE_STATUSを問い合わせる。
-         ただし、CACHE_STATUSを受信しても
-         CACHE Status表示は行わない。
-      */
-      const worker =
-        registration.active ||
-        navigator.serviceWorker.controller;
+  navigator.serviceWorker
+    .register('./service-worker.js')
 
-      if (worker) {
-        worker.postMessage({
-          type: 'GET_CACHE_STATUS'
-        });
+    .then(
+      registration => {
+
+
+        const worker =
+          registration.active ||
+          navigator.serviceWorker.controller;
+
+
+        if (worker) {
+
+          worker.postMessage({
+
+            type:
+              'GET_CACHE_STATUS'
+
+          });
+
+        }
+
       }
-    })
-    .catch(() => {
-      /* 一般Web版：何もしない */
-    });
+    )
+
+    .catch(
+      () => {
+
+        /* 一般Web版：何もしない */
+
+      }
+    );
+
 }
 
-/* === Keyboard対応 === */
-document.addEventListener('keydown', function(event) {
 
-  // Spaceキーでページスクロール防止
-  if (event.code === 'Space') {
-    event.preventDefault();
+/* =========================================================
+   Keyboard対応
+   ========================================================= */
+
+document.addEventListener(
+  'keydown',
+  function(event) {
+
+
+    /* Spaceキーでページスクロール防止 */
+
+    if (event.code === 'Space') {
+
+      event.preventDefault();
+
+    }
+
+
+    switch (
+      event.key.toLowerCase()
+    ) {
+
+
+      /* 1-key：Official Portrait Edition */
+
+      case '1':
+
+        location.href =
+          'official/index.html';
+
+        break;
+
+
+      /* 2-key：Official Landscape Edition */
+
+      case '2':
+
+        location.href =
+          'official/landscape.html';
+
+        break;
+
+
+      /* 3-key：Arrows Timer */
+
+      case '3':
+
+        location.href =
+          'extra/index.html';
+
+        break;
+
+
+      /* 4-key：Circle Timer */
+
+      case '4':
+
+        location.href =
+          'gemini/index.html';
+
+        break;
+
+
+      /* M-key：manual.pdf */
+
+      case 'm':
+
+        window.open(
+          'manual.pdf',
+          '_blank'
+        );
+
+        break;
+
+    }
+
   }
+);
 
-  switch(event.key.toLowerCase()) {
-
-    // 1-key：Official Portrait Edition
-    case '1':
-      location.href = 'official/index.html';
-      break;
-
-    // 2-key：Official Landscape Edition
-    case '2':
-      location.href = 'official/landscape.html';
-      break;
-
-    // 3-key：Arrows Timer
-    case '3':
-      location.href = 'extra/index.html';
-      break;
-
-    // 4-key：Circle Timer
-    case '4':
-      location.href = 'gemini/index.html';
-      break;
-
-    // M-key：manual.pdf
-    case 'm':
-      window.open('manual.pdf', '_blank');
-      break;
-  }
-});
 </script>
+
 
 </body>
 </html>
