@@ -28,26 +28,40 @@
     animation: fadeIn 1s ease-out;
   }
 
-  /* ===== PWA キャッシュ状態ドット ===== */
-  #cacheStatus {
-    display: none;
-    position: fixed;
-    top: 8px;
-    right: 10px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: lime;
-  }
+/* ===== PWA キャッシュ状態表示 ===== */
+#cacheStatus {
+  display: none;
+  position: fixed;
+  top: 5px;
+  right: 10px;
+  height: 18px;
+  line-height: 18px;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
 
-  #cacheStatus.updating {
-    background: red;
-    animation: cacheBlink 0.7s infinite;
-  }
+#cacheStatus .cache-seconds {
+  margin-right: 4px;
+}
 
-  @keyframes cacheBlink {
-    50% { opacity: 0; }
-  }
+#cacheStatus .cache-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: lime;
+}
+
+#cacheStatus.updating .cache-dot {
+  background: red;
+  animation: cacheBlink 1s infinite;
+}
+
+@keyframes cacheBlink {
+  50% { opacity: 0; }
+}
 
   h1 {
     font-size: 1.4em;
@@ -171,7 +185,7 @@
 <h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
 
-<div class="category-title">★ 競技会向け</div>
+<div class="category-title">★ 競技会向け《ver.01》</div>
 
 <div class="version-box" onclick="location.href='official/index.html'">
   <div class="version-title">
@@ -238,7 +252,7 @@
 
 <!-- TEST版リンク -->
 <div style="margin-top:0.6em;">
-  <a href="https://kenishida126-droid.github.io/fukiya-timer-pwa/@test.html"
+  <a href="https://kenishida126-droid.github.io/fukiya-timer/@test.html"
      style="color:gold; text-decoration:underline; font-size:1.1em;">
     ※ TEST版Link（@test.html）はこちら
   </a>
@@ -263,52 +277,155 @@
    iPhoneで「ホーム画面に追加」してもCACHEマークは表示しない。
 */
 const cacheStatus = document.getElementById('cacheStatus');
+
 let cacheUpdating = false;
+let cacheStartTime = 0;
+let cacheTimer = null;
+
+
+/* =========================================================
+   CACHE Status表示初期化
+   =========================================================
+   MENU.html起動時は、前回の表示を必ずクリアする。
+*/
+cacheStatus.innerHTML = '';
+cacheStatus.style.display = 'none';
+
 
 if ('serviceWorker' in navigator) {
 
   /* メッセージ受信を先に設定して、CACHE_STARTを取りこぼさない */
   navigator.serviceWorker.addEventListener('message', event => {
+
     if (!event.data || !cacheStatus) return;
 
+
+    /* =====================================================
+       CACHE_START
+       ===================================================== */
     if (event.data.type === 'CACHE_START') {
+
       cacheUpdating = true;
+      cacheStartTime = Date.now();
+
+      /* 秒数＋赤点を表示 */
+      cacheStatus.innerHTML =
+        '<span class="cache-seconds">0</span>' +
+        '<span class="cache-dot"></span>';
+
       cacheStatus.style.display = 'block';
-      cacheStatus.style.background = 'red';
       cacheStatus.classList.add('updating');
+
+
+      /* 既存タイマーがあれば停止 */
+      if (cacheTimer) {
+        clearInterval(cacheTimer);
+      }
+
+
+      /* 1秒毎にCaching経過時間を更新 */
+      cacheTimer = setInterval(() => {
+
+        if (!cacheUpdating) return;
+
+        const elapsed =
+          Math.floor(
+            (Date.now() - cacheStartTime) / 1000
+          );
+
+        const seconds =
+          cacheStatus.querySelector('.cache-seconds');
+
+        if (seconds) {
+          seconds.textContent = elapsed;
+        }
+
+      }, 1000);
+
       return;
     }
 
+
+    /* =====================================================
+       CACHE_STATUS
+       =====================================================
+       CACHE_STATUSは状態確認用。
+       起動直後に🟢を表示する処理は行わない。
+    */
     if (event.data.type === 'CACHE_STATUS') {
-      /* 更新中は、旧Service Workerからの状態通知で緑に戻さない */
-      if (cacheUpdating) return;
 
-      cacheStatus.style.display = 'block';
-      cacheStatus.classList.remove('updating');
-      cacheStatus.style.background = 'lime';
+      /* 表示は変更しない */
       return;
     }
 
+
+    /* =====================================================
+       CACHE_UPDATED
+       ===================================================== */
     if (event.data.type === 'CACHE_UPDATED') {
+
       cacheUpdating = false;
-      cacheStatus.style.display = 'block';
+
+      if (cacheTimer) {
+        clearInterval(cacheTimer);
+        cacheTimer = null;
+      }
+
+
+      /* 最終的なCaching時間を確定 */
+      const elapsed =
+        Math.floor(
+          (Date.now() - cacheStartTime) / 1000
+        );
+
+      const seconds =
+        cacheStatus.querySelector('.cache-seconds');
+
+      if (seconds) {
+        seconds.textContent = elapsed;
+      }
+
+
+      /* 赤点滅 → lime点灯 */
       cacheStatus.classList.remove('updating');
-      cacheStatus.style.background = 'lime';
+
+      const dot =
+        cacheStatus.querySelector('.cache-dot');
+
+      if (dot) {
+        dot.style.background = 'lime';
+      }
+
+
+      /* 秒数はそのまま残す */
 
       alert(
         '吹矢Timer_PWA が更新されました\n' +
-        '****　CACHE_UPDATED　****'
+        '　　　CACHE_UPDATED　　'
       );
+
+      return;
     }
   });
+
 
   /* PWA版なら登録成功、一般Web版なら404等で失敗する */
   navigator.serviceWorker.register('./service-worker.js')
     .then(registration => {
-      /* 現在のCACHE_NAMEを確認して、変更がなければ緑点灯 */
-      const worker = registration.active || navigator.serviceWorker.controller;
+
+      /*
+         CACHE_STATUSを問い合わせる。
+         ただし、CACHE_STATUSを受信しても
+         CACHE Status表示は行わない。
+      */
+      const worker =
+        registration.active ||
+        navigator.serviceWorker.controller;
+
       if (worker) {
-        worker.postMessage({ type: 'GET_CACHE_STATUS' });
+        worker.postMessage({
+          type: 'GET_CACHE_STATUS'
+        });
       }
     })
     .catch(() => {
