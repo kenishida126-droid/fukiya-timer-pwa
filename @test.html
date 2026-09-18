@@ -89,6 +89,28 @@
   }
 
   /* ========================================
+     Ver.43 アドレスバースクロールアウト対応
+     画面下部にスクロール用の空白領域を設け、
+     上方へドラッグするとページ全体を上へスクロールできるようにする。
+     Chromeのアドレスバーが隠れた後も、
+     ページの通常スクロールとして上端まで停止する。
+     ======================================== */
+  #addressBarSpacer {
+    width: 100%;
+    height: 100vh;
+  }
+
+  /* ========================================
+     Ver.43 スクロール上端制御
+     @test.htmlの先頭表示位置を超えて
+     上方へ行き過ぎないようにする。
+     ======================================== */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  /* ========================================
      壁紙番号
      既存のGAP内に絶対配置。
      日付の位置は動かさない。
@@ -509,12 +531,20 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻る《Ver.41》
+    戻　る
   </button>
 
 
 
 </div>
+
+
+<!-- ========================================
+     Ver.43 アドレスバースクロールアウト用スクロール空白
+     戻るボタンの下から上方へドラッグして
+     ページをスクロールできるようにする。
+     ======================================== -->
+<div id="addressBarSpacer" aria-hidden="true"></div>
 
 
 <!-- ========================================
@@ -2585,6 +2615,44 @@ document
     }
   );
 
+
+/* ========================================
+   Ver.44 アドレスバー スクロールアウト対応
+
+   戻るボタンより下を上方向へドラッグすると、
+   Chromeのアドレスバーを収納する。
+
+   ページ内容そのものは上へ移動させ過ぎない。
+   スクロール量は1pxを上限とし、@test.htmlの
+   先頭（壁紙番号を含む）が画面から消えない位置で停止する。
+
+   ※既存4タイマーで使用している
+     window.scrollTo(0, 1)方式に合わせる。
+   ======================================== */
+let addressBarMaxScroll = 1;
+
+function updateAddressBarMaxScroll() {
+  addressBarMaxScroll = 1;
+
+  if (window.scrollY > addressBarMaxScroll) {
+    window.scrollTo(0, addressBarMaxScroll);
+  }
+}
+
+function limitAddressBarScroll() {
+  if (window.scrollY > addressBarMaxScroll) {
+    window.scrollTo(0, addressBarMaxScroll);
+  }
+}
+
+window.addEventListener('load', updateAddressBarMaxScroll);
+window.addEventListener('resize', updateAddressBarMaxScroll);
+window.addEventListener('orientationchange', function() {
+  setTimeout(updateAddressBarMaxScroll, 100);
+});
+window.addEventListener('scroll', limitAddressBarScroll, { passive: true });
+
+updateAddressBarMaxScroll();
 
 window.addEventListener('resize', syncMusicHintWidth);
 window.addEventListener('orientationchange', syncMusicHintWidth);
