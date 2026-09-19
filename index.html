@@ -320,9 +320,12 @@
   </div>
   <button id="recacheButton" type="button">Request reCaching</button>
   <div class="pwa-status">《CACHE Status》</div>
-  <div class="pwa-status">&nbsp;&nbsp;●:Update Available</div>
-  <div class="pwa-status">xx🔴:Now Caching / xx:ElapsedTimer</div>
-  <div class="pwa-status">&nbsp;&nbsp;🟢:CACHE_UPDATED</div>
+  <div class="pwa-status">
+    <span class="status-yellow-blink">&nbsp;&nbsp;●</span>:Update Available</div>
+  <div class="pwa-status">
+    <span class="status-red-blink">xx🔴</span>:Now Caching / xx:ElapsedTimer</div>
+  <div class="pwa-status">
+    &nbsp;&nbsp;<span class="status-green">🟢</span>:CACHE_UPDATED</div>
   <div class="pwa-note">
     ※92MB程のファイルをCachingします<br>
     　Wi-Fi環境下での実行を推奨します
