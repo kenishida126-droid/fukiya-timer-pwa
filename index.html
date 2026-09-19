@@ -169,6 +169,7 @@
     color: #fff;
     text-align: left;
     font-family: monospace;
+    font-size: 1em;
     line-height: 1.45;
   }
   #pwaDisplayArea .pwa-title,
@@ -387,7 +388,20 @@ function stopCacheElapsed() {
   }
 }
 
-if ('serviceWorker' in navigator) {
+/* 同一フォルダー内の service-worker.js の有無で
+   PWA版 / Web版を判定する */
+fetch('./service-worker.js', {
+  method: 'HEAD',
+  cache: 'no-store'
+})
+.then(response => {
+
+  if (!response.ok || !('serviceWorker' in navigator)) {
+    return;
+  }
+
+  /* PWA版のみDisplay Areaを表示する */
+  pwaDisplayArea.style.display = 'block';
 
   /* PWA版のみDisplay Areaを表示する */
   pwaDisplayArea.style.display = 'block';
@@ -484,10 +498,14 @@ if ('serviceWorker' in navigator) {
       }
     })
     .catch(() => {
-      /* 一般Web版：Display Areaも表示しない */
+      /* service-worker.js の登録に失敗した場合 */
       pwaDisplayArea.style.display = 'none';
     });
-}
+})
+.catch(() => {
+  /* 同一フォルダーに service-worker.js が無い場合はWeb版 */
+  pwaDisplayArea.style.display = 'none';
+});
 
 /* === Keyboard対応 === */
 document.addEventListener('keydown', function(event) {
