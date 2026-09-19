@@ -60,6 +60,82 @@
     50% { opacity: 0; }
   }
 
+  /* ===== PWA mode Display Area ===== */
+  #pwaModeArea {
+    display: none;
+    width: 88%;
+    max-width: 430px;
+    margin: 1.2em auto 1.0em auto;
+    padding: 0.9em 1em;
+    box-sizing: border-box;
+    background: #333;
+    color: #fff;
+    text-align: left;
+    font-family: monospace;
+    line-height: 1.45;
+    border-radius: 4px;
+  }
+
+  #pwaModeArea .pwa-title {
+    font-weight: bold;
+    margin-bottom: 0.45em;
+  }
+
+  #pwaModeArea .pwa-note {
+    margin-bottom: 0.8em;
+  }
+
+  #recacheButton {
+    display: block;
+    margin: 0.8em auto 0.9em auto;
+    padding: 0.55em 1.2em;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    background: #555;
+    color: #fff;
+    font-family: monospace;
+    font-size: 1.05em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #222;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #recacheButton.recaching {
+    background: #777;
+    color: yellow;
+    box-shadow: 0 1px 0 #222;
+    transform: translateY(2px);
+  }
+
+  #pwaModeArea .pwa-status {
+    margin-top: 0.2em;
+  }
+
+  #pwaModeArea .update-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 0.35em;
+    border-radius: 50%;
+    background: yellow;
+    vertical-align: middle;
+    animation: cacheBlink 1s infinite;
+  }
+
+  #pwaModeArea .status-red {
+    color: red;
+    animation: cacheBlink 1s infinite;
+  }
+
+  #pwaModeArea .status-green {
+    color: lime;
+  }
+
+  #pwaModeArea .pwa-warning {
+    margin-top: 0.55em;
+  }
+
   h1 {
     font-size: 1.4em;
     color: gold;
@@ -180,7 +256,7 @@
 <div id="cacheStatus"></div>
 <div id="cacheElapsed"></div>
 
-<h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
+<h1>≪ 吹矢Timer MENU ver.03 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
 
 <div class="category-title">★ 競技会向け</div>
@@ -248,6 +324,22 @@
   </div>
 </div>
 
+<!-- ===== PWA mode Display Area ===== -->
+<div id="pwaModeArea">
+  <div class="pwa-title">***** PWA mode Display Area *****</div>
+  <div class="pwa-note">本Area及び画面右上のCACHE Statusは<br>
+    PWAモード時のみ表示される領域です</div>
+
+  <button id="recacheButton" type="button">Request reCaching</button>
+
+  <div class="pwa-status">《CACHE Status》</div>
+  <div class="pwa-status"><span class="update-dot"></span>:Update Available</div>
+  <div class="pwa-status">xx<span class="status-red">🔴</span>:Now Caching / xx:ElapsedTimer</div>
+  <div class="pwa-status">　<span class="status-green">🟢</span>:CACHE_UPDATED</div>
+  <div class="pwa-warning">※92MB程のファイルをCachingします</div>
+  <div>　Wi-Fi環境下での実行を推奨します</div>
+</div>
+
 <!-- TEST版リンク -->
 <div style="margin-top:0.6em;">
   <a href="https://kenishida126-droid.github.io/fukiya-timer/@test.html"
@@ -276,22 +368,37 @@
 
    CACHE状態の基本動作：
    ① 起動直後は空白
-   ② CACHE_STATUSを受信して確認完了後、変更なしならlime
-   ③ CACHE_STARTを受信したらred点滅＋経過秒数
+   ② CACHE_NAME変更検出で黄色点滅（自動Cachingしない）
+   ③ Request reCaching tapでCACHE_START → red点滅＋経過秒数
    ④ CACHE_UPDATEDを受信したらlime＋最終経過秒数
 */
 const cacheStatus = document.getElementById('cacheStatus');
 const cacheElapsed = document.getElementById('cacheElapsed');
+const pwaModeArea = document.getElementById('pwaModeArea');
+const recacheButton = document.getElementById('recacheButton');
 
 let cacheUpdating = false;
 let cacheStartTime = 0;
 let cacheElapsedTimer = null;
+let pwaMode = false;
+let updateAvailable = false;
 
 function showCacheGreen() {
   cacheUpdating = false;
+  updateAvailable = false;
   cacheStatus.style.display = 'block';
   cacheStatus.classList.remove('updating');
   cacheStatus.style.background = 'lime';
+  recacheButton.classList.remove('recaching');
+}
+
+function showCacheUpdateAvailable() {
+  cacheUpdating = false;
+  updateAvailable = true;
+  cacheStatus.style.display = 'block';
+  cacheStatus.classList.remove('updating');
+  cacheStatus.style.background = 'yellow';
+  cacheStatus.style.animation = 'cacheBlink 1s infinite';
 }
 
 function startCacheElapsed() {
@@ -330,24 +437,37 @@ if ('serviceWorker' in navigator) {
 
     if (event.data.type === 'CACHE_START') {
       cacheUpdating = true;
+      updateAvailable = false;
 
       cacheStatus.style.display = 'block';
       cacheStatus.style.background = 'red';
+      cacheStatus.style.animation = '';
       cacheStatus.classList.add('updating');
 
+      recacheButton.classList.add('recaching');
       startCacheElapsed();
       return;
     }
 
     if (event.data.type === 'CACHE_STATUS') {
       /*
-         CACHE_STATUSは「確認完了」の合図。
-         ただしCACHE_START後は、旧Service Worker等からの
-         CACHE_STATUSで赤点滅を緑に戻してはいけない。
+         CACHE_STATUSで返されたCACHE_NAMEと、
+         前回確認したCACHE_NAMEを比較する。
       */
       if (cacheUpdating) return;
 
-      showCacheGreen();
+      const currentCacheName = event.data.cacheName || '';
+      const savedCacheName = localStorage.getItem('fukiyaTimerCacheName');
+
+      if (savedCacheName && savedCacheName !== currentCacheName) {
+        showCacheUpdateAvailable();
+      } else {
+        showCacheGreen();
+      }
+
+      if (currentCacheName) {
+        localStorage.setItem('fukiyaTimerCacheName', currentCacheName);
+      }
       return;
     }
 
@@ -355,29 +475,27 @@ if ('serviceWorker' in navigator) {
       stopCacheElapsed();
       showCacheGreen();
 
+      if (event.data.cacheName) {
+        localStorage.setItem(
+          'fukiyaTimerCacheName',
+          event.data.cacheName
+        );
+      }
+
       alert(
         '吹矢Timer_PWA が更新されました\n' +
-        '*****　CACHE_UPDATED　*****'
+        '　　　CACHE_UPDATED　　'
       );
       return;
     }
   });
 
-  /*
-     PWA版なら登録成功、一般Web版なら404等で失敗する。
-
-     重要：
-     register()直後にactiveへGET_CACHE_STATUSを送るだけでは、
-     新しいService Workerがinstall中なのに旧CACHE_NAMEを
-     「変更なし」と誤認する可能性がある。
-
-     そこで、まずupdate()で更新確認を完了させる。
-     installingが存在する場合は旧activeへ問い合わせず、
-     CACHE_START / CACHE_UPDATED を待つ。
-     installingが無い場合だけactiveへCACHE_STATUSを問い合わせる。
-  */
+  /* PWA版なら登録成功、一般Web版なら404等で失敗する */
   navigator.serviceWorker.register('./service-worker.js')
     .then(async registration => {
+
+      pwaMode = true;
+      pwaModeArea.style.display = 'block';
 
       try {
         await registration.update();
@@ -386,7 +504,7 @@ if ('serviceWorker' in navigator) {
       }
 
       if (registration.installing) {
-        /* 新しいCACHE_NAMEのinstall中。旧SWには問い合わせない。 */
+        /* 新しいService Workerの状態通知を待つ */
         return;
       }
 
@@ -395,16 +513,27 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.controller;
 
       if (worker) {
-        /*
-           ここではまだ緑にしない。
-           CACHE_STATUSを受信した時だけ緑にする。
-        */
+        /* ここではまだ緑にしない。CACHE_STATUS受信後に判断する。 */
         worker.postMessage({ type: 'GET_CACHE_STATUS' });
       }
     })
     .catch(() => {
-      /* 一般Web版：何もしない */
+      /* 一般Web版：PWA領域を表示しない */
     });
+
+  recacheButton.addEventListener('click', function() {
+    if (!pwaMode || cacheUpdating || !updateAvailable) return;
+
+    const worker =
+      navigator.serviceWorker.controller ||
+      navigator.serviceWorker.ready.then(reg => reg.active);
+
+    Promise.resolve(worker).then(function(activeWorker) {
+      if (!activeWorker) return;
+      recacheButton.classList.add('recaching');
+      activeWorker.postMessage({ type: 'RECACHE' });
+    });
+  });
 }
 
 /* === Keyboard対応 === */
