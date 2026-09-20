@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260920-13';
+const CACHE_NAME = 'fukiya-timer-pwa-20260920-14';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -52,9 +52,8 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/gemini/30sec.mp3',
   '/fukiya-timer-pwa/gemini/end.mp3',
 
-/* --- @test.html(癒やしのページ版)向けファイル群 ---
-   ※ すべて「/fukiya-timer-pwa/」からの絶対パス 
-      当初「/fukiya-timer/」としてたが無意味と判明  */
+  /* --- @test.html(癒やしのページ版)向けファイル群 ---
+     ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
   '/fukiya-timer-pwa/@test.html',
   '/fukiya-timer-pwa/@music-1.mp3',
   '/fukiya-timer-pwa/@music-2.mp3',
@@ -194,9 +193,9 @@ self.addEventListener('message', event => {
        * 新しいCACHE_NAMEを作成して、
        * PRECACHE_URLSを1つずつCachingする。
        *
-       * cache.add()は使用しない。
-       * HTTPキャッシュを利用せず、ネットワークから
-       * 強制的に再取得してCache Storageへ保存する。
+       * cache.add()ではなく、
+       * cache: 'reload' でネットワークから最新ファイルを取得し、
+       * cache.put()でCACHEを上書きする。
        */
       const cache = await caches.open(CACHE_NAME);
 
@@ -208,9 +207,7 @@ self.addEventListener('message', event => {
           });
 
           if (!response.ok) {
-            throw new Error(
-              `HTTP ${response.status} : ${url}`
-            );
+            throw new Error(`HTTP ${response.status} : ${url}`);
           }
 
           await cache.put(url, response);
