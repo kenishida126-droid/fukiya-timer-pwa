@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260920-7';
+const CACHE_NAME = 'fukiya-timer-pwa-20260920-8';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -164,27 +164,12 @@ self.addEventListener('message', event => {
 
   if (event.data.type === 'GET_CACHE_STATUS') {
 
-    event.waitUntil((async () => {
-
-      /*
-       * 現在のCACHE_NAMEが実際に存在するか確認する。
-       *
-       * CACHE_NAMEだけが更新されていて、まだ
-       * Request reCachingを実行していない場合は
-       * CACHE_AVAILABLEを返す。
-       */
-      const hasCurrentCache = await caches.has(CACHE_NAME);
-
-      if (event.source) {
-        event.source.postMessage({
-          type: hasCurrentCache
-            ? 'CACHE_STATUS'
-            : 'CACHE_AVAILABLE',
-          cacheName: CACHE_NAME
-        });
-      }
-
-    })());
+    if (event.source) {
+      event.source.postMessage({
+        type: 'CACHE_STATUS',
+        cacheName: CACHE_NAME
+      });
+    }
 
     return;
   }
@@ -209,16 +194,35 @@ self.addEventListener('message', event => {
       /*
        * 新しいCACHE_NAMEを作成して、
        * PRECACHE_URLSを1つずつCachingする。
+       *
+       * cache.add()は使用しない。
+       * HTTPキャッシュを利用せず、ネットワークから
+       * 強制的に再取得してCache Storageへ保存する。
        */
       const cache = await caches.open(CACHE_NAME);
 
       for (const url of PRECACHE_URLS) {
         try {
-          await cache.add(url);
+
+          const response = await fetch(url, {
+            cache: 'reload'
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `HTTP ${response.status} : ${url}`
+            );
+          }
+
+          await cache.put(url, response);
+
           console.log("OK :", url);
+
         } catch (e) {
+
           console.error("NG :", url);
           console.error(e);
+
         }
       }
 
