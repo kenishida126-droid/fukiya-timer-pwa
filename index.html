@@ -369,9 +369,10 @@
 
    CACHE状態の基本動作：
    ① 起動直後は空白
-   ② CACHE_STATUSを受信して確認完了後、変更なしならlime
-   ③ CACHE_STARTを受信したらred点滅＋経過秒数
-   ④ CACHE_UPDATEDを受信したらlime＋最終経過秒数
+   ② CACHE_AVAILABLEを受信したらyellow点滅（Update Available）
+   ③ CACHE_STATUSを受信して確認完了後、変更なしならlime
+   ④ CACHE_STARTを受信したらred点滅＋経過秒数
+   ⑤ CACHE_UPDATEDを受信したらlime＋最終経過秒数
 */
 const cacheStatus = document.getElementById('cacheStatus');
 const cacheElapsed = document.getElementById('cacheElapsed');
@@ -432,9 +433,6 @@ fetch('./service-worker.js', {
   /* PWA版のみDisplay Areaを表示する */
   pwaDisplayArea.style.display = 'block';
 
-  /* PWA版のみDisplay Areaを表示する */
-  pwaDisplayArea.style.display = 'block';
-
   /* Request reCaching */
   recacheButton.addEventListener('click', function() {
     const worker = navigator.serviceWorker.controller;
@@ -447,6 +445,14 @@ fetch('./service-worker.js', {
   /* メッセージ受信を最初に設定して、CACHE_STARTを取りこぼさない */
   navigator.serviceWorker.addEventListener('message', event => {
     if (!event.data || !cacheStatus) return;
+
+    if (event.data.type === 'CACHE_AVAILABLE') {
+      cacheUpdating = false;
+      cacheStatus.style.display = 'block';
+      cacheStatus.style.background = 'yellow';
+      cacheStatus.classList.add('updating');
+      return;
+    }
 
     if (event.data.type === 'CACHE_START') {
       cacheUpdating = true;

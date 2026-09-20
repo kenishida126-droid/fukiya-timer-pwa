@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260920-5';
+const CACHE_NAME = 'fukiya-timer-pwa-20260920-7';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -102,44 +102,30 @@ const PRECACHE_URLS = [
 
 /* ---------------------------------------------------------
    install
-   ・ここで「一気に全部キャッシュ」
+   ・install時は自動Cachingしない
 --------------------------------------------------------- */
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
 
     /*
-     * すでに同じ CACHE_NAME が存在するか確認する。
-     * 存在しない場合は、新しいキャッシュの作成開始として
-     * CACHE_START をクライアントへ通知する。
+     * 新しいCACHE_NAMEのService Workerがinstallされたことを
+     * クライアントへ通知する。
+     *
+     * ここではCachingを行わない。
+     * 実際のCachingはMENUの「Request reCaching」から開始する。
      */
-    const existingCaches = await caches.keys();
-    const isNewCache = !existingCaches.includes(CACHE_NAME);
+    const clientsList = await self.clients.matchAll({
+      includeUncontrolled: true,
+      type: 'window'
+    });
 
-    if (isNewCache) {
-      const clientsList = await self.clients.matchAll({
-        includeUncontrolled: true,
-        type: 'window'
+    for (const client of clientsList) {
+      client.postMessage({
+        type: 'CACHE_AVAILABLE',
+        cacheName: CACHE_NAME
       });
-
-      for (const client of clientsList) {
-        client.postMessage({
-          type: 'CACHE_START',
-          cacheName: CACHE_NAME
-        });
-      }
     }
 
-    const cache = await caches.open(CACHE_NAME);
-
-    for (const url of PRECACHE_URLS) {
-      try {
-        await cache.add(url);
-        console.log("OK :", url);
-      } catch (e) {
-        console.error("NG :", url);
-        console.error(e);
-      }
-    }
   })());
 
   self.skipWaiting();
@@ -147,50 +133,19 @@ self.addEventListener('install', event => {
 
 /* ---------------------------------------------------------
    activate
-   ・古いキャッシュを完全削除
+   ・install時には古いキャッシュを削除しない
+   ・RECACHE完了後に古いキャッシュを削除する
 --------------------------------------------------------- */
 self.addEventListener('activate', event => {
   event.waitUntil(
     (async () => {
 
       /*
-       * 今回のCACHE_NAME以前に、
-       * Fukiya Timer PWAのキャッシュが存在していたか確認する。
+       * install / activateの時点では旧CACHEを残す。
        *
-       * 初回インストール：
-       *   以前のキャッシュなし → CACHE_UPDATEDを送らない
-       *
-       * 更新：
-       *   以前のキャッシュあり → CACHE_UPDATEDを送る
+       * Request reCaching実行後、新CACHEのCachingが完了した時点で
+       * RECACHE処理内から旧CACHEを削除する。
        */
-      const keys = await caches.keys();
-
-      const hadPreviousCache = keys.some(
-        k =>
-          k.startsWith('fukiya-timer-pwa-') &&
-          k !== CACHE_NAME
-      );
-
-      // ① 古いキャッシュを削除
-      await Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
-      );
-
-      // ② 更新時のみ CACHE_UPDATED を通知
-      if (hadPreviousCache) {
-
-        const clientsList = await self.clients.matchAll({
-          includeUncontrolled: true,
-          type: 'window'
-        });
-
-        for (const client of clientsList) {
-          client.postMessage({
-            type: 'CACHE_UPDATED',
-            cacheName: CACHE_NAME
-          });
-        }
-      }
 
     })()
   );
@@ -201,6 +156,7 @@ self.addEventListener('activate', event => {
 /* ---------------------------------------------------------
    message
    ・現在のCACHE状態を問い合わせ
+   ・Request reCachingを受信したらCaching開始
 --------------------------------------------------------- */
 self.addEventListener('message', event => {
 
@@ -208,13 +164,94 @@ self.addEventListener('message', event => {
 
   if (event.data.type === 'GET_CACHE_STATUS') {
 
-    if (event.source) {
-      event.source.postMessage({
-        type: 'CACHE_STATUS',
-        cacheName: CACHE_NAME
-      });
-    }
+    event.waitUntil((async () => {
+
+      /*
+       * 現在のCACHE_NAMEが実際に存在するか確認する。
+       *
+       * CACHE_NAMEだけが更新されていて、まだ
+       * Request reCachingを実行していない場合は
+       * CACHE_AVAILABLEを返す。
+       */
+      const hasCurrentCache = await caches.has(CACHE_NAME);
+
+      if (event.source) {
+        event.source.postMessage({
+          type: hasCurrentCache
+            ? 'CACHE_STATUS'
+            : 'CACHE_AVAILABLE',
+          cacheName: CACHE_NAME
+        });
+      }
+
+    })());
+
+    return;
   }
+
+  if (event.data.type === 'RECACHE') {
+
+    event.waitUntil((async () => {
+
+      const clientsList = await self.clients.matchAll({
+        includeUncontrolled: true,
+        type: 'window'
+      });
+
+      /* Caching開始をMENUへ通知 */
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'CACHE_START',
+          cacheName: CACHE_NAME
+        });
+      }
+
+      /*
+       * 新しいCACHE_NAMEを作成して、
+       * PRECACHE_URLSを1つずつCachingする。
+       */
+      const cache = await caches.open(CACHE_NAME);
+
+      for (const url of PRECACHE_URLS) {
+        try {
+          await cache.add(url);
+          console.log("OK :", url);
+        } catch (e) {
+          console.error("NG :", url);
+          console.error(e);
+        }
+      }
+
+      /*
+       * 新CACHEのCaching完了後、
+       * Fukiya Timer PWAの旧CACHEを削除する。
+       */
+      const keys = await caches.keys();
+
+      await Promise.all(
+        keys.filter(k =>
+          k.startsWith('fukiya-timer-pwa-') &&
+          k !== CACHE_NAME
+        ).map(k => caches.delete(k))
+      );
+
+      /* Caching完了をMENUへ通知 */
+      const updatedClients = await self.clients.matchAll({
+        includeUncontrolled: true,
+        type: 'window'
+      });
+
+      for (const client of updatedClients) {
+        client.postMessage({
+          type: 'CACHE_UPDATED',
+          cacheName: CACHE_NAME
+        });
+      }
+
+    })());
+
+  }
+
 });
 
 /* ---------------------------------------------------------
