@@ -7,8 +7,6 @@
 
 const CACHE_NAME = 'fukiya-timer-pwa-20260920-16';
 
-/* --- install 時に一気にキャッシュする対象 ---
-   ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
 const PRECACHE_URLS = [
   '/fukiya-timer-pwa/',
   '/fukiya-timer-pwa/index.html',
@@ -54,7 +52,9 @@ const PRECACHE_URLS = [
 
   /* --- @test.html(癒やしのページ版)向けファイル群 ---
      ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
+
   '/fukiya-timer-pwa/@test.html',
+
   '/fukiya-timer-pwa/@music-1.mp3',
   '/fukiya-timer-pwa/@music-2.mp3',
   '/fukiya-timer-pwa/@music-3.mp3',
@@ -75,7 +75,9 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/@music-18.mp3',
   '/fukiya-timer-pwa/@music-19.mp3',
   '/fukiya-timer-pwa/@music-20.mp3',
+
   '/fukiya-timer-pwa/@video.mp4',
+
   '/fukiya-timer-pwa/@wallpaper-1.jpg',
   '/fukiya-timer-pwa/@wallpaper-2.jpg',
   '/fukiya-timer-pwa/@wallpaper-3.jpg',
@@ -98,20 +100,14 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/@wallpaper-20.jpg'
 ];
 
-/* ---------------------------------------------------------
-   install
-   ・install時は自動Cachingしない
---------------------------------------------------------- */
+
+/* =========================================================
+   INSTALL
+   ========================================================= */
+
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
 
-    /*
-     * 新しいCACHE_NAMEのService Workerがinstallされたことを
-     * クライアントへ通知する。
-     *
-     * ここではCachingを行わない。
-     * 実際のCachingはMENUの「Request reCaching」から開始する。
-     */
     const clientsList = await self.clients.matchAll({
       includeUncontrolled: true,
       type: 'window'
@@ -129,36 +125,31 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-/* ---------------------------------------------------------
-   activate
-   ・install時には古いキャッシュを削除しない
-   ・RECACHE完了後に古いキャッシュを削除する
---------------------------------------------------------- */
+
+/* =========================================================
+   ACTIVATE
+   ========================================================= */
+
 self.addEventListener('activate', event => {
-  event.waitUntil(
-    (async () => {
+  event.waitUntil((async () => {
 
-      /*
-       * install / activateの時点では旧CACHEを残す。
-       *
-       * Request reCaching実行後、新CACHEのCachingが完了した時点で
-       * RECACHE処理内から旧CACHEを削除する。
-       */
+    // keep old caches; delete only after RECACHE
 
-    })()
-  );
+  })());
 
   self.clients.claim();
 });
 
-/* ---------------------------------------------------------
-   message
-   ・現在のCACHE状態を問い合わせ
-   ・Request reCachingを受信したらCaching開始
---------------------------------------------------------- */
+
+/* =========================================================
+   MESSAGE
+   ========================================================= */
+
 self.addEventListener('message', event => {
 
-  if (!event.data) return;
+  /* ---------------------------------------------------------
+     GET_CACHE_STATUS
+     --------------------------------------------------------- */
 
   if (event.data.type === 'GET_CACHE_STATUS') {
 
@@ -172,6 +163,11 @@ self.addEventListener('message', event => {
     return;
   }
 
+
+  /* ---------------------------------------------------------
+     RECACHE
+     --------------------------------------------------------- */
+
   if (event.data.type === 'RECACHE') {
 
     event.waitUntil((async () => {
@@ -181,7 +177,11 @@ self.addEventListener('message', event => {
         type: 'window'
       });
 
-      /* Caching開始をMENUへ通知 */
+
+      /* -------------------------------------------------------
+         CACHE_START
+         ------------------------------------------------------- */
+
       for (const client of clientsList) {
         client.postMessage({
           type: 'CACHE_START',
@@ -189,28 +189,40 @@ self.addEventListener('message', event => {
         });
       }
 
-      /*
-       * 新しいCACHE_NAMEを作成して、
-       * PRECACHE_URLSを1つずつCachingする。
-       *
-       * cache.add()ではなく、
-       * cache: 'reload' でネットワークから最新ファイルを取得し、
-       * cache.put()でCACHEを上書きする。
-       */
+
+      /* -------------------------------------------------------
+         新しいキャッシュを取得
+         ------------------------------------------------------- */
+
       const cache = await caches.open(CACHE_NAME);
 
+
       for (const url of PRECACHE_URLS) {
+
         try {
 
-          const response = await fetch(url, {
-            cache: 'reload'
+          /*
+           * 毎回異なるURLを使用して、
+           * HTTP/CDN等に残っている同一URLのキャッシュを
+           * 使用しないようにする。
+           */
+          const fetchUrl = `${url}?recache=${Date.now()}`;
+
+          const response = await fetch(fetchUrl, {
+            cache: 'no-store'
           });
+
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status} : ${url}`);
           }
 
+
+          /*
+           * CacheStorageには元のURLで保存する。
+           */
           await cache.put(url, response);
+
 
           console.log("OK :", url);
 
@@ -220,12 +232,14 @@ self.addEventListener('message', event => {
           console.error(e);
 
         }
+
       }
 
-      /*
-       * 新CACHEのCaching完了後、
-       * Fukiya Timer PWAの旧CACHEを削除する。
-       */
+
+      /* -------------------------------------------------------
+         古いPWAキャッシュを削除
+         ------------------------------------------------------- */
+
       const keys = await caches.keys();
 
       await Promise.all(
@@ -235,7 +249,11 @@ self.addEventListener('message', event => {
         ).map(k => caches.delete(k))
       );
 
-      /* Caching完了をMENUへ通知 */
+
+      /* -------------------------------------------------------
+         CACHE_UPDATED
+         ------------------------------------------------------- */
+
       const updatedClients = await self.clients.matchAll({
         includeUncontrolled: true,
         type: 'window'
@@ -254,29 +272,40 @@ self.addEventListener('message', event => {
 
 });
 
-/* ---------------------------------------------------------
-   fetch
-   ・mp3 はキャッシュ優先
-   ・index.html は常にネットワーク優先
-   ・それ以外はキャッシュ優先 → ネットワーク
---------------------------------------------------------- */
+
+/* =========================================================
+   FETCH
+   ========================================================= */
+
 self.addEventListener('fetch', event => {
+
   const url = new URL(event.request.url);
 
-  // index.html は常に最新を取得
+
+  /* ---------------------------------------------------------
+     index.html
+     --------------------------------------------------------- */
+
   if (
     url.pathname.endsWith('index.html') ||
     url.pathname === '/fukiya-timer-pwa/'
   ) {
+
     event.respondWith(
       fetch(event.request)
         .catch(() => caches.match(event.request))
     );
+
     return;
   }
 
-  // mp3 はキャッシュ優先（Range 対応）
+
+  /* ---------------------------------------------------------
+     MP3
+     --------------------------------------------------------- */
+
   if (url.pathname.endsWith('.mp3')) {
+
     event.respondWith(
       caches.open(CACHE_NAME).then(cache =>
         cache.match(url.pathname).then(
@@ -284,13 +313,19 @@ self.addEventListener('fetch', event => {
         )
       )
     );
+
     return;
   }
 
-  // それ以外はキャッシュ優先 → ネットワーク
+
+  /* ---------------------------------------------------------
+     その他
+     --------------------------------------------------------- */
+
   event.respondWith(
     caches.match(event.request).then(
       res => res || fetch(event.request)
     )
   );
+
 });
