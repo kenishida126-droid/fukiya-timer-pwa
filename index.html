@@ -345,13 +345,13 @@
   <button id="recacheButton" type="button">Request reCaching</button>
   <div class="pwa-status">《 CACHE Status 》</div>
   <div class="pwa-status">
-    &nbsp;&nbsp;<span class="status-yellow-blink">●</span>：Update Available.</div>
+    &nbsp;&nbsp;<span class="status-yellow-blink">●</span>：Update Available</div>
   <div class="pwa-status">
-    xx<span class="status-red-blink">●</span>：Now Caching.<br>
-                                          　　　/ xx：Elapsed Timer</div>
+    xx<span class="status-red-blink">●</span>：Now Caching<br>
+                                          　　　&nbsp;/ xx：Elapsed Timer</div>
   <div class="pwa-status">
-    &nbsp;&nbsp;<span class="status-green">●</span>：Already Updated. or<br>
-                                                　　　Received "CACHE_UPDATED". </div>
+    &nbsp;&nbsp;<span class="status-green">●</span>：Already Updated or<br>
+                                                　　　&nbsp;Received "CACHE_UPDATED" </div>
   <div class="pwa-note">
     ※ 100MB 弱の File を Caching します<br>
     　Wi-Fi 環境下での実行を推奨します
@@ -481,7 +481,7 @@ fetch('./service-worker.js', {
 
       alert(
         '吹矢Timer_PWA が更新されました\n' +
-        '　　　CACHE_UPDATED　　'
+        '****　CACHE_UPDATED　****'
       );
       return;
     }
