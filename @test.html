@@ -451,7 +451,7 @@
 <div class="container">
 
   <!-- 壁紙番号（既存GAP内） -->
-  <div id="wallpaperNumber">- 01 -</div>
+  <div id="wallpaperNumber">by Ken.Ishida　- 01 -</div>
 
   <!-- ========================================
        日付
@@ -531,7 +531,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.45》
+    戻　る
   </button>
 
 
@@ -2261,7 +2261,7 @@ const wallpaperImages = {};
 let currentWallpaper = 1;
 
 function showWallpaperNumber(number) {
-  wallpaperNumber.textContent = `- ${String(number).padStart(2, '0')} -`;
+  wallpaperNumber.textContent = `by Ken.Ishida　- ${String(number).padStart(2, '0')} -`;
 }
 
 function detectWallpaperFiles() {
