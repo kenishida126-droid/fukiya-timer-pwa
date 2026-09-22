@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.05 音楽再生元選択
+     Ver.06 音楽再生元選択
      GitHub / Loacl / Extra
      ======================================== */
   #musicSourceSelector {
@@ -302,7 +302,7 @@
   }
 
   /* ========================================
-     Ver.05 フォルダー選択案内
+     Ver.06 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,7 +582,7 @@
     </button>
 
     <!-- ========================================
-         Ver.05 音楽再生元
+         Ver.06 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -602,7 +602,7 @@
 
 
 <!-- ========================================
-     Ver.05 フォルダー選択案内
+     Ver.06 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.05》
+    戻　る《Ver.06》
   </button>
 
 
@@ -889,7 +889,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.05 音楽再生元
+   Ver.06 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -915,7 +915,7 @@ const sourceDirectoryHandles = {
 };
 
 /* ========================================
-   Ver.05 Local / Extra フォルダー記憶
+   Ver.06 Local / Extra フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
    選択開始位置として使用できるよう IndexedDB に保存する。
@@ -983,8 +983,11 @@ async function restoreDirectoryHandles() {
   }
 }
 
-/* ページ起動時に Local / Extra の前回選択フォルダーを復元する */
-restoreDirectoryHandles();
+/*
+   ページ起動時に Local / Extra の前回選択フォルダーを復元する。
+   GOを押す前に、このPromiseの完了を必ず待つ。
+*/
+const directoryHandlesReady = restoreDirectoryHandles();
 
 /* 現在選択されているフォルダー名（確認用） */
 let selectedMusicFolderName = '';
@@ -1110,7 +1113,8 @@ async function loadLocalMusicFromDirectory(directoryHandle) {
 }
 
 async function chooseLocalMusicFolder(source) {
-  /* GOを押した時点の選択元を固定する */
+
+  /* GOを押した時点の選択元を固定 */
   musicSource = source;
 
   if (!window.showDirectoryPicker) {
@@ -1119,27 +1123,57 @@ async function chooseLocalMusicFolder(source) {
     return false;
   }
 
+  /*
+     IndexedDBからLocal / Extraの記憶を読み終わるまで待つ。
+     これにより、Extraを選択した直後にLocalの記憶が
+     startInへ入ってしまう競合を防ぐ。
+  */
+  await directoryHandlesReady;
+
   try {
+
+    /*
+       Local / Extra はshowDirectoryPicker()のidも完全分離する。
+    */
     const options = {
       mode: 'read',
-      /* Local / Extraそれぞれの選択場所をブラウザ側にも分離して記憶させる */
-      id: `fukiya-music-${source}`
+      id: source === 'local'
+        ? 'fukiya-music-local'
+        : 'fukiya-music-extra'
     };
 
-    /* 同じセッションで再選択する場合は、前回フォルダーを開始位置にする */
-    if (sourceDirectoryHandles[source]) {
-      options.startIn = sourceDirectoryHandles[source];
+    /*
+       このsource専用に保存しているHandleがあれば、
+       そのフォルダーから選択画面を開始する。
+    */
+    const rememberedHandle =
+      sourceDirectoryHandles[source];
+
+    if (rememberedHandle) {
+      options.startIn = rememberedHandle;
     }
 
     const directoryHandle =
       await window.showDirectoryPicker(options);
 
-    sourceDirectoryHandles[source] = directoryHandle;
-    await saveDirectoryHandle(source, directoryHandle);
-    selectedMusicFolderName = directoryHandle.name || '';
+    /*
+       選択結果もLocal / Extraそれぞれのキーへ保存。
+    */
+    sourceDirectoryHandles[source] =
+      directoryHandle;
+
+    await saveDirectoryHandle(
+      source,
+      directoryHandle
+    );
+
+    selectedMusicFolderName =
+      directoryHandle.name || '';
 
     const count =
-      await loadLocalMusicFromDirectory(directoryHandle);
+      await loadLocalMusicFromDirectory(
+        directoryHandle
+      );
 
     if (count === 0) {
       folderPickerMessage.innerHTML =
@@ -1153,18 +1187,29 @@ async function chooseLocalMusicFolder(source) {
     musicMode = 'all';
     hideFolderPickerDialog();
 
-    await playMusic(currentMusic, 'hint');
+    await playMusic(
+      currentMusic,
+      'hint'
+    );
+
     return true;
 
   } catch (error) {
-    /* キャンセルはエラー表示せず、案内画面へ戻す */
+
+    /* キャンセル */
     if (error && error.name === 'AbortError') {
       return false;
     }
 
-    console.log('フォルダー選択に失敗しました:', error);
+    console.log(
+      'フォルダー選択に失敗しました:',
+      error
+    );
+
     folderPickerMessage.innerHTML =
-      'フォルダーを選択できませんでした。<br>もう一度「ＧＯ」を押してください';
+      'フォルダーを選択できませんでした。<br>' +
+      'もう一度「ＧＯ」を押してください';
+
     return false;
   }
 }
