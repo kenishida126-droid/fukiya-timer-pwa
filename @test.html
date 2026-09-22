@@ -272,6 +272,96 @@
 
 
   /* ========================================
+     Ver.01 音楽再生元選択
+     GitHub / Loacl / Extra
+     ======================================== */
+  #musicSourceSelector {
+    width: 80%;
+    max-width: 360px;
+    margin: 0.25em auto 0.9em auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.1em;
+    font-size: 1.05em;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px #000;
+  }
+
+  #musicSourceSelector label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  #musicSourceSelector input {
+    accent-color: lime;
+  }
+
+  /* ========================================
+     Ver.01 フォルダー選択案内
+     ======================================== */
+  #folderPickerDialog {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(0,0,0,0.82);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  #folderPickerPanel {
+    width: 92%;
+    max-width: 430px;
+    padding: 1.4em 1em 1.2em 1em;
+    border: 1px solid rgba(255,255,255,0.8);
+    border-radius: 12px;
+    background: rgba(20,20,20,0.96);
+    box-shadow: 0 0 20px rgba(0,0,0,0.9);
+    text-align: center;
+  }
+
+  #folderPickerMessage {
+    margin-bottom: 1.1em;
+    font-size: 1.08em;
+    line-height: 1.8;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  #folderPickerGo,
+  #folderPickerCancel {
+    display: block;
+    width: 72%;
+    max-width: 280px;
+    margin: 0.65em auto;
+    padding: 0.7em 1em;
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    font-size: 1.15em;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #folderPickerGo:active,
+  #folderPickerCancel:active {
+    transform: scale(0.97);
+    background: rgba(255,255,255,0.22);
+  }
+
+  #folderPickerCancel {
+    font-size: 1.0em;
+  }
+
+  /* ========================================
      音楽ボタン
      ======================================== */
 
@@ -491,6 +581,15 @@
       ♪「OtoLogic」より ♫
     </button>
 
+    <!-- ========================================
+         Ver.01 音楽再生元
+         ======================================== -->
+    <div id="musicSourceSelector">
+      <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
+      <label><input type="radio" name="musicSource" value="local">Loacl</label>
+      <label><input type="radio" name="musicSource" value="extra">Extra</label>
+    </div>
+
 
     <!-- ========================================
          Long-tapで展開する音楽メニュー
@@ -500,6 +599,18 @@
     </div>
 
   </div>
+
+
+<!-- ========================================
+     Ver.01 フォルダー選択案内
+     ======================================== -->
+<div id="folderPickerDialog">
+  <div id="folderPickerPanel">
+    <div id="folderPickerMessage"></div>
+    <button id="folderPickerGo">ＧＯ</button>
+    <button id="folderPickerCancel">キャンセル</button>
+  </div>
+</div>
 
 
   <!-- ========================================
@@ -531,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.46》
+    戻　る《Ver.01》
   </button>
 
 
@@ -773,6 +884,250 @@ const musicMenu =
 const musicControl =
   document.getElementById('musicControl');
 
+
+/* ========================================
+   Ver.01 音楽再生元
+   ======================================== */
+const musicSourceSelector =
+  document.getElementById('musicSourceSelector');
+
+const folderPickerDialog =
+  document.getElementById('folderPickerDialog');
+
+const folderPickerMessage =
+  document.getElementById('folderPickerMessage');
+
+const folderPickerGo =
+  document.getElementById('folderPickerGo');
+
+const folderPickerCancel =
+  document.getElementById('folderPickerCancel');
+
+let musicSource = 'github';
+
+/* Local / Extraで選択したフォルダー */
+const sourceDirectoryHandles = {
+  local: null,
+  extra: null
+};
+
+/* Local / Extraで取得したFile → Object URL */
+let localMusicObjectUrls = [];
+let localMusicFiles = [];
+
+function getSelectedMusicSource() {
+  const checked =
+    musicSourceSelector.querySelector('input[name="musicSource"]:checked');
+
+  return checked ? checked.value : 'github';
+}
+
+function sourceLabel(source) {
+  if (source === 'local') return 'Loacl（内部メモリ）';
+  if (source === 'extra') return 'Extra（外部メモリ）';
+  return 'GitHub';
+}
+
+function showFolderPickerDialog(source) {
+  folderPickerMessage.innerHTML =
+    `${sourceLabel(source)}内のフォルダー一覧を表示します<br>` +
+    `音楽フォルダーを選択してください`;
+
+  folderPickerDialog.style.display = 'flex';
+}
+
+function hideFolderPickerDialog() {
+  folderPickerDialog.style.display = 'none';
+}
+
+function releaseLocalMusicObjectUrls() {
+  localMusicObjectUrls.forEach(function(url) {
+    try {
+      URL.revokeObjectURL(url);
+    } catch (error) {}
+  });
+
+  localMusicObjectUrls = [];
+  localMusicFiles = [];
+}
+
+function isSupportedLocalMusicFile(file) {
+  const name = file.name || '';
+  const dot = name.lastIndexOf('.');
+  if (dot < 0) return false;
+
+  const extension =
+    name.slice(dot + 1).toLowerCase();
+
+  return musicExtensions.includes(extension);
+}
+
+async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
+  const results = [];
+
+  for await (const entry of directoryHandle.values()) {
+    if (entry.kind === 'file') {
+      try {
+        const file = await entry.getFile();
+        if (isSupportedLocalMusicFile(file)) {
+          results.push({
+            file: file,
+            path: pathPrefix + file.name
+          });
+        }
+      } catch (error) {
+        console.log('音楽ファイル取得をスキップしました:', error);
+      }
+    }
+    else if (entry.kind === 'directory') {
+      const child =
+        await collectLocalMusicFiles(
+          entry,
+          pathPrefix + entry.name + '/'
+        );
+
+      results.push(...child);
+    }
+  }
+
+  return results;
+}
+
+async function loadLocalMusicFromDirectory(directoryHandle) {
+  releaseLocalMusicObjectUrls();
+  musicFileMap.clear();
+  musicFilesFound = new Set();
+  musicCount = 0;
+  musicTitleCache.clear();
+
+  const results =
+    await collectLocalMusicFiles(directoryHandle);
+
+  results.sort(function(a, b) {
+    return a.path.localeCompare(b.path, 'ja', {
+      numeric: true,
+      sensitivity: 'base'
+    });
+  });
+
+  localMusicFiles = results.map(function(item) {
+    return item.file;
+  });
+
+  localMusicFiles.forEach(function(file, index) {
+    const number = index + 1;
+    const url = URL.createObjectURL(file);
+
+    localMusicObjectUrls.push(url);
+    musicFileMap.set(number, url);
+    musicFilesFound.add(number);
+  });
+
+  musicCount = localMusicFiles.length;
+  musicReady = true;
+  createMusicMenu();
+
+  return musicCount;
+}
+
+async function chooseLocalMusicFolder(source) {
+  if (!window.showDirectoryPicker) {
+    folderPickerMessage.innerHTML =
+      'このブラウザはフォルダー選択に対応していません。';
+    return false;
+  }
+
+  try {
+    const options = { mode: 'read' };
+
+    /* 同じセッションで再選択する場合は、前回フォルダーを開始位置にする */
+    if (sourceDirectoryHandles[source]) {
+      options.startIn = sourceDirectoryHandles[source];
+    }
+
+    const directoryHandle =
+      await window.showDirectoryPicker(options);
+
+    sourceDirectoryHandles[source] = directoryHandle;
+
+    const count =
+      await loadLocalMusicFromDirectory(directoryHandle);
+
+    if (count === 0) {
+      folderPickerMessage.innerHTML =
+        `${sourceLabel(source)}で音楽ファイルが見つかりませんでした。<br>` +
+        `別のフォルダーを選択してください`;
+      return false;
+    }
+
+    currentMusic = 1;
+    saveCurrentMusic();
+    musicMode = 'all';
+    hideFolderPickerDialog();
+
+    await playMusic(currentMusic, 'hint');
+    return true;
+
+  } catch (error) {
+    /* キャンセルはエラー表示せず、案内画面へ戻す */
+    if (error && error.name === 'AbortError') {
+      return false;
+    }
+
+    console.log('フォルダー選択に失敗しました:', error);
+    folderPickerMessage.innerHTML =
+      'フォルダーを選択できませんでした。<br>もう一度「ＧＯ」を押してください';
+    return false;
+  }
+}
+
+/* 音楽再生元変更 */
+musicSourceSelector.addEventListener(
+  'change',
+  function() {
+    const nextSource = getSelectedMusicSource();
+
+    if (nextSource === musicSource) return;
+
+    /* 再生元を変更したら、現在の音楽は停止する */
+    music.pause();
+    music.currentTime = 0;
+    music.src = '';
+    musicMode = 'none';
+
+    /* Local / Extra のObject URLを解放 */
+    releaseLocalMusicObjectUrls();
+
+    musicReady = false;
+    musicFilesFound = new Set();
+    musicFileMap.clear();
+    musicCount = 0;
+    musicTitleCache.clear();
+
+    /* GitHubへ戻った場合は再検出を許可する */
+    if (nextSource === 'github') {
+      musicDetectionStarted = false;
+    }
+
+    showInitialButton();
+
+    musicSource = nextSource;
+  }
+);
+
+folderPickerGo.addEventListener(
+  'click',
+  async function() {
+    await chooseLocalMusicFolder(musicSource);
+  }
+);
+
+folderPickerCancel.addEventListener(
+  'click',
+  function() {
+    hideFolderPickerDialog();
+  }
+);
 
 /* ========================================
    音楽タイトル
@@ -1189,6 +1544,13 @@ let longTapTriggered = false;
 
 function getMusicFile(number) {
 
+  if (musicSource !== 'github') {
+    if (musicFileMap.has(number)) {
+      return musicFileMap.get(number);
+    }
+    return '';
+  }
+
   if (musicFileMap.has(number)) {
     return musicFileMap.get(number);
   }
@@ -1251,6 +1613,10 @@ function probeMusicFile(file) {
 */
 async function findMusicFile(number) {
 
+  if (musicSource !== 'github') {
+    return musicFileMap.get(number) || '';
+  }
+
   if (musicFileMap.has(number)) {
     return musicFileMap.get(number);
   }
@@ -1296,6 +1662,11 @@ async function findMusicFile(number) {
 
 async function detectMusicCount() {
 
+  if (musicSource !== 'github') {
+    /* Local / Extra はフォルダー選択時に検出済み */
+    return musicCount;
+  }
+
   musicCount = 0;
   musicFilesFound = new Set();
   musicFileMap.clear();
@@ -1318,10 +1689,6 @@ async function detectMusicCount() {
 
   }
 
-  /*
-     前回再生曲の存在を確認。
-     ただし起動時の選択は別途すでに行っている。
-  */
   const savedMusic =
     localStorage.getItem('fukiyaTestLastMusic');
 
@@ -1339,6 +1706,7 @@ async function detectMusicCount() {
     currentMusic = 1;
   }
 
+  return musicCount;
 }
 
 
@@ -1783,6 +2151,13 @@ async function playMusic(number, titleDisplayMode = 'auto') {
   }
 
   /*
+     Local / Extra はフォルダー選択完了後のみ再生する。
+  */
+  if (musicSource !== 'github' && !musicFileMap.has(number)) {
+    return;
+  }
+
+  /*
      音楽再生時は動画を停止。
      動画の再生位置はリセットする。
   */
@@ -1842,10 +2217,13 @@ async function playMusic(number, titleDisplayMode = 'auto') {
     showPlayingButton();
 
     /*
-       実際に再生が開始された後でMP3存在確認を開始する。
-       初回再生用MP3の読み込みを最優先する。
+       GitHub版のみ、実際に再生が開始された後で
+       音楽ファイル存在確認をバックグラウンド開始する。
+       Local / Extra はフォルダー選択時に検出済み。
     */
-    startMusicDetection();
+    if (musicSource === 'github') {
+      startMusicDetection();
+    }
 
   } catch (error) {
 
@@ -1863,7 +2241,9 @@ async function playMusic(number, titleDisplayMode = 'auto') {
       try {
         await music.play();
         showPlayingButton();
-        startMusicDetection();
+        if (musicSource === 'github') {
+          startMusicDetection();
+        }
         return;
       } catch (retryError) {
         console.log(
@@ -1889,7 +2269,9 @@ async function playMusic(number, titleDisplayMode = 'auto') {
       try {
         await music.play();
         showPlayingButton();
-        startMusicDetection();
+        if (musicSource === 'github') {
+          startMusicDetection();
+        }
         return;
       } catch (retryError) {
         console.log(
@@ -1967,6 +2349,18 @@ musicButton.addEventListener(
     */
     if (musicMenu.style.display === 'block') {
       musicMenu.style.display = 'none';
+      return;
+    }
+
+    /*
+       Local / Extraで、まだ音楽フォルダーが選択されていない場合
+       → 案内画面を表示し、GOでshowDirectoryPicker()を起動する。
+    */
+    if (
+      musicSource !== 'github' &&
+      musicFilesFound.size === 0
+    ) {
+      showFolderPickerDialog(musicSource);
       return;
     }
 
@@ -2389,6 +2783,7 @@ let musicDetectionStarted = false;
 
 function startMusicDetection() {
 
+  if (musicSource !== 'github') return;
   if (musicDetectionStarted) return;
   musicDetectionStarted = true;
 
