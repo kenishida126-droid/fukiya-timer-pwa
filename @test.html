@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.03 音楽再生元選択
+     Ver.04 音楽再生元選択
      GitHub / Loacl / Extra
      ======================================== */
   #musicSourceSelector {
@@ -302,7 +302,7 @@
   }
 
   /* ========================================
-     Ver.03 フォルダー選択案内
+     Ver.04 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,7 +582,7 @@
     </button>
 
     <!-- ========================================
-         Ver.03 音楽再生元
+         Ver.04 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -602,7 +602,7 @@
 
 
 <!-- ========================================
-     Ver.03 フォルダー選択案内
+     Ver.04 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.03》
+    戻　る《Ver.04》
   </button>
 
 
@@ -889,7 +889,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.03 音楽再生元
+   Ver.04 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -1135,8 +1135,8 @@ musicSourceSelector.addEventListener(
       githubMusicFileMap.clear();
       currentMusic = 1;
       saveCurrentMusic();
-      music.src = getMusicFile(1);
-      music.load();
+      /* 再生時にfindMusicFile()で実在する形式を確定する */
+      music.src = '';
     } else {
       /* Local / Extra は、選択したフォルダーのMusic-1から開始 */
       currentMusic = 1;
@@ -2222,13 +2222,41 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   saveCurrentMusic();
 
-  /* GitHubへ戻った直後は、Local/ExtraのObject URLを絶対に使わない */
+  /*
+     GitHubは、再生直前に実在するファイル形式まで解決する。
+     検出済みMapをここで削除しない。
+     これにより、Music-1がMP3以外（FLAC等）でも確実に
+     検出済みの実ファイルをそのまま再生できる。
+  */
   if (musicSource === 'github') {
-    githubMusicFileMap.delete(currentMusic);
-  }
+    let resolvedGitHubFile = await findMusicFile(currentMusic);
 
-  music.src =
-    getMusicFile(currentMusic);
+    /*
+       指定曲が存在しない場合は、Music-1～20から
+       最初に存在する曲を探す。
+       GitHub側で番号に欠番があっても再生開始できるようにする。
+    */
+    if (!resolvedGitHubFile) {
+      for (let i = 1; i <= 20; i++) {
+        resolvedGitHubFile = await findMusicFile(i);
+        if (resolvedGitHubFile) {
+          currentMusic = i;
+          saveCurrentMusic();
+          break;
+        }
+      }
+    }
+
+    if (!resolvedGitHubFile) {
+      console.log('GitHub側に再生可能な音楽ファイルがありません');
+      return;
+    }
+
+    music.src = resolvedGitHubFile;
+  }
+  else {
+    music.src = getMusicFile(currentMusic);
+  }
 
   /* タイトル取得は再生開始を待たせない */
   const titleRequestId = ++musicTitleRequestId;
