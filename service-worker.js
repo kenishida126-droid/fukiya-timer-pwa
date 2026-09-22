@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260921-3';
+const CACHE_NAME = 'fukiya-timer-pwa-20260920-16';
 
 const PRECACHE_URLS = [
   '/fukiya-timer-pwa/',
@@ -190,12 +190,19 @@ self.addEventListener('message', event => {
       }
 
 
-      /* -------------------------------------------------------
-         新しいキャッシュを取得
-         ------------------------------------------------------- */
-
+     /* -------------------------------------------------------
+        新しいキャッシュを取得
+        ------------------------------------------------------- */
+     /*
+      * 既存キャッシュを一度削除してから、
+      * PRECACHE_URLS の現在存在するファイルだけを
+      * 新しく取得する。
+      *
+      * これにより、GitHubから削除されたファイルが
+      * 古いキャッシュとして残り続けることを防ぐ。
+      */
+      await caches.delete(CACHE_NAME);
       const cache = await caches.open(CACHE_NAME);
-
 
       for (const url of PRECACHE_URLS) {
 
