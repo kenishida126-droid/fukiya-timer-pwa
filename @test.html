@@ -911,6 +911,9 @@ const sourceDirectoryHandles = {
   extra: null
 };
 
+/* 現在選択されているフォルダー名（確認用） */
+let selectedMusicFolderName = '';
+
 /* Local / Extraで取得したFile → Object URL */
 let localMusicObjectUrls = [];
 let localMusicFiles = [];
@@ -1031,6 +1034,9 @@ async function loadLocalMusicFromDirectory(directoryHandle) {
 }
 
 async function chooseLocalMusicFolder(source) {
+  /* GOを押した時点の選択元を固定する */
+  musicSource = source;
+
   if (!window.showDirectoryPicker) {
     folderPickerMessage.innerHTML =
       'このブラウザはフォルダー選択に対応していません。';
@@ -1049,6 +1055,7 @@ async function chooseLocalMusicFolder(source) {
       await window.showDirectoryPicker(options);
 
     sourceDirectoryHandles[source] = directoryHandle;
+    selectedMusicFolderName = directoryHandle.name || '';
 
     const count =
       await loadLocalMusicFromDirectory(directoryHandle);
@@ -1089,6 +1096,13 @@ musicSourceSelector.addEventListener(
 
     if (nextSource === musicSource) return;
 
+    /*
+       先に再生元を確定する。
+       LocalでMusic-29等を再生した直後にGitHubへ戻った場合でも、
+       GitHubのMusic-1から確実に再開できるようにする。
+    */
+    musicSource = nextSource;
+
     /* 再生元を変更したら、現在の音楽は停止する */
     music.pause();
     music.currentTime = 0;
@@ -1104,21 +1118,29 @@ musicSourceSelector.addEventListener(
     musicCount = 0;
     musicTitleCache.clear();
 
-    /* GitHubへ戻った場合は再検出を許可する */
+    /* GitHubへ戻った場合はMusic-1を起点に再検出する */
     if (nextSource === 'github') {
       musicDetectionStarted = false;
+      currentMusic = 1;
+      saveCurrentMusic();
+      music.src = '@music-1.mp3';
+      music.load();
+    } else {
+      /* Local / Extra は、選択したフォルダーのMusic-1から開始 */
+      currentMusic = 1;
+      saveCurrentMusic();
     }
 
     showInitialButton();
-
-    musicSource = nextSource;
   }
 );
 
 folderPickerGo.addEventListener(
   'click',
   async function() {
-    await chooseLocalMusicFolder(musicSource);
+    /* GOを押した瞬間のラジオ選択を必ず使用する */
+    const selectedSource = getSelectedMusicSource();
+    await chooseLocalMusicFolder(selectedSource);
   }
 );
 
@@ -1672,9 +1694,9 @@ async function detectMusicCount() {
   musicFileMap.clear();
 
   /*
-     最大20個まで確認する。
-     各番号について主要な音声拡張子を順番に確認する。
-     番号に歯抜けがあっても対応。
+     GitHub版はMusic-1～Music-20を対象とする。
+     Local / Extraはフォルダー選択時に全曲を再帰取得するため、
+     ここでは検出しない。
   */
   const maxProbe = 20;
 
@@ -2139,13 +2161,18 @@ function showInitialButton() {
 async function playMusic(number, titleDisplayMode = 'auto') {
 
   /*
-     MP3検出完了前でも再生できるようにする。
-     Music-1～Music-20の範囲なら再生を試みる。
+     再生番号の範囲
+
+     GitHub：Music-1～Music-20
+     Local / Extra：選択したフォルダー内で検出した全曲
   */
+  const maxPlayableMusic =
+    musicSource === 'github' ? 20 : musicCount;
+
   if (
     !Number.isInteger(number) ||
     number < 1 ||
-    number > 20
+    number > maxPlayableMusic
   ) {
     return;
   }
@@ -2571,7 +2598,7 @@ function showMusicMenu() {
      先に表示してメニュー上端を取得する。
      機種によって異なる画面高さ／ナビゲーション領域に
      合わせて、表示可能な高さだけを確保する。
-     これによりF-51Bでも最下段のMusic-20まで
+     これによりF-51Bでも検出された全曲を
      スクロールして表示できる。
   */
   musicMenu.style.display =
