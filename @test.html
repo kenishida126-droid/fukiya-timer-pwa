@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.01 音楽再生元選択
+     Ver.02 音楽再生元選択
      GitHub / Loacl / Extra
      ======================================== */
   #musicSourceSelector {
@@ -302,7 +302,7 @@
   }
 
   /* ========================================
-     Ver.01 フォルダー選択案内
+     Ver.02 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,7 +582,7 @@
     </button>
 
     <!-- ========================================
-         Ver.01 音楽再生元
+         Ver.02 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -602,7 +602,7 @@
 
 
 <!-- ========================================
-     Ver.01 フォルダー選択案内
+     Ver.02 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.01》
+    戻　る《Ver.02》
   </button>
 
 
@@ -886,7 +886,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.01 音楽再生元
+   Ver.02 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -1044,7 +1044,11 @@ async function chooseLocalMusicFolder(source) {
   }
 
   try {
-    const options = { mode: 'read' };
+    const options = {
+      mode: 'read',
+      /* Local / Extraそれぞれの選択場所をブラウザ側にも分離して記憶させる */
+      id: `fukiya-music-${source}`
+    };
 
     /* 同じセッションで再選択する場合は、前回フォルダーを開始位置にする */
     if (sourceDirectoryHandles[source]) {
@@ -1103,6 +1107,10 @@ musicSourceSelector.addEventListener(
     */
     musicSource = nextSource;
 
+    /* 以前のGitHub検出処理を無効化する */
+    musicDetectionGeneration++;
+    musicDetectionStarted = false;
+
     /* 再生元を変更したら、現在の音楽は停止する */
     music.pause();
     music.currentTime = 0;
@@ -1120,7 +1128,6 @@ musicSourceSelector.addEventListener(
 
     /* GitHubへ戻った場合はMusic-1を起点に再検出する */
     if (nextSource === 'github') {
-      musicDetectionStarted = false;
       currentMusic = 1;
       saveCurrentMusic();
       music.src = '@music-1.mp3';
@@ -2210,6 +2217,11 @@ async function playMusic(number, titleDisplayMode = 'auto') {
 
   saveCurrentMusic();
 
+  /* GitHubへ戻った直後は、Local/ExtraのObject URLを絶対に使わない */
+  if (musicSource === 'github') {
+    musicFileMap.delete(currentMusic);
+  }
+
   music.src =
     getMusicFile(currentMusic);
 
@@ -2807,6 +2819,7 @@ music.addEventListener(
    最初の再生開始後にバックグラウンドで検出する。
 */
 let musicDetectionStarted = false;
+let musicDetectionGeneration = 0;
 
 function startMusicDetection() {
 
@@ -2814,8 +2827,14 @@ function startMusicDetection() {
   if (musicDetectionStarted) return;
   musicDetectionStarted = true;
 
+  const generation = ++musicDetectionGeneration;
+
   detectMusicCount()
     .then(function() {
+      /* 古いGitHub検出処理の結果は破棄する */
+      if (generation !== musicDetectionGeneration) return;
+      if (musicSource !== 'github') return;
+
       createMusicMenu();
       musicReady = true;
 
@@ -2827,6 +2846,9 @@ function startMusicDetection() {
       }
     })
     .catch(function(error) {
+      if (generation !== musicDetectionGeneration) return;
+      if (musicSource !== 'github') return;
+
       console.log(
         '音楽ファイル検出中にエラーが発生しました:',
         error
