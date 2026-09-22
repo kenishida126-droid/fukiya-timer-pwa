@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.04 音楽再生元選択
+     Ver.05 音楽再生元選択
      GitHub / Loacl / Extra
      ======================================== */
   #musicSourceSelector {
@@ -302,7 +302,7 @@
   }
 
   /* ========================================
-     Ver.04 フォルダー選択案内
+     Ver.05 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,7 +582,7 @@
     </button>
 
     <!-- ========================================
-         Ver.04 音楽再生元
+         Ver.05 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -602,7 +602,7 @@
 
 
 <!-- ========================================
-     Ver.04 フォルダー選択案内
+     Ver.05 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.04》
+    戻　る《Ver.05》
   </button>
 
 
@@ -889,7 +889,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.04 音楽再生元
+   Ver.05 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -913,6 +913,78 @@ const sourceDirectoryHandles = {
   local: null,
   extra: null
 };
+
+/* ========================================
+   Ver.05 Local / Extra フォルダー記憶
+   Local と Extra の選択フォルダーを別々に記憶する。
+   ブラウザを閉じても次回起動時に前回のフォルダーを
+   選択開始位置として使用できるよう IndexedDB に保存する。
+   ======================================== */
+const directoryHandleDBName = 'fukiya-test-directory-handles';
+const directoryHandleStoreName = 'handles';
+
+function openDirectoryHandleDB() {
+  return new Promise(function(resolve, reject) {
+    const request = indexedDB.open(directoryHandleDBName, 1);
+
+    request.onupgradeneeded = function() {
+      request.result.createObjectStore(directoryHandleStoreName);
+    };
+
+    request.onsuccess = function() {
+      resolve(request.result);
+    };
+
+    request.onerror = function() {
+      reject(request.error);
+    };
+  });
+}
+
+async function saveDirectoryHandle(source, handle) {
+  try {
+    const db = await openDirectoryHandleDB();
+    await new Promise(function(resolve, reject) {
+      const tx = db.transaction(directoryHandleStoreName, 'readwrite');
+      tx.objectStore(directoryHandleStoreName).put(handle, source);
+      tx.oncomplete = resolve;
+      tx.onerror = function() { reject(tx.error); };
+    });
+    db.close();
+  } catch (error) {
+    console.log('フォルダー記憶を保存できませんでした:', error);
+  }
+}
+
+async function restoreDirectoryHandles() {
+  try {
+    const db = await openDirectoryHandleDB();
+
+    await new Promise(function(resolve, reject) {
+      const tx = db.transaction(directoryHandleStoreName, 'readonly');
+      const store = tx.objectStore(directoryHandleStoreName);
+
+      ['local', 'extra'].forEach(function(source) {
+        const request = store.get(source);
+        request.onsuccess = function() {
+          if (request.result) {
+            sourceDirectoryHandles[source] = request.result;
+          }
+        };
+      });
+
+      tx.oncomplete = resolve;
+      tx.onerror = function() { reject(tx.error); };
+    });
+
+    db.close();
+  } catch (error) {
+    console.log('前回のフォルダー記憶を読み込めませんでした:', error);
+  }
+}
+
+/* ページ起動時に Local / Extra の前回選択フォルダーを復元する */
+restoreDirectoryHandles();
 
 /* 現在選択されているフォルダー名（確認用） */
 let selectedMusicFolderName = '';
@@ -1063,6 +1135,7 @@ async function chooseLocalMusicFolder(source) {
       await window.showDirectoryPicker(options);
 
     sourceDirectoryHandles[source] = directoryHandle;
+    await saveDirectoryHandle(source, directoryHandle);
     selectedMusicFolderName = directoryHandle.name || '';
 
     const count =
@@ -1130,9 +1203,8 @@ musicSourceSelector.addEventListener(
     musicCount = 0;
     musicTitleCache.clear();
 
-    /* GitHubへ戻った場合はGitHub専用Mapも初期化してMusic-1から再検出 */
+    /* GitHubへ戻った場合は、既に確認済みのGitHubファイル情報を保持して高速復帰する */
     if (nextSource === 'github') {
-      githubMusicFileMap.clear();
       currentMusic = 1;
       saveCurrentMusic();
       /* 再生時にfindMusicFile()で実在する形式を確定する */
