@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11h》
+    戻　る《ver.11i》
   </button>
 
 
@@ -1091,6 +1091,21 @@ function discardLocalMusicCache(source) {
   sourceMusicCaches[source] = null;
 }
 
+/*
+   現在選択中のLocal / External参照だけを空にする。
+   非アクティブ側のキャッシュ／Object URLは一切触らない。
+*/
+function clearActiveLocalMusicState() {
+  musicFileMap = new Map();
+  musicFilesFound = new Set();
+  localMusicObjectUrls = [];
+  localMusicFiles = [];
+  musicCount = 0;
+  musicReady = false;
+  selectedMusicFolderName = '';
+  musicTitleCache.clear();
+}
+
 function getSelectedMusicSource() {
   const checked =
     musicSourceSelector.querySelector('input[name="musicSource"]:checked');
@@ -1181,32 +1196,25 @@ async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
 
 async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource) {
   /*
-     フォルダー変更時は、そのソースの旧キャッシュだけを破棄する。
-     現在のグローバル参照が別ソースのキャッシュを指している場合もあるため、
-     旧キャッシュのObject URLを不用意に revoke しない。
+     まず「これから作り直すソース自身」の旧キャッシュだけを破棄する。
+     ここで現在アクティブな別ソースのObject URLをrevokeしてはいけない。
+     これが Local → External → Local で再生不能になる原因になる。
   */
   if (source === 'local' || source === 'extra') {
-    const oldCache = sourceMusicCaches[source];
-    if (oldCache) {
-      oldCache.objectUrls.forEach(function(url) {
-        try { URL.revokeObjectURL(url); } catch (error) {}
-      });
-    }
-    sourceMusicCaches[source] = null;
+    discardLocalMusicCache(source);
   }
 
-  /* 現在参照中のグローバルURLだけを解放する。
-     別ソースのキャッシュURLは保持する。 */
-  if (source === musicSource) {
-    releaseLocalMusicObjectUrls();
-  } else {
-    localMusicObjectUrls = [];
-    localMusicFiles = [];
-  }
-
+  /*
+     グローバル参照は単に空にするだけ。
+     Object URLのrevokeは上のdiscardLocalMusicCache()で
+     「読み直すソース自身」に対してだけ行っている。
+  */
   musicFileMap = new Map();
   musicFilesFound = new Set();
+  localMusicObjectUrls = [];
+  localMusicFiles = [];
   musicCount = 0;
+  musicReady = false;
   musicTitleCache.clear();
 
   const results =
@@ -1562,6 +1570,7 @@ musicSourceSelector.addEventListener(
     showInitialButton();
 
     if (nextSource === 'github') {
+      clearActiveLocalMusicState();
       saveCurrentMusic();
       return;
     }
@@ -1579,6 +1588,15 @@ musicSourceSelector.addEventListener(
       showInitialButton();
       return;
     }
+
+    /*
+       キャッシュが無いソースへ切り替えた場合、
+       直前のソースのmusicFileMap/musicFilesFoundを絶対に残さない。
+       残すと、Localへ切り替えた直後なのにGitHubのMusic-2～20等が
+       プルダウンへ表示され、My MUSIC再生も旧ソースを参照してしまう。
+    */
+    clearActiveLocalMusicState();
+    showInitialButton();
 
     /*
        重要：ここではフォルダーHandleのpermissionを要求しない。
@@ -2933,7 +2951,16 @@ musicButton.addEventListener(
     */
     if (musicSource !== 'github') {
 
-      if (musicFilesFound.size === 0) {
+      /*
+         Local / Externalでは、現在ソースのキャッシュがアクティブでない限り
+         My MUSIC再生前に必ず記憶Handleから準備する。
+         「musicFilesFoundに何か残っているか」だけでは判定しない。
+      */
+      const activeCache = sourceMusicCaches[musicSource];
+      const activeCacheReady =
+        !!(activeCache && activeCache.ready && activeCache.filesFound.size > 0);
+
+      if (!activeCacheReady) {
 
         /*
            記憶Handleがある場合だけ、ユーザー操作中に
