@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11d》
+    戻　る《ver.11e》
   </button>
 
 
@@ -1109,7 +1109,16 @@ function sourceLabel(source) {
   return 'GitHub';
 }
 
+let folderPickerSource = null;
+
 function showFolderPickerDialog(source) {
+  /*
+     Long-tapされたLocal / Externalを、そのままフォルダー選択対象として保持する。
+     ダイアログ表示後にラジオ選択状態を参照すると、
+     Long-tapした側と別ソースを開いてしまうため。
+  */
+  folderPickerSource = source;
+
   folderPickerMessage.innerHTML =
     `${sourceLabel(source)}内のフォルダー一覧を表示します<br>` +
     `音楽フォルダーを選択してください` +
@@ -1490,8 +1499,15 @@ musicSourceSelector.addEventListener(
 folderPickerGo.addEventListener(
   'click',
   async function() {
-    /* GOを押した瞬間のラジオ選択を必ず使用する */
-    const selectedSource = getSelectedMusicSource();
+    /*
+       フォルダー選択を開始した時点で確定したLocal / Externalを使用する。
+       現在のラジオ選択状態は参照しない。
+    */
+    const selectedSource = folderPickerSource;
+    if (selectedSource !== 'local' && selectedSource !== 'extra') {
+      return;
+    }
+
     await chooseLocalMusicFolder(selectedSource, true, false);
   }
 );
