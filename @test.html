@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11i》
+    戻　る《ver.11j》
   </button>
 
 
@@ -1618,11 +1618,6 @@ musicSourceSelector.addEventListener(
        requestPermission()が必要であるため、その確認は
        My MUSIC再生tap時にのみ発生する。
     */
-    if (!sourceDirectoryHandles[nextSource]) {
-      /* 初回だけ、フォルダー未選択を知らせるUIを表示する。
-         実際のPickerは「フォルダーを選択」ボタンで開始する。 */
-      showFolderPickerDialog(nextSource);
-    }
   }
 );
 
