@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11j》
+    戻　る《ver.11k》
   </button>
 
 
@@ -1164,34 +1164,44 @@ function isSupportedLocalMusicFile(file) {
 }
 
 async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
-  const results = [];
+  /*
+     同一フォルダー内のFile取得とサブフォルダー走査を並列化する。
+     再起動後の「My MUSIC再生」では、従来の逐次処理だと
+     ファイル数が多いほど初曲再生まで待たされるため。
+     最終的な並び順は呼出し側でpath順に確定するので、
+     並列化によって曲順は変わらない。
+  */
+  const tasks = [];
 
   for await (const entry of directoryHandle.values()) {
     if (entry.kind === 'file') {
-      try {
-        const file = await entry.getFile();
-        if (isSupportedLocalMusicFile(file)) {
-          results.push({
-            file: file,
-            path: pathPrefix + file.name
-          });
+      tasks.push((async function(fileEntry) {
+        try {
+          const file = await fileEntry.getFile();
+          if (isSupportedLocalMusicFile(file)) {
+            return [{
+              file: file,
+              path: pathPrefix + file.name
+            }];
+          }
+        } catch (error) {
+          console.log('音楽ファイル取得をスキップしました:', error);
         }
-      } catch (error) {
-        console.log('音楽ファイル取得をスキップしました:', error);
-      }
+        return [];
+      })(entry));
     }
     else if (entry.kind === 'directory') {
-      const child =
-        await collectLocalMusicFiles(
+      tasks.push(
+        collectLocalMusicFiles(
           entry,
           pathPrefix + entry.name + '/'
-        );
-
-      results.push(...child);
+        )
+      );
     }
   }
 
-  return results;
+  const groups = await Promise.all(tasks);
+  return groups.flat();
 }
 
 async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource) {
