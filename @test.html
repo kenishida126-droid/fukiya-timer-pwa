@@ -272,8 +272,8 @@
 
 
   /* ========================================
-     Ver.08 音楽再生元選択
-     GitHub / Loacl / Extra
+     Ver.09 音楽再生元選択
+     GitHub / Local / External
      ======================================== */
   #musicSourceSelector {
     width: 80%;
@@ -295,14 +295,28 @@
     gap: 0.25em;
     cursor: pointer;
     white-space: nowrap;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
   }
 
   #musicSourceSelector input {
     accent-color: lime;
   }
 
+  #musicSourceHint {
+    width: 90%;
+    max-width: 360px;
+    margin: -0.55em auto 0.7em auto;
+    text-align: center;
+    font-size: 0.78em;
+    color: #fff;
+    text-shadow: 1px 1px 3px #000;
+    white-space: nowrap;
+  }
+
   /* ========================================
-     Ver.08 フォルダー選択案内
+     Ver.09 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,13 +596,14 @@
     </button>
 
     <!-- ========================================
-         Ver.08 音楽再生元
+         Ver.09 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
       <label><input type="radio" name="musicSource" value="local">Local</label>
       <label><input type="radio" name="musicSource" value="extra">External</label>
     </div>
+    <div id="musicSourceHint">Local / External はLong-tapでフォルダー変更</div>
 
 
     <!-- ========================================
@@ -602,7 +617,7 @@
 
 
 <!-- ========================================
-     Ver.08 フォルダー選択案内
+     Ver.09 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.08》
+    戻　る《Ver.09》
   </button>
 
 
@@ -889,7 +904,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.08 音楽再生元
+   Ver.09 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -937,7 +952,7 @@ const sourceDirectoryHandles = {
 };
 
 /* ========================================
-   Ver.08 Local / External フォルダー記憶
+   Ver.09 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
    選択開始位置として使用できるよう IndexedDB に保存する。
@@ -1202,6 +1217,84 @@ async function chooseLocalMusicFolder(source, forcePicker = false) {
     return false;
   }
 }
+
+/* ========================================
+   Local / External のLong-tap
+   短tap  : 記憶済みフォルダーを使用
+   Long-tap: フォルダー変更用ダイアログを表示
+   ======================================== */
+const sourceLongTapTime = 600;
+let sourceLongTapTimer = null;
+let sourceLongTapTriggered = false;
+let sourceLongTapSource = null;
+
+function startSourceLongTap(source) {
+  if (source !== 'local' && source !== 'extra') return;
+
+  sourceLongTapTriggered = false;
+  sourceLongTapSource = source;
+
+  clearTimeout(sourceLongTapTimer);
+
+  sourceLongTapTimer = setTimeout(function() {
+    sourceLongTapTimer = null;
+    sourceLongTapTriggered = true;
+
+    /* Long-tapではラジオ切替を発生させず、変更画面だけを表示 */
+    showFolderPickerDialog(source);
+  }, sourceLongTapTime);
+}
+
+function cancelSourceLongTap() {
+  clearTimeout(sourceLongTapTimer);
+  sourceLongTapTimer = null;
+}
+
+const sourceLabels =
+  musicSourceSelector.querySelectorAll('label');
+
+sourceLabels.forEach(function(label) {
+  const input = label.querySelector('input[name="musicSource"]');
+  if (!input) return;
+
+  const source = input.value;
+
+  label.addEventListener('pointerdown', function() {
+    startSourceLongTap(source);
+  });
+
+  label.addEventListener('pointerup', function() {
+    cancelSourceLongTap();
+  });
+
+  label.addEventListener('pointercancel', function() {
+    cancelSourceLongTap();
+    sourceLongTapTriggered = false;
+  });
+
+  label.addEventListener('pointerleave', function() {
+    cancelSourceLongTap();
+  });
+
+  /* Long-tap後に発生するclickでラジオを切り替えない */
+  label.addEventListener('click', function(event) {
+    if (sourceLongTapTriggered && sourceLongTapSource === source) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      sourceLongTapTriggered = false;
+      sourceLongTapSource = null;
+    }
+  }, true);
+
+  label.addEventListener('contextmenu', function(event) {
+    if (sourceLongTapTriggered && sourceLongTapSource === source) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      sourceLongTapTriggered = false;
+      sourceLongTapSource = null;
+    }
+  });
+});
 
 /* 音楽再生元変更 */
 musicSourceSelector.addEventListener(
