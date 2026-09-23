@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.11a》
+    戻　る《Ver.11b》
   </button>
 
 
@@ -947,6 +947,16 @@ function getSavedMusicForSource(source) {
 
 /* Local / Extraで選択したフォルダー */
 const sourceDirectoryHandles = {
+  local: null,
+  extra: null
+};
+
+/*
+   Local / External ソース切替え後のフォルダー準備中Promise。
+   ソース切替え直後に「My MUSIC再生」をtapされた場合、
+   フォルダー選択画面を出さず、準備完了を待ってから再生する。
+*/
+const sourcePreparationPromises = {
   local: null,
   extra: null
 };
@@ -1358,7 +1368,18 @@ musicSourceSelector.addEventListener(
        直接使用する。AndroidのPickerの「直前の場所」を使わない。
     */
     if (sourceDirectoryHandles[nextSource]) {
-      await chooseLocalMusicFolder(nextSource, false, false);
+      const preparation =
+        chooseLocalMusicFolder(nextSource, false, false);
+
+      sourcePreparationPromises[nextSource] = preparation;
+
+      try {
+        await preparation;
+      } finally {
+        if (sourcePreparationPromises[nextSource] === preparation) {
+          sourcePreparationPromises[nextSource] = null;
+        }
+      }
     } else {
       showFolderPickerDialog(nextSource);
     }
@@ -2660,15 +2681,35 @@ musicButton.addEventListener(
     }
 
     /*
-       Local / Extraで、まだ音楽フォルダーが選択されていない場合
-       → 案内画面を表示し、GOでshowDirectoryPicker()を起動する。
+       Local / External
+
+       短tapではフォルダー選択画面を絶対に表示しない。
+       フォルダーの選択／変更はLocal / Externalラジオ釦の
+       Long-tapだけで行う。
+
+       ソース切替え直後で記憶済みフォルダーの読込み中なら、
+       その準備完了を待ってから、そのまま再生へ進む。
     */
     if (
       musicSource !== 'github' &&
       musicFilesFound.size === 0
     ) {
-      showFolderPickerDialog(musicSource);
-      return;
+
+      const preparation =
+        sourcePreparationPromises[musicSource];
+
+      if (preparation) {
+        await preparation;
+      }
+
+      /*
+         準備完了後も曲が無い場合。
+         ここでPicker/Dialogは表示しない。
+         フォルダー選択はLong-tapに限定する。
+      */
+      if (musicFilesFound.size === 0) {
+        return;
+      }
     }
 
     /* 再生中 → Pause */
