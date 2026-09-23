@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11f》
+    戻　る《ver.11g》
   </button>
 
 
@@ -1037,7 +1037,7 @@ async function restoreDirectoryHandles() {
 }
 
 /* ページ起動時に Local / Extra の前回選択フォルダーを復元する */
-restoreDirectoryHandles();
+const directoryHandlesRestorePromise = restoreDirectoryHandles();
 
 /* 現在選択されているフォルダー名（確認用） */
 let selectedMusicFolderName = '';
@@ -1285,7 +1285,17 @@ async function openSourceDirectoryPicker(source, options) {
 }
 
 async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = false, requestPermissionOnDemand = false) {
-  musicSource = source;
+  if (source !== 'local' && source !== 'extra') return false;
+
+  /*
+     IndexedDBからLocal / ExternalのHandle復元が完了するまで待つ。
+     これを待たずにソースを切り替えると、起動直後だけ
+     「Handleが無い」と判定され、不要なフォルダーPickerが開く。
+  */
+  await directoryHandlesRestorePromise;
+
+  const activeSource = musicSource;
+
   if (!window.showDirectoryPicker) {
     folderPickerMessage.innerHTML = 'このブラウザはフォルダー選択に対応していません。';
     return false;
@@ -1296,17 +1306,24 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     try {
       if (activateLocalMusicCache(source)) {
         currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
-        if (!musicFileMap.has(currentMusic)) {
-          currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
+        const sourceFilesFound =
+          source === musicSource
+            ? musicFilesFound
+            : (sourceMusicCaches[source] ? sourceMusicCaches[source].filesFound : new Set());
+        if (!sourceFilesFound.has(currentMusic)) {
+          currentMusic = Array.from(sourceFilesFound).sort((a, b) => a - b)[0] || 1;
         }
-        saveCurrentMusic();
-        musicMode = 'none';
-        hideFolderPickerDialog();
-        showInitialButton();
+        saveMusicForSource(source, currentMusic);
 
-        if (autoPlay) {
-          musicMode = 'all';
-          await playMusic(currentMusic, 'hint');
+        if (source === musicSource) {
+          musicMode = 'none';
+          hideFolderPickerDialog();
+          showInitialButton();
+
+          if (autoPlay) {
+            musicMode = 'all';
+            await playMusic(currentMusic, 'hint');
+          }
         }
         return true;
       }
@@ -1315,28 +1332,42 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       let permission = await handle.queryPermission({ mode: 'read' });
 
       /*
-         通常のソース切替えではpermission promptを出さない。
-         Chromeが再起動後にpermissionを「prompt」に戻した場合は、
-         ユーザー操作中（My MUSIC再生）だけrequestPermission()を行う。
+         通常のバックグラウンド準備ではpermission promptを出さない。
+         ソース切替え／My MUSIC再生のユーザー操作中だけ
+         requestPermissionOnDemand=trueとしてrequestPermission()を行う。
       */
       if (permission !== 'granted' && requestPermissionOnDemand) {
         permission = await handle.requestPermission({ mode: 'read' });
       }
 
-      if (permission === 'granted') {
-        selectedMusicFolderName = handle.name || '';
-        const count = await loadLocalMusicFromDirectory(handle, source);
-        if (count > 0) {
-          currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
-          if (!musicFileMap.has(currentMusic)) {
-            currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
-          }
-          saveCurrentMusic();
+      /*
+         Handleは記憶されているがpermissionがまだ取れていない場合、
+         ここでPickerへフォールバックしない。
+         フォルダー選択はLong-tapに限定する。
+      */
+      if (permission !== 'granted') {
+        return false;
+      }
+
+      selectedMusicFolderName = handle.name || '';
+      const count = await loadLocalMusicFromDirectory(handle, source);
+      if (count > 0) {
+        currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
+        const sourceFilesFound =
+          source === musicSource
+            ? musicFilesFound
+            : (sourceMusicCaches[source] ? sourceMusicCaches[source].filesFound : new Set());
+        if (!sourceFilesFound.has(currentMusic)) {
+          currentMusic = Array.from(sourceFilesFound).sort((a, b) => a - b)[0] || 1;
+        }
+        saveMusicForSource(source, currentMusic);
+
+        if (source === musicSource) {
           musicMode = 'none';
           hideFolderPickerDialog();
 
           /*
-             フォルダー切替え時は即再生しない。
+             フォルダー読込み後は即再生しない。
              「My MUSIC再生」ボタンを押した時に再生する。
           */
           showInitialButton();
@@ -1345,16 +1376,27 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
             musicMode = 'all';
             await playMusic(currentMusic, 'hint');
           }
-
-          return true;
         }
+
+        return true;
       }
     } catch (error) {
       console.log(`${source} の記憶フォルダーを直接使用できませんでした:`, error);
+      return false;
     }
+
+    /*
+       記憶Handleが存在しても読み出せない場合、通常tapではPickerを出さない。
+       Long-tapによるforcePicker=trueの場合だけ下のPickerへ進む。
+    */
+    if (!forcePicker) return false;
   }
 
-  /* 初回、または「フォルダー変更」の場合だけPickerを開く */
+  /* 初回、またはLong-tapによる「フォルダー変更」の場合だけPickerを開く */
+  if (!forcePicker && !sourceDirectoryHandles[source]) {
+    /* 初回のみ、呼出し元のUIでフォルダー選択を明示的に開始する */
+  }
+
   try {
     const options = {
       mode: 'read',
@@ -1364,11 +1406,11 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     /*
        Long-tapでフォルダー変更する場合、まずそのソースで
        前回選択したフォルダーをPickerの開始位置にする。
-       Chrome側がstartInを受け付けられない場合だけ従来の開始位置に戻す。
     */
     if (forcePicker && sourceDirectoryHandles[source]) {
       options.startIn = sourceDirectoryHandles[source];
     }
+
     folderPickerMessage.innerHTML = source === 'extra'
       ? 'External側を含むフォルダーを選択してください<br>SDメモリの場合は「≡」からExternalを選択してください'
       : '音楽フォルダーを選択してください';
@@ -1383,23 +1425,31 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       folderPickerMessage.innerHTML = `${sourceLabel(source)}で音楽ファイルが見つかりませんでした。<br>別のフォルダーを選択してください`;
       return false;
     }
+
     currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
-    if (!musicFileMap.has(currentMusic)) {
-      currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
+    const sourceFilesFound =
+      source === musicSource
+        ? musicFilesFound
+        : (sourceMusicCaches[source] ? sourceMusicCaches[source].filesFound : new Set());
+    if (!sourceFilesFound.has(currentMusic)) {
+      currentMusic = Array.from(sourceFilesFound).sort((a, b) => a - b)[0] || 1;
     }
-    saveCurrentMusic();
-    musicMode = 'none';
-    hideFolderPickerDialog();
+    saveMusicForSource(source, currentMusic);
 
-    /*
-       フォルダー選択後も即再生しない。
-       「My MUSIC再生」ボタンを押した時に再生する。
-    */
-    showInitialButton();
+    if (source === activeSource) {
+      musicMode = 'none';
+      hideFolderPickerDialog();
 
-    if (autoPlay) {
-      musicMode = 'all';
-      await playMusic(currentMusic, 'hint');
+      /*
+         フォルダー選択後も即再生しない。
+         「My MUSIC再生」ボタンを押した時に再生する。
+      */
+      showInitialButton();
+
+      if (autoPlay) {
+        musicMode = 'all';
+        await playMusic(currentMusic, 'hint');
+      }
     }
 
     return true;
@@ -1493,6 +1543,8 @@ sourceLabels.forEach(function(label) {
 musicSourceSelector.addEventListener(
   'change',
   async function() {
+    await directoryHandlesRestorePromise;
+
     const nextSource = getSelectedMusicSource();
     if (nextSource === musicSource) return;
 
@@ -1545,7 +1597,7 @@ musicSourceSelector.addEventListener(
     */
     if (sourceDirectoryHandles[nextSource]) {
       const preparation =
-        chooseLocalMusicFolder(nextSource, false, false, false);
+        chooseLocalMusicFolder(nextSource, false, false, true);
 
       sourcePreparationPromises[nextSource] = preparation;
 
@@ -2164,14 +2216,20 @@ async function detectMusicCount() {
    現在曲を保存
    ======================================== */
 
-function saveCurrentMusic() {
+function saveMusicForSource(source, number) {
 
-  currentMusicBySource[musicSource] = currentMusic;
+  currentMusicBySource[source] = number;
 
   localStorage.setItem(
-    `fukiyaTestLastMusic_${musicSource}`,
-    String(currentMusic)
+    `fukiyaTestLastMusic_${source}`,
+    String(number)
   );
+
+}
+
+function saveCurrentMusic() {
+
+  saveMusicForSource(musicSource, currentMusic);
 
 }
 
@@ -2860,6 +2918,8 @@ musicButton.addEventListener(
       musicMenu.style.display = 'none';
       return;
     }
+
+    await directoryHandlesRestorePromise;
 
     /*
        Local / External
