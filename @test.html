@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.09 音楽再生元選択
+     Ver.10 音楽再生元選択
      GitHub / Local / External
      ======================================== */
   #musicSourceSelector {
@@ -316,7 +316,7 @@
   }
 
   /* ========================================
-     Ver.09 フォルダー選択案内
+     Ver.10 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -596,7 +596,7 @@
     </button>
 
     <!-- ========================================
-         Ver.09 音楽再生元
+         Ver.10 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -617,7 +617,7 @@
 
 
 <!-- ========================================
-     Ver.09 フォルダー選択案内
+     Ver.10 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.09》
+    戻　る《Ver.10》
   </button>
 
 
@@ -904,7 +904,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.09 音楽再生元
+   Ver.10 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -952,7 +952,7 @@ const sourceDirectoryHandles = {
 };
 
 /* ========================================
-   Ver.09 Local / External フォルダー記憶
+   Ver.10 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
    選択開始位置として使用できるよう IndexedDB に保存する。
@@ -1146,7 +1146,7 @@ async function loadLocalMusicFromDirectory(directoryHandle) {
   return musicCount;
 }
 
-async function chooseLocalMusicFolder(source, forcePicker = false) {
+async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = false) {
   musicSource = source;
   if (!window.showDirectoryPicker) {
     folderPickerMessage.innerHTML = 'このブラウザはフォルダー選択に対応していません。';
@@ -1170,9 +1170,20 @@ async function chooseLocalMusicFolder(source, forcePicker = false) {
             currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
           }
           saveCurrentMusic();
-          musicMode = 'all';
+          musicMode = 'none';
           hideFolderPickerDialog();
-          await playMusic(currentMusic, 'hint');
+
+          /*
+             フォルダー切替え時は即再生しない。
+             「My MUSIC再生」ボタンを押した時に再生する。
+          */
+          showInitialButton();
+
+          if (autoPlay) {
+            musicMode = 'all';
+            await playMusic(currentMusic, 'hint');
+          }
+
           return true;
         }
       }
@@ -1206,9 +1217,20 @@ async function chooseLocalMusicFolder(source, forcePicker = false) {
       currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
     }
     saveCurrentMusic();
-    musicMode = 'all';
+    musicMode = 'none';
     hideFolderPickerDialog();
-    await playMusic(currentMusic, 'hint');
+
+    /*
+       フォルダー選択後も即再生しない。
+       「My MUSIC再生」ボタンを押した時に再生する。
+    */
+    showInitialButton();
+
+    if (autoPlay) {
+      musicMode = 'all';
+      await playMusic(currentMusic, 'hint');
+    }
+
     return true;
   } catch (error) {
     if (error && error.name === 'AbortError') return false;
@@ -1329,7 +1351,7 @@ musicSourceSelector.addEventListener(
        直接使用する。AndroidのPickerの「直前の場所」を使わない。
     */
     if (sourceDirectoryHandles[nextSource]) {
-      await chooseLocalMusicFolder(nextSource, false);
+      await chooseLocalMusicFolder(nextSource, false, false);
     } else {
       showFolderPickerDialog(nextSource);
     }
@@ -1341,7 +1363,7 @@ folderPickerGo.addEventListener(
   async function() {
     /* GOを押した瞬間のラジオ選択を必ず使用する */
     const selectedSource = getSelectedMusicSource();
-    await chooseLocalMusicFolder(selectedSource, true);
+    await chooseLocalMusicFolder(selectedSource, true, false);
   }
 );
 
@@ -2346,9 +2368,28 @@ function showInitialButton() {
   musicHint.style.visibility =
     'hidden';
 
+  if (musicSource === 'local') {
+
+    musicButton.innerHTML =
+      `My MUSIC再生<br>
+       ♪内部メモリ(Local)より♫`;
+
+    return;
+  }
+
+  if (musicSource === 'extra') {
+
+    musicButton.innerHTML =
+      `My MUSIC再生<br>
+       ♪SDカード(External)より♫`;
+
+    return;
+  }
+
+  /* GitHub */
   musicButton.innerHTML =
     `癒やしの音楽<br>
-     ♪「OtoLogic」より ♫`;
+     ♪「OtoLogic」より♫`;
 
 }
 
