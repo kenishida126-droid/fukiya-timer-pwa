@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11e》
+    戻　る《ver.11f》
   </button>
 
 
@@ -729,7 +729,7 @@ const musicExtensions = [
 ];
 
 /* Music-xx → 実際に検出したファイル */
-const musicFileMap = new Map();
+let musicFileMap = new Map();
 
 /* GitHub専用：GitHubの実ファイル管理はLocal/Extraと完全分離する */
 const githubMusicFileMap = new Map();
@@ -1053,6 +1053,11 @@ const sourceMusicCaches = {
   extra: null
 };
 
+/*
+   各ソースのキャッシュを「そのソース自身が所有するObject URL」として保持する。
+   他ソースへ切り替えた時に、現在ソースのURLを解放しても
+   別ソースのキャッシュURLまで revoke しない。
+*/
 function captureLocalMusicCache(source) {
   if (source !== 'local' && source !== 'extra') return;
 
@@ -1062,7 +1067,8 @@ function captureLocalMusicCache(source) {
     objectUrls: [...localMusicObjectUrls],
     files: [...localMusicFiles],
     count: musicCount,
-    ready: musicReady
+    ready: musicReady,
+    folderName: selectedMusicFolderName
   };
 }
 
@@ -1070,17 +1076,16 @@ function activateLocalMusicCache(source) {
   const cache = sourceMusicCaches[source];
   if (!cache || !cache.ready || cache.filesFound.size === 0) return false;
 
-  musicFileMap.clear();
-  cache.fileMap.forEach(function(value, key) {
-    musicFileMap.set(key, value);
-  });
-
-  musicFilesFound = new Set(cache.filesFound);
+  /* 現在ソースの参照だけをキャッシュへ切り替える。
+     別ソースのObject URLには一切触れない。 */
+  musicFileMap = cache.fileMap;
+  musicFilesFound = cache.filesFound;
   localMusicObjectUrls = cache.objectUrls;
   localMusicFiles = cache.files;
   musicCount = cache.count;
   musicReady = true;
 
+  selectedMusicFolderName = cache.folderName || '';
   createMusicMenu();
   return true;
 }
@@ -1185,12 +1190,31 @@ async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
 }
 
 async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource) {
+  /*
+     フォルダー変更時は、そのソースの旧キャッシュだけを破棄する。
+     現在のグローバル参照が別ソースのキャッシュを指している場合もあるため、
+     旧キャッシュのObject URLを不用意に revoke しない。
+  */
   if (source === 'local' || source === 'extra') {
-    discardLocalMusicCache(source);
+    const oldCache = sourceMusicCaches[source];
+    if (oldCache) {
+      oldCache.objectUrls.forEach(function(url) {
+        try { URL.revokeObjectURL(url); } catch (error) {}
+      });
+    }
+    sourceMusicCaches[source] = null;
   }
 
-  releaseLocalMusicObjectUrls();
-  musicFileMap.clear();
+  /* 現在参照中のグローバルURLだけを解放する。
+     別ソースのキャッシュURLは保持する。 */
+  if (source === musicSource) {
+    releaseLocalMusicObjectUrls();
+  } else {
+    localMusicObjectUrls = [];
+    localMusicFiles = [];
+  }
+
+  musicFileMap = new Map();
   musicFilesFound = new Set();
   musicCount = 0;
   musicTitleCache.clear();
@@ -1224,9 +1248,40 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
 
   if (source === 'local' || source === 'extra') {
     captureLocalMusicCache(source);
+
+    /*
+       現在選択中のソースとは別ソースのフォルダーをLong-tapで
+       変更した場合、ここで現在ソースのキャッシュへ戻す。
+       これにより「Localを操作中にExternalのフォルダーを変更したら
+       Localが再生不能になる」という状態を防ぐ。
+    */
+    if (source !== musicSource) {
+      if (!activateLocalMusicCache(musicSource)) {
+        musicFileMap = new Map();
+        musicFilesFound = new Set();
+        localMusicObjectUrls = [];
+        localMusicFiles = [];
+        musicCount = 0;
+        musicReady = false;
+      }
+    }
   }
 
   return musicCount;
+}
+
+async function openSourceDirectoryPicker(source, options) {
+  try {
+    return await window.showDirectoryPicker(options);
+  } catch (error) {
+    /* startInに保存Handleを指定できない場合だけ、startInなしで再試行 */
+    if (options && options.startIn && error && error.name !== 'AbortError') {
+      const retryOptions = { ...options };
+      delete retryOptions.startIn;
+      return await window.showDirectoryPicker(retryOptions);
+    }
+    throw error;
+  }
 }
 
 async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = false, requestPermissionOnDemand = false) {
@@ -1305,11 +1360,20 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       mode: 'read',
       id: source === 'local' ? 'fukiya-music-local' : 'fukiya-music-extra'
     };
+
+    /*
+       Long-tapでフォルダー変更する場合、まずそのソースで
+       前回選択したフォルダーをPickerの開始位置にする。
+       Chrome側がstartInを受け付けられない場合だけ従来の開始位置に戻す。
+    */
+    if (forcePicker && sourceDirectoryHandles[source]) {
+      options.startIn = sourceDirectoryHandles[source];
+    }
     folderPickerMessage.innerHTML = source === 'extra'
       ? 'External側を含むフォルダーを選択してください<br>SDメモリの場合は「≡」からExternalを選択してください'
       : '音楽フォルダーを選択してください';
 
-    const directoryHandle = await window.showDirectoryPicker(options);
+    const directoryHandle = await openSourceDirectoryPicker(source, options);
     sourceDirectoryHandles[source] = directoryHandle;
     await saveDirectoryHandle(source, directoryHandle);
     selectedMusicFolderName = directoryHandle.name || '';
