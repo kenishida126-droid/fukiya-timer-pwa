@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11g》
+    戻　る《ver.11h》
   </button>
 
 
@@ -953,16 +953,6 @@ function getSavedMusicForSource(source) {
 
 /* Local / Extraで選択したフォルダー */
 const sourceDirectoryHandles = {
-  local: null,
-  extra: null
-};
-
-/*
-   Local / External ソース切替え後のフォルダー準備中Promise。
-   ソース切替え直後に「My MUSIC再生」をtapされた場合、
-   フォルダー選択画面を出さず、準備完了を待ってから再生する。
-*/
-const sourcePreparationPromises = {
   local: null,
   extra: null
 };
@@ -1591,22 +1581,28 @@ musicSourceSelector.addEventListener(
     }
 
     /*
-       再起動後など、まだ実行中キャッシュが無い場合だけ
-       記憶Handleからバックグラウンド準備を開始する。
-       このawaitはしないため、釦名切替えを遅らせない。
+       重要：ここではフォルダーHandleのpermissionを要求しない。
+
+       IndexedDBから復元したFileSystemHandleは、Chromeの仕様上、
+       再起動後にqueryPermission()が「prompt」へ戻る場合がある。
+       その状態でrequestPermission()をラジオ切替え時に呼ぶと、
+       Local / Externalを選ぶだけで
+       「このサイトにファイルの表示とコピーを許可しますか？」
+       が毎回表示される。
+
+       ラジオ切替えは「再生元を選ぶだけ」とし、
+       permission要求・フォルダー走査はMy MUSIC再生tap時だけ行う。
+       これにより、再起動後のLocal / External選択では
+       Pickerもpermission確認も表示しない。
+
+       なお、再起動後にpermission自体がpromptへ戻った場合、
+       実際にファイルへアクセスするにはユーザー操作中の
+       requestPermission()が必要であるため、その確認は
+       My MUSIC再生tap時にのみ発生する。
     */
-    if (sourceDirectoryHandles[nextSource]) {
-      const preparation =
-        chooseLocalMusicFolder(nextSource, false, false, true);
-
-      sourcePreparationPromises[nextSource] = preparation;
-
-      preparation.finally(function() {
-        if (sourcePreparationPromises[nextSource] === preparation) {
-          sourcePreparationPromises[nextSource] = null;
-        }
-      });
-    } else {
+    if (!sourceDirectoryHandles[nextSource]) {
+      /* 初回だけ、フォルダー未選択を知らせるUIを表示する。
+         実際のPickerは「フォルダーを選択」ボタンで開始する。 */
       showFolderPickerDialog(nextSource);
     }
   }
@@ -2919,55 +2915,51 @@ musicButton.addEventListener(
       return;
     }
 
-    await directoryHandlesRestorePromise;
-
     /*
        Local / External
 
-       短tapではフォルダー選択画面を絶対に表示しない。
-       フォルダーの選択／変更はLocal / Externalラジオ釦の
-       Long-tapだけで行う。
+       短tapではフォルダーPickerを表示しない。
+       ただし、再起動後はIndexedDBからHandleが復元されていても
+       permissionが「prompt」へ戻る場合があるため、
+       実際のファイルアクセスはこの「My MUSIC再生」tap中に行う。
 
-       ソース切替え直後で記憶済みフォルダーの読込み中なら、
-       その準備完了を待ってから、そのまま再生へ進む。
+       これが重要な理由：
+       requestPermission()にはユーザー操作が必要であり、
+       ラジオ切替え時に先回りして要求すると、
+       Local / Externalを選ぶだけでpermission確認が表示される。
+
+       同一セッション中に既にキャッシュがある場合は、
+       permission要求もフォルダー再走査も行わない。
     */
-    if (
-      musicSource !== 'github' &&
-      musicFilesFound.size === 0
-    ) {
+    if (musicSource !== 'github') {
 
-      const preparation =
-        sourcePreparationPromises[musicSource];
-
-      if (preparation) {
-        await preparation;
-      }
-
-      /*
-         再起動後など、Handleは残っているがpermissionが
-         「prompt」になっている場合。
-         ここはユーザーのshort-tap中なのでpermissionを要求できる。
-         フォルダーPickerは表示しない。
-      */
-      if (
-        musicFilesFound.size === 0 &&
-        sourceDirectoryHandles[musicSource]
-      ) {
-        await chooseLocalMusicFolder(
-          musicSource,
-          false,
-          false,
-          true
-        );
-      }
-
-      /*
-         準備完了後も曲が無い場合。
-         ここでPicker/Dialogは表示しない。
-         フォルダー選択はLong-tapに限定する。
-      */
       if (musicFilesFound.size === 0) {
-        return;
+
+        /*
+           記憶Handleがある場合だけ、ユーザー操作中に
+           permission確認→フォルダー再読込みを行う。
+           Pickerは開かない。
+        */
+        if (sourceDirectoryHandles[musicSource]) {
+          const prepared = await chooseLocalMusicFolder(
+            musicSource,
+            false,
+            false,
+            true
+          );
+
+          if (!prepared || musicFilesFound.size === 0) {
+            return;
+          }
+        }
+        else {
+          /*
+             初回などHandleが無い場合。
+             フォルダー選択はLong-tapに限定するため、
+             short-tapではPickerを出さず終了する。
+          */
+          return;
+        }
       }
     }
 
