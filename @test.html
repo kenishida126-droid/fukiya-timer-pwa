@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.07 音楽再生元選択
+     Ver.08 音楽再生元選択
      GitHub / Loacl / Extra
      ======================================== */
   #musicSourceSelector {
@@ -302,7 +302,7 @@
   }
 
   /* ========================================
-     Ver.07 フォルダー選択案内
+     Ver.08 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -582,12 +582,12 @@
     </button>
 
     <!-- ========================================
-         Ver.07 音楽再生元
+         Ver.08 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
-      <label><input type="radio" name="musicSource" value="local">Loacl</label>
-      <label><input type="radio" name="musicSource" value="extra">Extra</label>
+      <label><input type="radio" name="musicSource" value="local">Local</label>
+      <label><input type="radio" name="musicSource" value="extra">External</label>
     </div>
 
 
@@ -602,7 +602,7 @@
 
 
 <!-- ========================================
-     Ver.07 フォルダー選択案内
+     Ver.08 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -642,7 +642,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.07》
+    戻　る《Ver.08》
   </button>
 
 
@@ -889,7 +889,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.07 音楽再生元
+   Ver.08 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -908,6 +908,28 @@ const folderPickerCancel =
 
 let musicSource = 'github';
 
+/*
+   音楽ソースごとの前回再生曲
+   GitHub / Local / External を切り替えても、
+   それぞれ最後に再生していた曲から再開する。
+*/
+const currentMusicBySource = {
+  github: 1,
+  local: 1,
+  extra: 1
+};
+
+function getSavedMusicForSource(source) {
+  const key = `fukiyaTestLastMusic_${source}`;
+  const saved = Number(localStorage.getItem(key));
+
+  if (Number.isInteger(saved) && saved >= 1) {
+    return saved;
+  }
+
+  return 1;
+}
+
 /* Local / Extraで選択したフォルダー */
 const sourceDirectoryHandles = {
   local: null,
@@ -915,7 +937,7 @@ const sourceDirectoryHandles = {
 };
 
 /* ========================================
-   Ver.07 Local / Extra フォルダー記憶
+   Ver.08 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
    選択開始位置として使用できるよう IndexedDB に保存する。
@@ -1001,8 +1023,8 @@ function getSelectedMusicSource() {
 }
 
 function sourceLabel(source) {
-  if (source === 'local') return 'Loacl（内部メモリ）';
-  if (source === 'extra') return 'Extra（外部メモリ）';
+  if (source === 'local') return 'Local（内部メモリ）';
+  if (source === 'extra') return 'External（外部メモリ）';
   return 'GitHub';
 }
 
@@ -1128,7 +1150,10 @@ async function chooseLocalMusicFolder(source, forcePicker = false) {
         selectedMusicFolderName = handle.name || '';
         const count = await loadLocalMusicFromDirectory(handle);
         if (count > 0) {
-          currentMusic = 1;
+          currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
+          if (!musicFileMap.has(currentMusic)) {
+            currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
+          }
           saveCurrentMusic();
           musicMode = 'all';
           hideFolderPickerDialog();
@@ -1161,7 +1186,10 @@ async function chooseLocalMusicFolder(source, forcePicker = false) {
       folderPickerMessage.innerHTML = `${sourceLabel(source)}で音楽ファイルが見つかりませんでした。<br>別のフォルダーを選択してください`;
       return false;
     }
-    currentMusic = 1;
+    currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
+    if (!musicFileMap.has(currentMusic)) {
+      currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
+    }
     saveCurrentMusic();
     musicMode = 'all';
     hideFolderPickerDialog();
@@ -1182,6 +1210,9 @@ musicSourceSelector.addEventListener(
     const nextSource = getSelectedMusicSource();
     if (nextSource === musicSource) return;
 
+    /* 切替え前のソースの最後の曲を保存 */
+    saveCurrentMusic();
+
     musicSource = nextSource;
     musicDetectionGeneration++;
     musicDetectionStarted = false;
@@ -1191,15 +1222,14 @@ musicSourceSelector.addEventListener(
     music.src = '';
     musicMode = 'none';
 
+    /* 切替え先ソースは、そのソースの前回曲を復元 */
+    currentMusic = currentMusicBySource[nextSource] || getSavedMusicForSource(nextSource);
+
     if (nextSource === 'github') {
-      currentMusic = 1;
       saveCurrentMusic();
       showInitialButton();
       return;
     }
-
-    currentMusic = 1;
-    saveCurrentMusic();
 
     /*
        Local / Extra はラジオボタンごとの記憶Handleを
@@ -1218,7 +1248,7 @@ folderPickerGo.addEventListener(
   async function() {
     /* GOを押した瞬間のラジオ選択を必ず使用する */
     const selectedSource = getSelectedMusicSource();
-    await chooseLocalMusicFolder(selectedSource);
+    await chooseLocalMusicFolder(selectedSource, true);
   }
 );
 
@@ -1789,21 +1819,17 @@ async function detectMusicCount() {
 
   }
 
-  const savedMusic =
-    localStorage.getItem('fukiyaTestLastMusic');
-
-  const savedNumber = Number(savedMusic);
+  currentMusic = getSavedMusicForSource('github');
+  currentMusicBySource.github = currentMusic;
 
   if (
-    Number.isInteger(savedNumber) &&
-    savedNumber >= 1 &&
-    savedNumber <= maxProbe &&
-    musicFilesFound.has(savedNumber)
+    !Number.isInteger(currentMusic) ||
+    currentMusic < 1 ||
+    currentMusic > maxProbe ||
+    !musicFilesFound.has(currentMusic)
   ) {
-    currentMusic = savedNumber;
-  }
-  else {
     currentMusic = 1;
+    currentMusicBySource.github = 1;
   }
 
   return musicCount;
@@ -1816,8 +1842,10 @@ async function detectMusicCount() {
 
 function saveCurrentMusic() {
 
+  currentMusicBySource[musicSource] = currentMusic;
+
   localStorage.setItem(
-    'fukiyaTestLastMusic',
+    `fukiyaTestLastMusic_${musicSource}`,
     String(currentMusic)
   );
 
@@ -2982,21 +3010,16 @@ async function initializeMusic() {
 */
 (function loadInitialMusicSelection() {
 
-  const savedMusic =
-    localStorage.getItem('fukiyaTestLastMusic');
-
-  const savedNumber =
-    Number(savedMusic);
+  currentMusic = getSavedMusicForSource('github');
+  currentMusicBySource.github = currentMusic;
 
   if (
-    Number.isInteger(savedNumber) &&
-    savedNumber >= 1 &&
-    savedNumber <= 20
+    !Number.isInteger(currentMusic) ||
+    currentMusic < 1 ||
+    currentMusic > 20
   ) {
-    currentMusic = savedNumber;
-  }
-  else {
     currentMusic = 1;
+    currentMusicBySource.github = 1;
   }
 
   showInitialButton();
