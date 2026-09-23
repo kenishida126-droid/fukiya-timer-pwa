@@ -272,7 +272,7 @@
 
 
   /* ========================================
-     Ver.10 音楽再生元選択
+     Ver.11 音楽再生元選択
      GitHub / Local / External
      ======================================== */
   #musicSourceSelector {
@@ -316,7 +316,7 @@
   }
 
   /* ========================================
-     Ver.10 フォルダー選択案内
+     Ver.11 フォルダー選択案内
      ======================================== */
   #folderPickerDialog {
     display: none;
@@ -596,7 +596,7 @@
     </button>
 
     <!-- ========================================
-         Ver.10 音楽再生元
+         Ver.11 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
       <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
@@ -617,7 +617,7 @@
 
 
 <!-- ========================================
-     Ver.10 フォルダー選択案内
+     Ver.11 フォルダー選択案内
      ======================================== -->
 <div id="folderPickerDialog">
   <div id="folderPickerPanel">
@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《Ver.10》
+    戻　る《Ver.11》
   </button>
 
 
@@ -904,7 +904,7 @@ const musicControl =
 
 
 /* ========================================
-   Ver.10 音楽再生元
+   Ver.11 音楽再生元
    ======================================== */
 const musicSourceSelector =
   document.getElementById('musicSourceSelector');
@@ -952,7 +952,7 @@ const sourceDirectoryHandles = {
 };
 
 /* ========================================
-   Ver.10 Local / External フォルダー記憶
+   Ver.11 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
    選択開始位置として使用できるよう IndexedDB に保存する。
@@ -1340,9 +1340,16 @@ musicSourceSelector.addEventListener(
     /* 切替え先ソースは、そのソースの前回曲を復元 */
     currentMusic = currentMusicBySource[nextSource] || getSavedMusicForSource(nextSource);
 
+    /*
+       ソース元を切替えた瞬間に、まず釦名を変更する。
+       Local / External のフォルダー走査は数秒かかる場合があるため、
+       ここより後に行う。
+       ※ソース元切替えでは自動再生しない。
+    */
+    showInitialButton();
+
     if (nextSource === 'github') {
       saveCurrentMusic();
-      showInitialButton();
       return;
     }
 
