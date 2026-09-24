@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11n》
+    戻　る《ver.11o》
   </button>
 
 
@@ -1042,6 +1042,53 @@ const sourceMusicCaches = {
   local: null,
   extra: null
 };
+
+/*
+   Ver.11o 起動後／ソース選択後のバックグラウンド準備。
+   permission要求は行わず、既にgrantedのソースだけ先行走査する。
+   これにより「My MUSIC再生」tap時の初回待ち時間を短縮する。
+*/
+const sourcePreparationPromises = {
+  local: null,
+  extra: null
+};
+
+async function prepareLocalMusicSourceInBackground(source) {
+  if (source !== 'local' && source !== 'extra') return false;
+  if (sourceMusicCaches[source] && sourceMusicCaches[source].ready) return true;
+  if (!sourceDirectoryHandles[source]) return false;
+
+  if (sourcePreparationPromises[source]) {
+    return sourcePreparationPromises[source];
+  }
+
+  sourcePreparationPromises[source] = (async function() {
+    try {
+      await directoryHandlesRestorePromise;
+
+      const handle = sourceDirectoryHandles[source];
+      if (!handle) return false;
+
+      /*
+         queryPermission()だけを使用する。
+         promptの場合はここではrequestPermission()を呼ばない。
+         Chromeの権限確認はユーザー操作中だけ行う。
+      */
+      const permission = await handle.queryPermission({ mode: 'read' });
+      if (permission !== 'granted') return false;
+
+      await loadLocalMusicFromDirectory(handle, source);
+      return !!(sourceMusicCaches[source] && sourceMusicCaches[source].ready);
+    } catch (error) {
+      console.log(`${source} のバックグラウンド準備をスキップしました:`, error);
+      return false;
+    } finally {
+      sourcePreparationPromises[source] = null;
+    }
+  })();
+
+  return sourcePreparationPromises[source];
+}
 
 /*
    各ソースのキャッシュを「そのソース自身が所有するObject URL」として保持する。
@@ -1636,6 +1683,17 @@ musicSourceSelector.addEventListener(
     */
     clearActiveLocalMusicState();
     showInitialButton();
+
+    /*
+       Ver.11o：記憶Handleがあり、既にpermissionがgrantedなら
+       ソース選択直後からバックグラウンドでフォルダーを先行走査する。
+       promptの場合はここでは何も要求しないため、Chromeの権限確認は表示しない。
+       「My MUSIC再生」tap時には準備完了を利用し、未準備なら従来通り
+       ユーザー操作中にpermission確認を行う。
+    */
+    if (sourceDirectoryHandles[nextSource]) {
+      prepareLocalMusicSourceInBackground(nextSource);
+    }
 
     /*
        重要：ここではフォルダーHandleのpermissionを要求しない。
@@ -3013,11 +3071,37 @@ musicButton.addEventListener(
       if (!activeCacheReady) {
 
         /*
+           Ver.11o：ソース選択後に先行準備が進行中なら、まずその完了を待つ。
+           既にpermissionがgrantedなら、この待機中に走査が完了するため、
+           My MUSIC再生時の初回待ち時間を短縮できる。
+        */
+        if (sourcePreparationPromises[musicSource]) {
+          await sourcePreparationPromises[musicSource];
+        }
+
+        const preparedCache = sourceMusicCaches[musicSource];
+        if (preparedCache && preparedCache.ready && preparedCache.filesFound.size > 0) {
+          activateLocalMusicCache(musicSource);
+        }
+
+        const refreshedActiveCache = sourceMusicCaches[musicSource];
+        const refreshedReady =
+          !!(refreshedActiveCache && refreshedActiveCache.ready && refreshedActiveCache.filesFound.size > 0);
+
+        if (refreshedReady) {
+          currentMusic = currentMusicBySource[musicSource] || getSavedMusicForSource(musicSource);
+          if (!musicFilesFound.has(currentMusic)) {
+            currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
+          }
+          saveMusicForSource(musicSource, currentMusic);
+        }
+
+        /*
            記憶Handleがある場合だけ、ユーザー操作中に
            permission確認→フォルダー再読込みを行う。
            Pickerは開かない。
         */
-        if (sourceDirectoryHandles[musicSource]) {
+        if (!refreshedReady && sourceDirectoryHandles[musicSource]) {
           const prepared = await chooseLocalMusicFolder(
             musicSource,
             false,
