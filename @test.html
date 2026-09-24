@@ -194,6 +194,12 @@
     background: rgba(255,255,255,0.20);
   }
 
+  #indexedDBResetButton:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+  }
+
 
   #musicControl {
     position: relative;
@@ -657,7 +663,11 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11r》
+    戻　る《ver.11s》
+  </button>
+
+  <button class="button" id="indexedDBResetButton">
+    IndexedDB完全初期化
   </button>
 
 
@@ -967,6 +977,18 @@ const directoryHandleDBName = 'fukiya-test-directory-handles';
 const directoryHandleStoreName = 'handles';
 const musicCacheStoreName = 'musicCaches';
 
+/* 開発用IndexedDB初期化釦の安全制御。走査中／DB処理中は無効化する。 */
+let musicFolderScanInProgress = 0;
+let indexedDBOperationInProgress = 0;
+
+function updateIndexedDBResetButton() {
+  const button = document.getElementById('indexedDBResetButton');
+  if (!button) return;
+  button.disabled =
+    musicFolderScanInProgress > 0 ||
+    indexedDBOperationInProgress > 0;
+}
+
 function openDirectoryHandleDB() {
   return new Promise(function(resolve, reject) {
     const request = indexedDB.open(directoryHandleDBName, 2);
@@ -1060,6 +1082,9 @@ async function deleteMusicCacheFromDB(source) {
 async function saveMusicCacheToDB(source, cache) {
   if (source !== 'local' && source !== 'extra') return;
 
+  indexedDBOperationInProgress++;
+  updateIndexedDBResetButton();
+
   try {
     const db = await openDirectoryHandleDB();
     await new Promise(function(resolve, reject) {
@@ -1079,6 +1104,9 @@ async function saveMusicCacheToDB(source, cache) {
     db.close();
   } catch (error) {
     console.log(`${source} の音楽キャッシュ保存に失敗しました:`, error);
+  } finally {
+    indexedDBOperationInProgress--;
+    updateIndexedDBResetButton();
   }
 }
 
@@ -1375,7 +1403,11 @@ async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
 }
 
 async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource) {
-  /*
+  musicFolderScanInProgress++;
+  updateIndexedDBResetButton();
+
+  try {
+    /*
      まず「これから作り直すソース自身」の旧キャッシュだけを破棄する。
      ここで現在アクティブな別ソースのObject URLをrevokeしてはいけない。
      これが Local → External → Local で再生不能になる原因になる。
@@ -1452,6 +1484,10 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
   }
 
   return musicCount;
+  } finally {
+    musicFolderScanInProgress--;
+    updateIndexedDBResetButton();
+  }
 }
 
 async function openSourceDirectoryPicker(source, options) {
@@ -4143,6 +4179,78 @@ video.addEventListener(
 
   }
 );
+
+
+/* ========================================
+   開発用 IndexedDB完全初期化
+
+   走査中／IndexedDB処理中は釦自体を無効化する。
+   したがって、走査途中でIndexedDBを削除して
+   「走査が途中で壊れる／再生不能になる」という競合は発生しない。
+   ======================================== */
+
+async function resetAllIndexedDB() {
+
+  if (musicFolderScanInProgress > 0 || indexedDBOperationInProgress > 0) {
+    return;
+  }
+
+  const confirmed = confirm(
+    'IndexedDBを完全に初期化します。\n\n' +
+    'Local / Externalの選択フォルダー情報と\n' +
+    '保存済み走査結果をすべて削除します。\n\n' +
+    '実行しますか？'
+  );
+
+  if (!confirmed) return;
+
+  const button = document.getElementById('indexedDBResetButton');
+  if (button) button.disabled = true;
+
+  try {
+    await new Promise(function(resolve, reject) {
+      const request = indexedDB.deleteDatabase(directoryHandleDBName);
+
+      request.onsuccess = resolve;
+      request.onerror = function() {
+        reject(request.error);
+      };
+      request.onblocked = function() {
+        console.log('IndexedDB完全初期化がブロックされています。');
+      };
+    });
+
+    sourceDirectoryHandles.local = null;
+    sourceDirectoryHandles.extra = null;
+
+    sourceMusicCaches.local = null;
+    sourceMusicCaches.extra = null;
+
+    currentMusicBySource.local = null;
+    currentMusicBySource.extra = null;
+
+    console.log('IndexedDBを完全に初期化しました。');
+
+    alert('IndexedDBを完全に初期化しました。');
+
+  } catch (error) {
+
+    console.log('IndexedDB完全初期化に失敗しました:', error);
+    alert('IndexedDB完全初期化に失敗しました。\nコンソールを確認してください。');
+
+  } finally {
+    updateIndexedDBResetButton();
+  }
+}
+
+document
+  .getElementById('indexedDBResetButton')
+  .addEventListener(
+    'click',
+    resetAllIndexedDB
+  );
+
+updateIndexedDBResetButton();
 
 
 /* ========================================
