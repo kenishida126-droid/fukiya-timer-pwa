@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20260924-5';
+const CACHE_NAME = 'fukiya-timer-pwa-20260924-6';
 
 const PRECACHE_URLS = [
   '/fukiya-timer-pwa/',
