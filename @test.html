@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11o》
+    戻　る《ver.11p》
   </button>
 
 
@@ -1044,7 +1044,7 @@ const sourceMusicCaches = {
 };
 
 /*
-   Ver.11o 起動後／ソース選択後のバックグラウンド準備。
+   Ver.11p 起動後／ソース選択後のバックグラウンド準備。
    permission要求は行わず、既にgrantedのソースだけ先行走査する。
    これにより「My MUSIC再生」tap時の初回待ち時間を短縮する。
 */
@@ -3113,7 +3113,7 @@ musicButton.addEventListener(
             return;
           }
         }
-        else {
+        else if (!refreshedReady) {
           /*
              初回などHandleが無い場合。
              フォルダー選択はLong-tapに限定するため、
