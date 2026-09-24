@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11q》
+    戻　る《ver.11r》
   </button>
 
 
@@ -1605,6 +1605,17 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     sourceDirectoryHandles[source] = directoryHandle;
     await saveDirectoryHandle(source, directoryHandle);
     selectedMusicFolderName = directoryHandle.name || '';
+
+    /*
+       フォルダー選択時に、同じソースのバックグラウンド走査が
+       並行して動いている場合は、先にその完了を待つ。
+       走査処理はグローバルな musicFileMap / musicFilesFound / musicCount を
+       使用するため、旧フォルダーの走査と新フォルダーの走査を同時に行うと
+       「音楽ファイルが見つかりませんでした」と誤判定することがある。
+    */
+    if (sourcePreparationPromises[source]) {
+      await sourcePreparationPromises[source];
+    }
 
     /* フォルダー変更時だけ、前回フォルダーの永続キャッシュを破棄する。 */
     await deleteMusicCacheFromDB(source);
