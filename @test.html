@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11k》
+    戻　る《ver.11l》
   </button>
 
 
@@ -1103,7 +1103,7 @@ function clearActiveLocalMusicState() {
   musicCount = 0;
   musicReady = false;
   selectedMusicFolderName = '';
-  musicTitleCache.clear();
+  getMusicTitleCache(musicSource).clear();
 }
 
 function getSelectedMusicSource() {
@@ -1225,7 +1225,7 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
   localMusicFiles = [];
   musicCount = 0;
   musicReady = false;
-  musicTitleCache.clear();
+  getMusicTitleCache(source).clear();
 
   const results =
     await collectLocalMusicFiles(directoryHandle);
@@ -1665,7 +1665,21 @@ folderPickerCancel.addEventListener(
    ・手動選曲／Long-tap／左右フリック → 即タイトル
    ======================================== */
 
-const musicTitleCache = new Map();
+/*
+   音楽タイトルキャッシュ
+   GitHub / Local / External を完全分離する。
+   同じMusic-xx番号でも、ソースが違えば別タイトルとして保持する。
+*/
+const musicTitleCaches = {
+  github: new Map(),
+  local: new Map(),
+  extra: new Map()
+};
+
+function getMusicTitleCache(source = musicSource) {
+  return musicTitleCaches[source] || musicTitleCaches.github;
+}
+
 let musicTitleRequestId = 0;
 const musicTitleDisplayDelay = 5;
 
@@ -1887,8 +1901,10 @@ function readMusicTitleWithFileReader(blob) {
 }
 
 async function fetchMusicTitle(number) {
-  if (musicTitleCache.has(number)) {
-    return musicTitleCache.get(number);
+  const titleCache = getMusicTitleCache();
+
+  if (titleCache.has(number)) {
+    return titleCache.get(number);
   }
 
   let file = getMusicFile(number);
@@ -1918,7 +1934,7 @@ async function fetchMusicTitle(number) {
     const title = await readMusicTitleWithFileReader(blob);
 
     if (title) {
-      musicTitleCache.set(number, title);
+      titleCache.set(number, title);
     }
 
     return title;
@@ -1997,7 +2013,7 @@ function updateMusicTitleByTime() {
   */
   if (musicTitleShownFor === currentMusic) return;
 
-  const title = musicTitleCache.get(currentMusic);
+  const title = getMusicTitleCache().get(currentMusic);
   showMusicTitle(title || '');
   musicTitleShownFor = currentMusic;
 }
@@ -2356,7 +2372,7 @@ async function musicSwipeEnd(event) {
     musicTitleImmediate = true;
 
     const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
+    const cachedTitle = getMusicTitleCache().get(currentMusic);
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
@@ -2480,7 +2496,7 @@ document.addEventListener('touchend', async function(event) {
     musicTitleImmediate = true;
 
     const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
+    const cachedTitle = getMusicTitleCache().get(currentMusic);
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
@@ -2590,7 +2606,7 @@ document.addEventListener('touchend', async function(event) {
     musicTitleImmediate = true;
 
     const titleRequestId = ++musicTitleRequestId;
-    const cachedTitle = musicTitleCache.get(currentMusic);
+    const cachedTitle = getMusicTitleCache().get(currentMusic);
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
@@ -2780,7 +2796,7 @@ async function playMusic(number, titleDisplayMode = 'auto') {
        キャッシュ済みなら即時に正式タイトルを表示。
        未取得ならタイトル取得完了時に即時表示する。
     */
-    const cachedTitle = musicTitleCache.get(currentMusic);
+    const cachedTitle = getMusicTitleCache().get(currentMusic);
     if (cachedTitle !== undefined) {
       showMusicTitle(cachedTitle);
       musicTitleShownFor = currentMusic;
