@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11l》
+    戻　る《ver.11m》
   </button>
 
 
@@ -1423,6 +1423,8 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       ? 'External側を含むフォルダーを選択してください<br>SDメモリの場合は「≡」からExternalを選択してください'
       : '音楽フォルダーを選択してください';
 
+    const isFolderChange = forcePicker && !!sourceDirectoryHandles[source];
+
     const directoryHandle = await openSourceDirectoryPicker(source, options);
     sourceDirectoryHandles[source] = directoryHandle;
     await saveDirectoryHandle(source, directoryHandle);
@@ -1434,7 +1436,24 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       return false;
     }
 
-    currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
+    /*
+       Long-tapによるフォルダー変更では、旧フォルダーの再生番号を引き継がない。
+       新しいフォルダーの先頭曲 Music-1 から開始する。
+       通常のソース切替えでは、この処理を行わない。
+    */
+    if (isFolderChange) {
+      currentMusic = 1;
+      saveMusicForSource(source, 1);
+
+      /* フォルダー変更前の音楽が再生中なら、旧フォルダーの曲を停止する。 */
+      music.pause();
+      music.currentTime = 0;
+      music.src = '';
+      musicMode = 'none';
+    } else {
+      currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
+    }
+
     const sourceFilesFound =
       source === musicSource
         ? musicFilesFound
@@ -1445,8 +1464,16 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     saveMusicForSource(source, currentMusic);
 
     if (source === activeSource) {
-      musicMode = 'none';
       hideFolderPickerDialog();
+
+      if (isFolderChange) {
+        /* 新フォルダーのMusic-1を直ちに再生する。 */
+        musicMode = 'all';
+        await playMusic(currentMusic, 'immediate');
+        return true;
+      }
+
+      musicMode = 'none';
 
       /*
          フォルダー選択後も即再生しない。
