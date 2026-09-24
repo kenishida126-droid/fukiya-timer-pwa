@@ -194,12 +194,6 @@
     background: rgba(255,255,255,0.20);
   }
 
-  #indexedDBResetButton:disabled {
-    opacity: 0.45;
-    cursor: default;
-    transform: none;
-  }
-
 
   #musicControl {
     position: relative;
@@ -496,6 +490,24 @@
      動画
      ======================================== */
 
+  /* ========================================
+     開発用 IndexedDB 完全初期化
+     ======================================== */
+  #indexedDBResetButton {
+    margin-top: 2.0em;
+    font-size: 1.0em;
+    color: #fff;
+    border-color: rgba(255,120,120,0.9);
+    background: rgba(120,0,0,0.28);
+  }
+
+  #indexedDBResetButton:disabled {
+    opacity: 0.45;
+    cursor: default;
+    transform: none;
+  }
+
+
   #videoArea {
     display: none;
 
@@ -663,13 +675,17 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11s》
+    戻るver.11s
   </button>
 
-  <button class="button" id="indexedDBResetButton">
-    IndexedDB完全初期化
-  </button>
 
+
+
+  <!-- ========================================
+       開発用 IndexedDB 完全初期化
+       走査中は安全のため自動的に操作不可とする。
+       ======================================== -->
+  <button class="button" id="indexedDBResetButton">IndexedDB完全初期化</button>
 
 
 </div>
@@ -967,6 +983,16 @@ const sourceDirectoryHandles = {
   extra: null
 };
 
+/* 開発用IndexedDB初期化ボタンの安全制御。
+   フォルダー走査中は無効化し、走査とDB削除を競合させない。 */
+let musicScanInProgress = 0;
+
+function updateIndexedDBResetButtonState() {
+  const button = document.getElementById('indexedDBResetButton');
+  if (!button) return;
+  button.disabled = musicScanInProgress > 0;
+}
+
 /* ========================================
    Ver.11 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
@@ -976,18 +1002,6 @@ const sourceDirectoryHandles = {
 const directoryHandleDBName = 'fukiya-test-directory-handles';
 const directoryHandleStoreName = 'handles';
 const musicCacheStoreName = 'musicCaches';
-
-/* 開発用IndexedDB初期化釦の安全制御。走査中／DB処理中は無効化する。 */
-let musicFolderScanInProgress = 0;
-let indexedDBOperationInProgress = 0;
-
-function updateIndexedDBResetButton() {
-  const button = document.getElementById('indexedDBResetButton');
-  if (!button) return;
-  button.disabled =
-    musicFolderScanInProgress > 0 ||
-    indexedDBOperationInProgress > 0;
-}
 
 function openDirectoryHandleDB() {
   return new Promise(function(resolve, reject) {
@@ -1082,9 +1096,6 @@ async function deleteMusicCacheFromDB(source) {
 async function saveMusicCacheToDB(source, cache) {
   if (source !== 'local' && source !== 'extra') return;
 
-  indexedDBOperationInProgress++;
-  updateIndexedDBResetButton();
-
   try {
     const db = await openDirectoryHandleDB();
     await new Promise(function(resolve, reject) {
@@ -1104,9 +1115,6 @@ async function saveMusicCacheToDB(source, cache) {
     db.close();
   } catch (error) {
     console.log(`${source} の音楽キャッシュ保存に失敗しました:`, error);
-  } finally {
-    indexedDBOperationInProgress--;
-    updateIndexedDBResetButton();
   }
 }
 
@@ -1403,11 +1411,7 @@ async function collectLocalMusicFiles(directoryHandle, pathPrefix = '') {
 }
 
 async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource) {
-  musicFolderScanInProgress++;
-  updateIndexedDBResetButton();
-
-  try {
-    /*
+  /*
      まず「これから作り直すソース自身」の旧キャッシュだけを破棄する。
      ここで現在アクティブな別ソースのObject URLをrevokeしてはいけない。
      これが Local → External → Local で再生不能になる原因になる。
@@ -1430,10 +1434,15 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
   musicReady = false;
   getMusicTitleCache(source).clear();
 
-  const results =
-    await collectLocalMusicFiles(directoryHandle);
+  musicScanInProgress++;
+  updateIndexedDBResetButtonState();
 
-  results.sort(function(a, b) {
+  try {
+    let results;
+
+    results = await collectLocalMusicFiles(directoryHandle);
+
+    results.sort(function(a, b) {
     return a.path.localeCompare(b.path, 'ja', {
       numeric: true,
       sensitivity: 'base'
@@ -1463,7 +1472,7 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
 
   if (source === 'local' || source === 'extra') {
     captureLocalMusicCache(source);
-    saveMusicCacheToDB(source, sourceMusicCaches[source]);
+    await saveMusicCacheToDB(source, sourceMusicCaches[source]);
 
     /*
        現在選択中のソースとは別ソースのフォルダーをLong-tapで
@@ -1483,10 +1492,11 @@ async function loadLocalMusicFromDirectory(directoryHandle, source = musicSource
     }
   }
 
-  return musicCount;
+    return musicCount;
+
   } finally {
-    musicFolderScanInProgress--;
-    updateIndexedDBResetButton();
+    musicScanInProgress--;
+    updateIndexedDBResetButtonState();
   }
 }
 
@@ -4182,75 +4192,70 @@ video.addEventListener(
 
 
 /* ========================================
-   開発用 IndexedDB完全初期化
+   開発用 IndexedDB 完全初期化
 
-   走査中／IndexedDB処理中は釦自体を無効化する。
-   したがって、走査途中でIndexedDBを削除して
-   「走査が途中で壊れる／再生不能になる」という競合は発生しない。
+   ・走査中はボタン自体を無効化する。
+   ・停止中に実行するとDB全体を削除し、
+     handles / musicCaches の両方を完全に初期化する。
+   ・削除完了後にページを再読込し、メモリ上の
+     フォルダー記憶／キャッシュも同時に初期状態へ戻す。
    ======================================== */
+const indexedDBResetButton =
+  document.getElementById('indexedDBResetButton');
 
-async function resetAllIndexedDB() {
+async function resetIndexedDBCompletely() {
 
-  if (musicFolderScanInProgress > 0 || indexedDBOperationInProgress > 0) {
+  if (musicScanInProgress > 0) {
+    alert('フォルダー走査中のため、IndexedDB完全初期化は実行できません。\n走査完了後にもう一度実行してください。');
     return;
   }
 
   const confirmed = confirm(
-    'IndexedDBを完全に初期化します。\n\n' +
-    'Local / Externalの選択フォルダー情報と\n' +
-    '保存済み走査結果をすべて削除します。\n\n' +
+    'IndexedDBを完全初期化します。\n\n' +
+    'Local / External の選択フォルダー記憶と\n' +
+    '保存済み音楽キャッシュがすべて削除されます。\n\n' +
     '実行しますか？'
   );
 
   if (!confirmed) return;
 
-  const button = document.getElementById('indexedDBResetButton');
-  if (button) button.disabled = true;
+  indexedDBResetButton.disabled = true;
 
   try {
     await new Promise(function(resolve, reject) {
-      const request = indexedDB.deleteDatabase(directoryHandleDBName);
+      const request =
+        indexedDB.deleteDatabase(directoryHandleDBName);
 
-      request.onsuccess = resolve;
+      request.onsuccess = function() {
+        resolve();
+      };
+
       request.onerror = function() {
         reject(request.error);
       };
+
       request.onblocked = function() {
-        console.log('IndexedDB完全初期化がブロックされています。');
+        reject(new Error('IndexedDBの削除が別の処理によって保留されています。'));
       };
     });
 
-    sourceDirectoryHandles.local = null;
-    sourceDirectoryHandles.extra = null;
-
-    sourceMusicCaches.local = null;
-    sourceMusicCaches.extra = null;
-
-    currentMusicBySource.local = null;
-    currentMusicBySource.extra = null;
-
-    console.log('IndexedDBを完全に初期化しました。');
-
-    alert('IndexedDBを完全に初期化しました。');
+    alert('IndexedDBを完全初期化しました。\nページを再読み込みします。');
+    location.reload();
 
   } catch (error) {
 
-    console.log('IndexedDB完全初期化に失敗しました:', error);
+    console.error('IndexedDB完全初期化に失敗しました:', error);
     alert('IndexedDB完全初期化に失敗しました。\nコンソールを確認してください。');
-
-  } finally {
-    updateIndexedDBResetButton();
+    updateIndexedDBResetButtonState();
   }
 }
 
-document
-  .getElementById('indexedDBResetButton')
-  .addEventListener(
-    'click',
-    resetAllIndexedDB
-  );
+indexedDBResetButton.addEventListener(
+  'click',
+  resetIndexedDBCompletely
+);
 
-updateIndexedDBResetButton();
+updateIndexedDBResetButtonState();
 
 
 /* ========================================
