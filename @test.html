@@ -657,7 +657,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11m》
+    戻　る《ver.11n》
   </button>
 
 
@@ -1446,10 +1446,12 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       saveMusicForSource(source, 1);
 
       /* フォルダー変更前の音楽が再生中なら、旧フォルダーの曲を停止する。 */
-      music.pause();
-      music.currentTime = 0;
-      music.src = '';
-      musicMode = 'none';
+      if (source === musicSource) {
+        music.pause();
+        music.currentTime = 0;
+        music.src = '';
+        musicMode = 'none';
+      }
     } else {
       currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
     }
