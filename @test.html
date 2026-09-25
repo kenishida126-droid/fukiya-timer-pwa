@@ -304,6 +304,32 @@
     accent-color: lime;
   }
 
+  /* ========================================
+     Local / External のIndexedDB構築状態
+     白文字   ：未選択
+     白点滅   ：IndexedDB構築中
+     Gold点灯 ：再生Ready
+     ======================================== */
+  #musicSourceSelector label.source-status-idle {
+    color: #fff;
+    animation: none;
+  }
+
+  #musicSourceSelector label.source-status-building {
+    color: #fff;
+    animation: sourceStatusBlink 1s step-end infinite;
+  }
+
+  #musicSourceSelector label.source-status-ready {
+    color: #ffd700;
+    animation: none;
+  }
+
+  @keyframes sourceStatusBlink {
+    0%, 45% { opacity: 1; }
+    46%, 100% { opacity: 0.25; }
+  }
+
   #musicSourceHint {
     width: 90%;
     max-width: 360px;
@@ -675,7 +701,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11v》
+    戻　る《ver.11w》
   </button>
 
 
@@ -994,6 +1020,77 @@ function updateIndexedDBResetButtonState() {
 }
 
 /* ========================================
+   Local / External の再生Ready表示
+
+   idle     ：フォルダー未選択／未構築
+   building ：IndexedDB音楽索引Tableを構築中
+   ready    ：IndexedDB構築完了＝再生Ready
+
+   Local / External は完全に個別管理する。
+   GitHubは常にready（Gold点灯）。
+   ======================================== */
+function setMusicSourceStatus(source, status) {
+  if (source !== 'local' && source !== 'extra') return;
+
+  const input = musicSourceSelector.querySelector(
+    `input[name="musicSource"][value="${source}"]`
+  );
+
+  if (!input) return;
+
+  const label = input.closest('label');
+  if (!label) return;
+
+  label.classList.remove(
+    'source-status-idle',
+    'source-status-building',
+    'source-status-ready'
+  );
+
+  label.classList.add(`source-status-${status}`);
+}
+
+function updateMusicSourceStatus(source) {
+  if (source === 'github') {
+    return;
+  }
+
+  const table = sourceMusicTables[source];
+  const meta = table ? table.meta : null;
+
+  if (meta && meta.completed) {
+    setMusicSourceStatus(source, 'ready');
+    return;
+  }
+
+  if (table && table.scanning) {
+    setMusicSourceStatus(source, 'building');
+    return;
+  }
+
+  setMusicSourceStatus(source, 'idle');
+}
+
+function updateAllMusicSourceStatus() {
+  const githubInput = musicSourceSelector.querySelector(
+    'input[name="musicSource"][value="github"]'
+  );
+  if (githubInput) {
+    const githubLabel = githubInput.closest('label');
+    if (githubLabel) {
+      githubLabel.classList.remove(
+        'source-status-idle',
+        'source-status-building'
+      );
+      githubLabel.classList.add('source-status-ready');
+    }
+  }
+
+  updateMusicSourceStatus('local');
+  updateMusicSourceStatus('extra');
+}
+
+/* ========================================
    Ver.11 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
@@ -1226,6 +1323,7 @@ async function restoreMusicTable(source) {
       ready: musicRecords.length > 0 || meta.completed === true
     };
 
+    updateMusicSourceStatus(source);
     return sourceMusicTables[source];
 
   } catch (error) {
@@ -1268,6 +1366,7 @@ async function initializeMusicTable(source, directoryHandle) {
     ready: false
   };
 
+  setMusicSourceStatus(source, 'building');
   return meta;
 }
 
@@ -1395,9 +1494,11 @@ async function scanMusicTableInBackground(source, directoryHandle) {
   const scanPromise = (async function() {
     musicScanInProgress++;
     updateIndexedDBResetButtonState();
+    setMusicSourceStatus(source, 'building');
 
     try {
       let meta = await initializeMusicTable(source, directoryHandle);
+      updateMusicSourceStatus(source);
       let table = sourceMusicTables[source];
 
       while (meta.pendingEntries && meta.pendingEntries.length > 0) {
@@ -1473,6 +1574,7 @@ async function scanMusicTableInBackground(source, directoryHandle) {
       await saveMusicTableMeta(source, meta);
 
       table.ready = true;
+      setMusicSourceStatus(source, 'ready');
       return true;
 
     } catch (error) {
@@ -1482,6 +1584,9 @@ async function scanMusicTableInBackground(source, directoryHandle) {
     } finally {
       musicScanInProgress--;
       updateIndexedDBResetButtonState();
+
+      /* エラー中断時はcompletedではないため、点滅を解除して未完了表示へ戻す。 */
+      updateMusicSourceStatus(source);
     }
   })();
 
@@ -1678,6 +1783,31 @@ const sourcePreparationPromises = {
 /* 旧コードとの接続用。実体はFileキャッシュではなくTable復元完了を待つ。 */
 const musicTablesRestorePromise = directoryHandlesRestorePromise;
 
+async function waitForMusicTableRecord(source, number) {
+  if (source !== 'local' && source !== 'extra') return false;
+
+  for (;;) {
+    const table = sourceMusicTables[source];
+    const meta = table ? table.meta : null;
+
+    if (table && table.records && table.records.has(number)) {
+      return true;
+    }
+
+    if (meta && meta.completed) {
+      return !!(table && table.records && table.records.size > 0);
+    }
+
+    if (!table || !table.scanning) {
+      return !!(table && table.records && table.records.size > 0);
+    }
+
+    await new Promise(function(resolve) {
+      setTimeout(resolve, 50);
+    });
+  }
+}
+
 async function prepareLocalMusicSourceInBackground(source) {
   if (source !== 'local' && source !== 'extra') return false;
 
@@ -1700,17 +1830,27 @@ async function prepareLocalMusicSourceInBackground(source) {
         : null;
 
       if (meta && meta.completed) {
+        setMusicSourceStatus(source, 'ready');
         return musicReady;
       }
 
       const permission = await handle.queryPermission({ mode: 'read' });
       if (permission !== 'granted') {
+        updateMusicSourceStatus(source);
         return musicReady;
       }
 
+      setMusicSourceStatus(source, 'building');
       await scanMusicTableInBackground(source, handle);
-      buildSourceMusicStateFromTable(source);
-      return musicReady;
+
+      /* 非選択ソースのバックグラウンド構築では、現在の再生状態を触らない。 */
+      if (musicSource === source) {
+        buildSourceMusicStateFromTable(source);
+      }
+
+      return musicSource === source
+        ? musicReady
+        : !!(sourceMusicTables[source] && sourceMusicTables[source].ready);
 
     } catch (error) {
       console.log(`${source} のバックグラウンド準備をスキップしました:`, error);
@@ -1893,7 +2033,17 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     /* フォルダー変更時は、このソースの索引Tableだけを作り直す。 */
     await deleteMusicTableFromDB(source);
 
-    await scanMusicTableInBackground(source, directoryHandle);
+    /*
+       IndexedDB構築はここからバックグラウンドで継続する。
+       先頭曲（または保存済み前回曲）がTableへ登録された時点で
+       再生操作を可能にし、全件走査の完了は待たない。
+    */
+    const scanPromise = scanMusicTableInBackground(source, directoryHandle);
+    const savedNumber = isFolderChange
+      ? 1
+      : (currentMusicBySource[source] || getSavedMusicForSource(source));
+
+    await waitForMusicTableRecord(source, savedNumber);
     buildSourceMusicStateFromTable(source);
     const count = musicCount;
     if (count === 0) {
@@ -4065,6 +4215,40 @@ function startMusicDetection() {
     });
 }
 
+async function initializeMusicSourceStatuses() {
+  updateAllMusicSourceStatus();
+
+  try {
+    await directoryHandlesRestorePromise;
+
+    /*
+       起動時は保存済みTableを確認するだけ。
+       completedならGold、未完了ならバックグラウンド走査開始時に点滅する。
+    */
+    await Promise.all([
+      restoreMusicTable('local'),
+      restoreMusicTable('extra')
+    ]);
+
+    updateAllMusicSourceStatus();
+
+    ['local', 'extra'].forEach(function(source) {
+      const table = sourceMusicTables[source];
+      if (table && table.meta && table.meta.completed) {
+        setMusicSourceStatus(source, 'ready');
+        return;
+      }
+
+      if (sourceDirectoryHandles[source]) {
+        prepareLocalMusicSourceInBackground(source);
+      }
+    });
+  } catch (error) {
+    console.log('Local / Externalの状態表示初期化に失敗しました:', error);
+    updateAllMusicSourceStatus();
+  }
+}
+
 async function initializeMusic() {
 
   /*
@@ -4111,6 +4295,9 @@ async function initializeMusic() {
 })();
 
 initializeMusic();
+
+/* Local / External のIndexedDB状態表示を起動時に復元する。 */
+initializeMusicSourceStatuses();
 
 /* 5秒後のタイトル表示 */
 music.addEventListener('timeupdate', updateMusicTitleByTime);
