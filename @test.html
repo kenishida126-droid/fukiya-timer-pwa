@@ -675,7 +675,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11t》
+    戻　る《ver.11u》
   </button>
 
 
@@ -3238,11 +3238,10 @@ async function playMusic(number, titleDisplayMode = 'auto') {
   }
 
   /*
-     Local / Extra はフォルダー選択完了後のみ再生する。
+     Local / Externalでは、musicFileMapにURLがまだ無くても正常。
+     Tableに保存された相対パスから、ここで実Fileを取得する。
+     musicFileMapは再生済みFileのObject URLを保持するだけ。
   */
-  if (musicSource !== 'github' && !musicFileMap.has(number)) {
-    return;
-  }
 
   /*
      音楽再生時は動画を停止。
