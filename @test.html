@@ -675,7 +675,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11u》
+    戻　る《ver.11v》
   </button>
 
 
@@ -3302,6 +3302,39 @@ async function playMusic(number, titleDisplayMode = 'auto') {
     music.src = resolvedGitHubFile;
   }
   else {
+    /*
+       再起動後のLocal / Externalでは、IndexedDBから復元した
+       DirectoryHandleのpermissionが「prompt」に戻っている場合がある。
+
+       TableにはFile本体を保存していないため、再生時に実Fileを取得する前に
+       ユーザー操作中のrequestPermission()を行う。
+       これを後段で行うと、getPlayableLocalMusicFile()が先に失敗して
+       再生できない。
+    */
+    await directoryHandlesRestorePromise;
+
+    const handle = sourceDirectoryHandles[musicSource];
+    if (!handle) {
+      console.log('Local / Externalの記憶済みフォルダーがありません');
+      return;
+    }
+
+    try {
+      let permission = await handle.queryPermission({ mode: 'read' });
+
+      if (permission !== 'granted') {
+        permission = await handle.requestPermission({ mode: 'read' });
+      }
+
+      if (permission !== 'granted') {
+        console.log('Local / Externalの読み取り権限が取得できませんでした');
+        return;
+      }
+    } catch (error) {
+      console.log('Local / Externalの読み取り権限確認に失敗しました:', error);
+      return;
+    }
+
     const localFile = await getPlayableLocalMusicFile(currentMusic);
     if (!localFile) {
       console.log('Local / External側の実ファイルを取得できません:', currentMusic);
