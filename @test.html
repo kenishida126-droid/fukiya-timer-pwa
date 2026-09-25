@@ -307,27 +307,29 @@
   /* ========================================
      Local / External のIndexedDB構築状態
      白文字   ：未選択
-     白点滅   ：IndexedDB構築中
+     白文字点滅：IndexedDB構築中（文字だけ）
      Gold点灯 ：再生Ready
      ======================================== */
   #musicSourceSelector label.source-status-idle {
     color: #fff;
-    animation: none;
   }
 
   #musicSourceSelector label.source-status-building {
     color: #fff;
-    animation: sourceStatusBlink 1s step-end infinite;
+    animation: none;
   }
 
   #musicSourceSelector label.source-status-ready {
     color: #ffd700;
-    animation: none;
+  }
+
+  #musicSourceSelector label.source-status-building > span {
+    animation: sourceStatusBlink 0.8s steps(1, end) infinite;
   }
 
   @keyframes sourceStatusBlink {
     0%, 45% { opacity: 1; }
-    46%, 100% { opacity: 0.25; }
+    46%, 100% { opacity: 0.05; }
   }
 
   #musicSourceHint {
@@ -643,9 +645,9 @@
          Ver.11 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
-      <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
-      <label><input type="radio" name="musicSource" value="local">Local</label>
-      <label><input type="radio" name="musicSource" value="extra">External</label>
+      <label><input type="radio" name="musicSource" value="github" checked><span>GitHub</span></label>
+      <label><input type="radio" name="musicSource" value="local"><span>Local</span></label>
+      <label><input type="radio" name="musicSource" value="extra"><span>External</span></label>
     </div>
     <div id="musicSourceHint">Local / External はLong-tapでフォルダー変更</div>
 
@@ -701,7 +703,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.11w》
+    戻　る《ver.12b》
   </button>
 
 
@@ -1221,7 +1223,38 @@ function sortScanQueue(queue) {
 
 function getFolderKeyFromPath(path) {
   const parts = String(path).split('/').filter(Boolean);
-  return parts.length > 1 ? parts[0] : '__ROOT__';
+
+  /*
+     曲数は「その曲ファイルが直接入っているフォルダー」単位で集計する。
+
+     例：
+       Folder-A/01.mp3          → Folder-A
+       Folder-A/sub/02.mp3     → Folder-A/sub
+
+     これにより、サブフォルダー内の曲を親フォルダーへ
+     合算しない。
+  */
+  if (parts.length <= 1) {
+    return '__ROOT__';
+  }
+
+  return parts.slice(0, -1).join('/');
+}
+
+function folderCodeFromIndex(index) {
+  /*
+     0=A, 1=B, ... 25=Z, 26=AA, 27=AB ...
+     Excelの列記号と同じ方式。
+  */
+  let n = Number(index);
+  let code = '';
+
+  do {
+    code = String.fromCharCode(65 + (n % 26)) + code;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+
+  return code;
 }
 
 function getFolderCode(meta, folderKey) {
@@ -1229,18 +1262,13 @@ function getFolderCode(meta, folderKey) {
 
   if (!meta.folderCodes[folderKey]) {
     const used = new Set(Object.values(meta.folderCodes));
-    let code = '';
-    for (let i = 0; i < 26; i++) {
-      const candidate = String.fromCharCode(65 + i);
-      if (!used.has(candidate)) {
-        code = candidate;
-        break;
-      }
+    let index = 0;
+
+    while (used.has(folderCodeFromIndex(index))) {
+      index++;
     }
-    if (!code) {
-      code = `F${Object.keys(meta.folderCodes).length + 1}`;
-    }
-    meta.folderCodes[folderKey] = code;
+
+    meta.folderCodes[folderKey] = folderCodeFromIndex(index);
   }
 
   return meta.folderCodes[folderKey];
@@ -1494,12 +1522,26 @@ async function scanMusicTableInBackground(source, directoryHandle) {
   const scanPromise = (async function() {
     musicScanInProgress++;
     updateIndexedDBResetButtonState();
+    let scanCompleted = false;
+
+    /*
+       構築開始を先に表示する。
+       initializeMusicTable()～IndexedDB復元処理の途中で
+       statusをidleへ戻さないため、ここでは明示的にbuildingを設定する。
+    */
     setMusicSourceStatus(source, 'building');
 
     try {
       let meta = await initializeMusicTable(source, directoryHandle);
-      updateMusicSourceStatus(source);
       let table = sourceMusicTables[source];
+
+      /*
+         initializeMusicTable()が新規Tableを作成／既存Tableを復元すると
+         sourceMusicTables[source]が置き換わる場合がある。
+         その後の構築中表示を確実に維持するため、ここでscanningを設定する。
+      */
+      table.scanning = scanPromise;
+      setMusicSourceStatus(source, 'building');
 
       while (meta.pendingEntries && meta.pendingEntries.length > 0) {
         const item = meta.pendingEntries.shift();
@@ -1574,6 +1616,7 @@ async function scanMusicTableInBackground(source, directoryHandle) {
       await saveMusicTableMeta(source, meta);
 
       table.ready = true;
+      scanCompleted = true;
       setMusicSourceStatus(source, 'ready');
       return true;
 
@@ -1585,8 +1628,13 @@ async function scanMusicTableInBackground(source, directoryHandle) {
       musicScanInProgress--;
       updateIndexedDBResetButtonState();
 
-      /* エラー中断時はcompletedではないため、点滅を解除して未完了表示へ戻す。 */
-      updateMusicSourceStatus(source);
+      /*
+         正常完了時はGold点灯のままにする。
+         エラー／中断時はbuildingを解除して未完了状態へ戻す。
+      */
+      if (!scanCompleted) {
+        setMusicSourceStatus(source, 'idle');
+      }
     }
   })();
 
