@@ -304,34 +304,6 @@
     accent-color: lime;
   }
 
-  /* ========================================
-     Local / External のIndexedDB構築状態
-     白文字   ：未選択
-     白文字点滅：IndexedDB構築中（文字だけ）
-     Gold点灯 ：再生Ready
-     ======================================== */
-  #musicSourceSelector label.source-status-idle {
-    color: #fff;
-  }
-
-  #musicSourceSelector label.source-status-building {
-    color: #fff;
-    animation: none;
-  }
-
-  #musicSourceSelector label.source-status-ready {
-    color: #ffd700;
-  }
-
-  #musicSourceSelector label.source-status-building > span {
-    animation: sourceStatusBlink 0.8s steps(1, end) infinite;
-  }
-
-  @keyframes sourceStatusBlink {
-    0%, 45% { opacity: 1; }
-    46%, 100% { opacity: 0.05; }
-  }
-
   #musicSourceHint {
     width: 90%;
     max-width: 360px;
@@ -645,9 +617,9 @@
          Ver.11 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
-      <label><input type="radio" name="musicSource" value="github" checked><span>GitHub</span></label>
-      <label><input type="radio" name="musicSource" value="local"><span>Local</span></label>
-      <label><input type="radio" name="musicSource" value="extra"><span>External</span></label>
+      <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
+      <label><input type="radio" name="musicSource" value="local">Local</label>
+      <label><input type="radio" name="musicSource" value="extra">External</label>
     </div>
     <div id="musicSourceHint">Local / External はLong-tapでフォルダー変更</div>
 
@@ -703,7 +675,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.12b》
+    戻　る《ver.01b》
   </button>
 
 
@@ -1022,77 +994,6 @@ function updateIndexedDBResetButtonState() {
 }
 
 /* ========================================
-   Local / External の再生Ready表示
-
-   idle     ：フォルダー未選択／未構築
-   building ：IndexedDB音楽索引Tableを構築中
-   ready    ：IndexedDB構築完了＝再生Ready
-
-   Local / External は完全に個別管理する。
-   GitHubは常にready（Gold点灯）。
-   ======================================== */
-function setMusicSourceStatus(source, status) {
-  if (source !== 'local' && source !== 'extra') return;
-
-  const input = musicSourceSelector.querySelector(
-    `input[name="musicSource"][value="${source}"]`
-  );
-
-  if (!input) return;
-
-  const label = input.closest('label');
-  if (!label) return;
-
-  label.classList.remove(
-    'source-status-idle',
-    'source-status-building',
-    'source-status-ready'
-  );
-
-  label.classList.add(`source-status-${status}`);
-}
-
-function updateMusicSourceStatus(source) {
-  if (source === 'github') {
-    return;
-  }
-
-  const table = sourceMusicTables[source];
-  const meta = table ? table.meta : null;
-
-  if (meta && meta.completed) {
-    setMusicSourceStatus(source, 'ready');
-    return;
-  }
-
-  if (table && table.scanning) {
-    setMusicSourceStatus(source, 'building');
-    return;
-  }
-
-  setMusicSourceStatus(source, 'idle');
-}
-
-function updateAllMusicSourceStatus() {
-  const githubInput = musicSourceSelector.querySelector(
-    'input[name="musicSource"][value="github"]'
-  );
-  if (githubInput) {
-    const githubLabel = githubInput.closest('label');
-    if (githubLabel) {
-      githubLabel.classList.remove(
-        'source-status-idle',
-        'source-status-building'
-      );
-      githubLabel.classList.add('source-status-ready');
-    }
-  }
-
-  updateMusicSourceStatus('local');
-  updateMusicSourceStatus('extra');
-}
-
-/* ========================================
    Ver.11 Local / External フォルダー記憶
    Local と Extra の選択フォルダーを別々に記憶する。
    ブラウザを閉じても次回起動時に前回のフォルダーを
@@ -1223,38 +1124,9 @@ function sortScanQueue(queue) {
 
 function getFolderKeyFromPath(path) {
   const parts = String(path).split('/').filter(Boolean);
-
-  /*
-     曲数は「その曲ファイルが直接入っているフォルダー」単位で集計する。
-
-     例：
-       Folder-A/01.mp3          → Folder-A
-       Folder-A/sub/02.mp3     → Folder-A/sub
-
-     これにより、サブフォルダー内の曲を親フォルダーへ
-     合算しない。
-  */
-  if (parts.length <= 1) {
-    return '__ROOT__';
-  }
-
-  return parts.slice(0, -1).join('/');
-}
-
-function folderCodeFromIndex(index) {
-  /*
-     0=A, 1=B, ... 25=Z, 26=AA, 27=AB ...
-     Excelの列記号と同じ方式。
-  */
-  let n = Number(index);
-  let code = '';
-
-  do {
-    code = String.fromCharCode(65 + (n % 26)) + code;
-    n = Math.floor(n / 26) - 1;
-  } while (n >= 0);
-
-  return code;
+  return parts.length > 1
+    ? parts.slice(0, -1).join('/')
+    : '__ROOT__';
 }
 
 function getFolderCode(meta, folderKey) {
@@ -1262,13 +1134,15 @@ function getFolderCode(meta, folderKey) {
 
   if (!meta.folderCodes[folderKey]) {
     const used = new Set(Object.values(meta.folderCodes));
-    let index = 0;
+    let index = Object.keys(meta.folderCodes).length + 1;
+    let code = `F${index}`;
 
-    while (used.has(folderCodeFromIndex(index))) {
+    while (used.has(code)) {
       index++;
+      code = `F${index}`;
     }
 
-    meta.folderCodes[folderKey] = folderCodeFromIndex(index);
+    meta.folderCodes[folderKey] = code;
   }
 
   return meta.folderCodes[folderKey];
@@ -1351,7 +1225,6 @@ async function restoreMusicTable(source) {
       ready: musicRecords.length > 0 || meta.completed === true
     };
 
-    updateMusicSourceStatus(source);
     return sourceMusicTables[source];
 
   } catch (error) {
@@ -1394,7 +1267,6 @@ async function initializeMusicTable(source, directoryHandle) {
     ready: false
   };
 
-  setMusicSourceStatus(source, 'building');
   return meta;
 }
 
@@ -1522,26 +1394,10 @@ async function scanMusicTableInBackground(source, directoryHandle) {
   const scanPromise = (async function() {
     musicScanInProgress++;
     updateIndexedDBResetButtonState();
-    let scanCompleted = false;
-
-    /*
-       構築開始を先に表示する。
-       initializeMusicTable()～IndexedDB復元処理の途中で
-       statusをidleへ戻さないため、ここでは明示的にbuildingを設定する。
-    */
-    setMusicSourceStatus(source, 'building');
 
     try {
       let meta = await initializeMusicTable(source, directoryHandle);
       let table = sourceMusicTables[source];
-
-      /*
-         initializeMusicTable()が新規Tableを作成／既存Tableを復元すると
-         sourceMusicTables[source]が置き換わる場合がある。
-         その後の構築中表示を確実に維持するため、ここでscanningを設定する。
-      */
-      table.scanning = scanPromise;
-      setMusicSourceStatus(source, 'building');
 
       while (meta.pendingEntries && meta.pendingEntries.length > 0) {
         const item = meta.pendingEntries.shift();
@@ -1616,8 +1472,6 @@ async function scanMusicTableInBackground(source, directoryHandle) {
       await saveMusicTableMeta(source, meta);
 
       table.ready = true;
-      scanCompleted = true;
-      setMusicSourceStatus(source, 'ready');
       return true;
 
     } catch (error) {
@@ -1627,14 +1481,6 @@ async function scanMusicTableInBackground(source, directoryHandle) {
     } finally {
       musicScanInProgress--;
       updateIndexedDBResetButtonState();
-
-      /*
-         正常完了時はGold点灯のままにする。
-         エラー／中断時はbuildingを解除して未完了状態へ戻す。
-      */
-      if (!scanCompleted) {
-        setMusicSourceStatus(source, 'idle');
-      }
     }
   })();
 
@@ -1831,31 +1677,6 @@ const sourcePreparationPromises = {
 /* 旧コードとの接続用。実体はFileキャッシュではなくTable復元完了を待つ。 */
 const musicTablesRestorePromise = directoryHandlesRestorePromise;
 
-async function waitForMusicTableRecord(source, number) {
-  if (source !== 'local' && source !== 'extra') return false;
-
-  for (;;) {
-    const table = sourceMusicTables[source];
-    const meta = table ? table.meta : null;
-
-    if (table && table.records && table.records.has(number)) {
-      return true;
-    }
-
-    if (meta && meta.completed) {
-      return !!(table && table.records && table.records.size > 0);
-    }
-
-    if (!table || !table.scanning) {
-      return !!(table && table.records && table.records.size > 0);
-    }
-
-    await new Promise(function(resolve) {
-      setTimeout(resolve, 50);
-    });
-  }
-}
-
 async function prepareLocalMusicSourceInBackground(source) {
   if (source !== 'local' && source !== 'extra') return false;
 
@@ -1878,27 +1699,17 @@ async function prepareLocalMusicSourceInBackground(source) {
         : null;
 
       if (meta && meta.completed) {
-        setMusicSourceStatus(source, 'ready');
         return musicReady;
       }
 
       const permission = await handle.queryPermission({ mode: 'read' });
       if (permission !== 'granted') {
-        updateMusicSourceStatus(source);
         return musicReady;
       }
 
-      setMusicSourceStatus(source, 'building');
       await scanMusicTableInBackground(source, handle);
-
-      /* 非選択ソースのバックグラウンド構築では、現在の再生状態を触らない。 */
-      if (musicSource === source) {
-        buildSourceMusicStateFromTable(source);
-      }
-
-      return musicSource === source
-        ? musicReady
-        : !!(sourceMusicTables[source] && sourceMusicTables[source].ready);
+      buildSourceMusicStateFromTable(source);
+      return musicReady;
 
     } catch (error) {
       console.log(`${source} のバックグラウンド準備をスキップしました:`, error);
@@ -2081,17 +1892,7 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     /* フォルダー変更時は、このソースの索引Tableだけを作り直す。 */
     await deleteMusicTableFromDB(source);
 
-    /*
-       IndexedDB構築はここからバックグラウンドで継続する。
-       先頭曲（または保存済み前回曲）がTableへ登録された時点で
-       再生操作を可能にし、全件走査の完了は待たない。
-    */
-    const scanPromise = scanMusicTableInBackground(source, directoryHandle);
-    const savedNumber = isFolderChange
-      ? 1
-      : (currentMusicBySource[source] || getSavedMusicForSource(source));
-
-    await waitForMusicTableRecord(source, savedNumber);
+    await scanMusicTableInBackground(source, directoryHandle);
     buildSourceMusicStateFromTable(source);
     const count = musicCount;
     if (count === 0) {
@@ -2283,7 +2084,7 @@ musicSourceSelector.addEventListener(
     */
     if (activateLocalMusicCache(nextSource)) {
       currentMusic = currentMusicBySource[nextSource] || getSavedMusicForSource(nextSource);
-      if (!musicFileMap.has(currentMusic)) {
+      if (!musicFilesFound.has(currentMusic)) {
         currentMusic = Array.from(musicFilesFound).sort((a, b) => a - b)[0] || 1;
       }
       saveCurrentMusic();
@@ -4263,40 +4064,6 @@ function startMusicDetection() {
     });
 }
 
-async function initializeMusicSourceStatuses() {
-  updateAllMusicSourceStatus();
-
-  try {
-    await directoryHandlesRestorePromise;
-
-    /*
-       起動時は保存済みTableを確認するだけ。
-       completedならGold、未完了ならバックグラウンド走査開始時に点滅する。
-    */
-    await Promise.all([
-      restoreMusicTable('local'),
-      restoreMusicTable('extra')
-    ]);
-
-    updateAllMusicSourceStatus();
-
-    ['local', 'extra'].forEach(function(source) {
-      const table = sourceMusicTables[source];
-      if (table && table.meta && table.meta.completed) {
-        setMusicSourceStatus(source, 'ready');
-        return;
-      }
-
-      if (sourceDirectoryHandles[source]) {
-        prepareLocalMusicSourceInBackground(source);
-      }
-    });
-  } catch (error) {
-    console.log('Local / Externalの状態表示初期化に失敗しました:', error);
-    updateAllMusicSourceStatus();
-  }
-}
-
 async function initializeMusic() {
 
   /*
@@ -4343,9 +4110,6 @@ async function initializeMusic() {
 })();
 
 initializeMusic();
-
-/* Local / External のIndexedDB状態表示を起動時に復元する。 */
-initializeMusicSourceStatuses();
 
 /* 5秒後のタイトル表示 */
 music.addEventListener('timeupdate', updateMusicTitleByTime);
