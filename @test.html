@@ -304,6 +304,29 @@
     accent-color: lime;
   }
 
+  /* ========================================
+     Ver.01n IndexedDB状態表示
+     ソース名の文字部分だけを状態表示に使用する。
+     ラジオボタンの表示は変更しない。
+     ======================================== */
+  #musicSourceSelector label[data-source-name] {
+    color: #fff;
+  }
+
+  #musicSourceSelector label[data-source-name].sourceGold {
+    color: gold;
+  }
+
+  #musicSourceSelector label[data-source-name].sourceBlink {
+    color: #fff;
+    animation: sourceNameColorBlink 1.0s steps(1, end) infinite;
+  }
+
+  @keyframes sourceNameColorBlink {
+    0%, 49% { color: #fff; }
+    50%, 100% { color: transparent; }
+  }
+
   #musicSourceHint {
     width: 90%;
     max-width: 360px;
@@ -494,11 +517,21 @@
      開発用 IndexedDB 完全初期化
      ======================================== */
   #indexedDBResetButton {
-    margin-top: 2.0em;
-    font-size: 1.0em;
+    position: fixed;
+    top: 6px;
+    left: 6px;
+    z-index: 2000;
+
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0.25em 0.5em;
+
+    font-size: 0.68em;
+    line-height: 1.2;
     color: #fff;
     border-color: rgba(255,120,120,0.9);
-    background: rgba(120,0,0,0.28);
+    background: rgba(0,0,0,0.45);
   }
 
   #indexedDBResetButton:disabled {
@@ -617,9 +650,9 @@
          Ver.11 音楽再生元
          ======================================== -->
     <div id="musicSourceSelector">
-      <label><input type="radio" name="musicSource" value="github" checked>GitHub</label>
-      <label><input type="radio" name="musicSource" value="local">Local</label>
-      <label><input type="radio" name="musicSource" value="extra">External</label>
+      <label data-source-name="github"><input type="radio" name="musicSource" value="github" checked>GitHub</label>
+      <label data-source-name="local"><input type="radio" name="musicSource" value="local">Local</label>
+      <label data-source-name="extra"><input type="radio" name="musicSource" value="extra">External</label>
     </div>
     <div id="musicSourceHint">Local / External はLong-tapでフォルダー変更</div>
 
@@ -675,7 +708,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.01c》
+    戻　る
   </button>
 
 
@@ -685,7 +718,7 @@
        開発用 IndexedDB 完全初期化
        走査中は安全のため自動的に操作不可とする。
        ======================================== -->
-  <button class="button" id="indexedDBResetButton">IndexedDB完全初期化</button>
+  <button class="button" id="indexedDBResetButton">DB初期化</button>
 
 
 </div>
@@ -983,15 +1016,10 @@ const sourceDirectoryHandles = {
   extra: null
 };
 
-/* 開発用IndexedDB初期化ボタンの安全制御。
-   フォルダー走査中は無効化し、走査とDB削除を競合させない。 */
+/* IndexedDB構築中でも初期化ボタンは常に使用可能。
+   初期化要求時には構築をキャンセルしてからDBを削除する。 */
 let musicScanInProgress = 0;
-
-function updateIndexedDBResetButtonState() {
-  const button = document.getElementById('indexedDBResetButton');
-  if (!button) return;
-  button.disabled = musicScanInProgress > 0;
-}
+let musicScanCancelRequested = false;
 
 /* ========================================
    Ver.11 Local / External フォルダー記憶
@@ -1168,6 +1196,82 @@ async function getMusicTableMeta(source) {
   return meta;
 }
 
+/*
+   Ver.01n IndexedDB状態表示
+
+   GitHub
+     → Gold固定
+
+   Local / External
+     → IndexedDBに対象Tableが無ければ白固定
+     → Tableがあり、completed=falseなら白点滅
+     → Tableがcompleted=trueならGold固定
+
+   状態表示は「状態が変化した時」にだけ更新する。
+   1秒ごとのIndexedDB監視は行わない。
+   再生用のcurrentMusic / musicFileMap等には触れない。
+*/
+function setMusicSourceNameStatus(source, status) {
+  const element = document.querySelector(
+    `#musicSourceSelector label[data-source-name="${source}"]`
+  );
+
+  if (!element) return;
+
+  element.classList.remove('sourceGold', 'sourceBlink');
+
+  if (status === 'gold') {
+    element.classList.add('sourceGold');
+  } else if (status === 'blink') {
+    element.classList.add('sourceBlink');
+  }
+}
+
+async function updateMusicSourceStatusFromDB(source) {
+  if (source === 'github') {
+    setMusicSourceNameStatus('github', 'gold');
+    return;
+  }
+
+  if (source !== 'local' && source !== 'extra') return;
+
+  try {
+    const meta = await getMusicTableMeta(source);
+
+    if (!meta) {
+      setMusicSourceNameStatus(source, 'white');
+      return;
+    }
+
+    setMusicSourceNameStatus(
+      source,
+      meta.completed ? 'gold' : 'blink'
+    );
+  } catch (error) {
+    console.log(`${source} のIndexedDB状態表示を取得できませんでした:`, error);
+    setMusicSourceNameStatus(source, 'white');
+  }
+}
+
+function updateMusicSourceStatusFromMeta(source, meta) {
+  if (source === 'github') {
+    setMusicSourceNameStatus('github', 'gold');
+    return;
+  }
+
+  if (source !== 'local' && source !== 'extra') return;
+
+  if (!meta) {
+    setMusicSourceNameStatus(source, 'white');
+    return;
+  }
+
+  setMusicSourceNameStatus(
+    source,
+    meta.completed ? 'gold' : 'blink'
+  );
+}
+
 async function saveMusicTableMeta(source, meta) {
   const storeName = getMusicTableStoreName(source);
   const db = await openDirectoryHandleDB();
@@ -1225,6 +1329,8 @@ async function restoreMusicTable(source) {
       ready: musicRecords.length > 0 || meta.completed === true
     };
 
+    updateMusicSourceStatusFromMeta(source, meta);
+
     return sourceMusicTables[source];
 
   } catch (error) {
@@ -1267,6 +1373,8 @@ async function initializeMusicTable(source, directoryHandle) {
     ready: false
   };
 
+  updateMusicSourceStatusFromMeta(source, meta);
+
   return meta;
 }
 
@@ -1285,6 +1393,7 @@ async function deleteMusicTableFromDB(source) {
 
   db.close();
   sourceMusicTables[source] = null;
+  setMusicSourceNameStatus(source, 'white');
 }
 
 async function resolveDirectoryHandleByPath(rootHandle, relativePath) {
@@ -1393,13 +1502,17 @@ async function scanMusicTableInBackground(source, directoryHandle) {
 
   const scanPromise = (async function() {
     musicScanInProgress++;
-    updateIndexedDBResetButtonState();
+    setMusicSourceNameStatus(source, 'blink');
 
     try {
       let meta = await initializeMusicTable(source, directoryHandle);
       let table = sourceMusicTables[source];
 
       while (meta.pendingEntries && meta.pendingEntries.length > 0) {
+        if (musicScanCancelRequested) {
+          throw new Error('IndexedDB初期化によるフォルダー走査キャンセル');
+        }
+
         const item = meta.pendingEntries.shift();
 
         if (item.kind === 'directory') {
@@ -1467,20 +1580,25 @@ async function scanMusicTableInBackground(source, directoryHandle) {
         }
       }
 
+      if (musicScanCancelRequested) {
+        throw new Error('IndexedDB初期化によるフォルダー走査キャンセル');
+      }
+
       meta.completed = true;
       meta.updatedAt = Date.now();
       await saveMusicTableMeta(source, meta);
 
       table.ready = true;
+      setMusicSourceNameStatus(source, 'gold');
       return true;
 
     } catch (error) {
       console.log(`${source} の音楽索引Table走査を中断しました:`, error);
+      setMusicSourceNameStatus(source, 'white');
       return false;
 
     } finally {
       musicScanInProgress--;
-      updateIndexedDBResetButtonState();
     }
   })();
 
@@ -1692,14 +1810,14 @@ async function prepareLocalMusicSourceInBackground(source) {
       if (!handle) return false;
 
       /* まず保存済みTableを即時復元する。 */
-      await prepareLocalMusicSourceFromTable(source);
+      await restoreMusicTable(source);
 
       let meta = sourceMusicTables[source]
         ? sourceMusicTables[source].meta
         : null;
 
       if (meta && meta.completed) {
-        return musicReady;
+        return !!(sourceMusicTables[source].records && sourceMusicTables[source].records.size > 0);
       }
 
       const permission = await handle.queryPermission({ mode: 'read' });
@@ -1708,8 +1826,22 @@ async function prepareLocalMusicSourceInBackground(source) {
       }
 
       await scanMusicTableInBackground(source, handle);
-      buildSourceMusicStateFromTable(source);
-      return musicReady;
+
+      /*
+         ここでは現在の再生元を変更しない。
+         buildSourceMusicStateFromTable()は共通の
+         musicFileMap / musicFilesFound / musicCount / musicReadyを
+         書き換えるため、GitHub再生中の状態を壊してしまう。
+         バックグラウンドではIndexedDBのTable完成だけを行い、
+         実際の再生状態への反映は手動でLocal / Externalへ切替えた時に
+         activateLocalMusicCache()で行う。
+      */
+      const preparedTable = sourceMusicTables[source];
+      return !!(
+        preparedTable &&
+        preparedTable.records &&
+        preparedTable.records.size > 0
+      );
 
     } catch (error) {
       console.log(`${source} のバックグラウンド準備をスキップしました:`, error);
@@ -1871,7 +2003,7 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       ? 'External側を含むフォルダーを選択してください<br>SDメモリの場合は「≡」からExternalを選択してください'
       : '音楽フォルダーを選択してください';
 
-    const isFolderChange = forcePicker && !!sourceDirectoryHandles[source];
+    const isFolderChange = forcePicker;
 
     const directoryHandle = await openSourceDirectoryPicker(source, options);
     sourceDirectoryHandles[source] = directoryHandle;
@@ -1893,11 +2025,34 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     await deleteMusicTableFromDB(source);
 
     await scanMusicTableInBackground(source, directoryHandle);
-    buildSourceMusicStateFromTable(source);
-    const count = musicCount;
+
+    /*
+       現在の再生元とは別ソースのフォルダーをLong-tapで変更した場合、
+       ここでbuildSourceMusicStateFromTable()を実行すると、
+       GitHub等の「現在の再生状態」までLocal / Externalの状態で上書きしてしまう。
+
+       そのため、別ソースの場合はIndexedDBのTableだけを完成状態として保持し、
+       現在の再生元のmusicFileMap / musicFilesFound等には触れない。
+       実際にラジオ釦を人手で切替えた時にactivateLocalMusicCache()が
+       そのソースのTableから再生状態を構築する。
+    */
+    const sourceTable = sourceMusicTables[source];
+    const count = sourceTable && sourceTable.records
+      ? sourceTable.records.size
+      : 0;
+
     if (count === 0) {
       folderPickerMessage.innerHTML = `${sourceLabel(source)}で音楽ファイルが見つかりませんでした。<br>別のフォルダーを選択してください`;
       return false;
+    }
+
+    /*
+       現在の再生元と同じソースの場合だけ、従来どおり
+       Tableから現在の再生状態を構築する。
+       別ソースの場合は、現在の再生状態を変更しない。
+    */
+    if (source === activeSource) {
+      buildSourceMusicStateFromTable(source);
     }
 
     /*
@@ -1906,6 +2061,10 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
        通常のソース切替えでは、この処理を行わない。
     */
     if (isFolderChange) {
+      /* 新フォルダーでは、旧フォルダーと同じ曲番号でもタイトルは別物。
+         旧フォルダーのタイトルキャッシュを引き継がない。 */
+      getMusicTitleCache(source).clear();
+
       currentMusic = 1;
       saveMusicForSource(source, 1);
 
@@ -1921,9 +2080,9 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     }
 
     const sourceFilesFound =
-      source === musicSource
+      source === activeSource
         ? musicFilesFound
-        : (sourceMusicCaches[source] ? sourceMusicCaches[source].filesFound : new Set());
+        : (sourceTable ? new Set(sourceTable.records.keys()) : new Set());
     if (!sourceFilesFound.has(currentMusic)) {
       currentMusic = Array.from(sourceFilesFound).sort((a, b) => a - b)[0] || 1;
     }
@@ -2050,7 +2209,21 @@ musicSourceSelector.addEventListener(
     if (nextSource === musicSource) return;
 
     /* 切替え前のソースの最後の曲を保存 */
-    saveCurrentMusic();
+    const previousMusic = currentMusicBySource[musicSource] || getSavedMusicForSource(musicSource);
+    saveMusicForSource(musicSource, previousMusic);
+
+    /*
+       GitHub → Local / External の最初の切替えでも、
+       「いったんGitHubを選択し直した後」に実行される
+       GitHub側のActive状態解除処理を先に実行する。
+
+       これにより、Long-tapで裏準備したLocal / ExternalのTableを、
+       最初の手動切替え時から確実に現在の再生状態へ反映できる。
+       ラジオボタン自体はここでは変更しない。
+    */
+    if (musicSource === 'github' && nextSource !== 'github') {
+      clearActiveLocalMusicState();
+    }
 
     musicSource = nextSource;
     musicDetectionGeneration++;
@@ -2081,7 +2254,14 @@ musicSourceSelector.addEventListener(
     /*
        Local / External は、まず個別の索引Tableを切替える。
        通常のソース切替えではフォルダーを再走査しない。
+
+       バックグラウンド準備がまだ走っている場合は、
+       そのソースのTable完成を待ってから現在の再生状態へ反映する。
     */
+    if (sourcePreparationPromises[nextSource]) {
+      await sourcePreparationPromises[nextSource];
+    }
+
     if (activateLocalMusicCache(nextSource)) {
       currentMusic = currentMusicBySource[nextSource] || getSavedMusicForSource(nextSource);
       if (!musicFilesFound.has(currentMusic)) {
@@ -4490,11 +4670,6 @@ const indexedDBResetButton =
 
 async function resetIndexedDBCompletely() {
 
-  if (musicScanInProgress > 0) {
-    alert('フォルダー走査中のため、IndexedDB完全初期化は実行できません。\n走査完了後にもう一度実行してください。');
-    return;
-  }
-
   const confirmed = confirm(
     'IndexedDBを完全初期化します。\n\n' +
     'Local / External の選択フォルダー記憶と\n' +
@@ -4504,9 +4679,19 @@ async function resetIndexedDBCompletely() {
 
   if (!confirmed) return;
 
-  indexedDBResetButton.disabled = true;
-
   try {
+    if (musicScanInProgress > 0) {
+      musicScanCancelRequested = true;
+
+      const scanPromises = [];
+      ['local', 'extra'].forEach(function(source) {
+        const table = sourceMusicTables[source];
+        if (table && table.scanning) scanPromises.push(table.scanning);
+      });
+
+      await Promise.allSettled(scanPromises);
+      musicScanCancelRequested = false;
+    }
     await new Promise(function(resolve, reject) {
       const request =
         indexedDB.deleteDatabase(directoryHandleDBName);
@@ -4524,6 +4709,9 @@ async function resetIndexedDBCompletely() {
       };
     });
 
+    setMusicSourceNameStatus('local', 'white');
+    setMusicSourceNameStatus('extra', 'white');
+
     alert('IndexedDBを完全初期化しました。\nページを再読み込みします。');
     location.reload();
 
@@ -4531,7 +4719,6 @@ async function resetIndexedDBCompletely() {
 
     console.error('IndexedDB完全初期化に失敗しました:', error);
     alert('IndexedDB完全初期化に失敗しました。\nコンソールを確認してください。');
-    updateIndexedDBResetButtonState();
   }
 }
 
@@ -4540,7 +4727,13 @@ indexedDBResetButton.addEventListener(
   resetIndexedDBCompletely
 );
 
-updateIndexedDBResetButtonState();
+/* Ver.01q IndexedDB状態表示
+   起動時に再生用IndexedDBへ追加アクセスしない。
+   GitHubは固定Gold、Local / Externalは既存の
+   restoreMusicTable / scan / 初期化処理から状態を更新する。 */
+setMusicSourceNameStatus('github', 'gold');
+setMusicSourceNameStatus('local', 'white');
+setMusicSourceNameStatus('extra', 'white');
 
 
 /* ========================================
