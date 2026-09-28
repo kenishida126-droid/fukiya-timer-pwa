@@ -253,8 +253,14 @@
   }
 
   .musicTitleText.fit {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     text-align: center;
+    transform: translateX(100%);
+    opacity: 0;
+    animation: musicTitleFit 10s linear infinite;
   }
 
   .musicTitleText.scroll {
@@ -268,6 +274,29 @@
   @keyframes musicTitleScroll {
     from { left: var(--music-title-start); }
     to   { left: var(--music-title-end); }
+  }
+
+  /*
+     短いタイトル：右からフェイドイン → 中央で5秒停止
+     → 左へスクロールアウト → 繰り返し
+  */
+  @keyframes musicTitleFit {
+    0% {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    12% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    62% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-100%);
+      opacity: 1;
+    }
   }
 
 
@@ -591,6 +620,82 @@
     background: #000;
   }
 
+
+  /* ========================================
+     Ver.02b 全画面壁紙モード
+     ======================================== */
+  #wallpaperModeDialog {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.45);
+  }
+
+  #wallpaperModePanel {
+    width: 86%;
+    max-width: 420px;
+    padding: 1.5em 1.2em 1.2em;
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 14px;
+    background: rgba(0,0,0,0.88);
+    color: #fff;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+  }
+
+  #wallpaperModeMessage {
+    font-size: 1.15em;
+    line-height: 1.8;
+    font-weight: bold;
+    margin-bottom: 1.2em;
+    white-space: pre-line;
+  }
+
+  #wallpaperModeButtons {
+    display: flex;
+    gap: 0.8em;
+    justify-content: center;
+  }
+
+  #wallpaperModeButtons button {
+    min-width: 6em;
+    padding: 0.55em 1em;
+    border: 1px solid rgba(255,255,255,0.7);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    font-size: 1em;
+    font-weight: bold;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /*
+     全画面壁紙モードでは、DB初期化釦と壁紙番号だけを残す。
+  */
+  body.fullWallpaperMode {
+    overflow: hidden;
+  }
+
+  body.fullWallpaperMode .container > *:not(#wallpaperNumber) {
+    visibility: hidden;
+  }
+
+  body.fullWallpaperMode .container {
+    pointer-events: none;
+  }
+
+  body.fullWallpaperMode #wallpaperNumber {
+    visibility: visible;
+  }
+
+  body.fullWallpaperMode #indexedDBResetButton {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
 </style>
 </head>
 
@@ -602,6 +707,22 @@
 <body>
 <div id="wallpaperLayerA"></div>
 <div id="wallpaperLayerB"></div>
+
+<!-- ========================================
+     Ver.02a 全画面壁紙モード移行確認
+     ======================================== -->
+<div id="wallpaperModeDialog">
+  <div id="wallpaperModePanel">
+    <div id="wallpaperModeMessage">全画面壁紙モードに移行します
+ごゆっくり、おくつろぎください
+再度のLong-tapで元に戻ります</div>
+    <div id="wallpaperModeButtons">
+      <button type="button" id="wallpaperModeCancel">Cancel</button>
+      <button type="button" id="wallpaperModeOK">OK</button>
+    </div>
+  </div>
+</div>
+
 
 <div class="container">
 
@@ -708,7 +829,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る
+    戻　る《ver.02c》
   </button>
 
 
@@ -4295,6 +4416,127 @@ initializeMusic();
 music.addEventListener('timeupdate', updateMusicTitleByTime);
 
 
+
+/* ========================================
+   Ver.02a 全画面壁紙モード
+   ・釦類以外の画面をLong-tapすると移行確認を表示
+   ・OKで壁紙以外を非表示
+   ・全画面壁紙モード中のLong-tapで通常画面へ戻る
+   ======================================== */
+const wallpaperModeDialog =
+  document.getElementById('wallpaperModeDialog');
+const wallpaperModeCancel =
+  document.getElementById('wallpaperModeCancel');
+const wallpaperModeOK =
+  document.getElementById('wallpaperModeOK');
+
+let wallpaperModePressTimer = null;
+let wallpaperModeLongTapTriggered = false;
+let wallpaperModeStartX = 0;
+let wallpaperModeStartY = 0;
+
+function isWallpaperModeExcludedTarget(target) {
+  if (!target || !target.closest) return false;
+
+  return !!target.closest(
+    'button, input, label, #musicMenu, #folderPickerDialog, ' +
+    '#wallpaperModeDialog'
+  );
+}
+
+function showWallpaperModeDialog() {
+  wallpaperModeDialog.style.display = 'flex';
+}
+
+function hideWallpaperModeDialog() {
+  wallpaperModeDialog.style.display = 'none';
+}
+
+function enterFullWallpaperMode() {
+  hideWallpaperModeDialog();
+  document.body.classList.add('fullWallpaperMode');
+}
+
+function exitFullWallpaperMode() {
+  document.body.classList.remove('fullWallpaperMode');
+}
+
+wallpaperModeCancel.addEventListener('click', function() {
+  hideWallpaperModeDialog();
+});
+
+wallpaperModeOK.addEventListener('click', function() {
+  enterFullWallpaperMode();
+});
+
+function startWallpaperModeLongTap(event) {
+  if (isWallpaperModeExcludedTarget(event.target)) return;
+
+  wallpaperModeLongTapTriggered = false;
+  wallpaperModeStartX = event.clientX;
+  wallpaperModeStartY = event.clientY;
+
+  clearTimeout(wallpaperModePressTimer);
+
+  wallpaperModePressTimer = setTimeout(function() {
+    wallpaperModePressTimer = null;
+    wallpaperModeLongTapTriggered = true;
+
+    if (document.body.classList.contains('fullWallpaperMode')) {
+      exitFullWallpaperMode();
+    } else {
+      showWallpaperModeDialog();
+    }
+  }, longTapTime);
+}
+
+function cancelWallpaperModeLongTap(event) {
+  if (wallpaperModePressTimer === null) return;
+
+  /*
+     Short-tapではタイマーを必ず解除する。
+     pointerup時に解除しないと、指を離した後もLong-tap用の
+     setTimeoutが残り、短いタップでも時間経過後に反応してしまう。
+  */
+  if (event && (event.type === 'pointerup' || event.type === 'pointercancel')) {
+    clearTimeout(wallpaperModePressTimer);
+    wallpaperModePressTimer = null;
+    wallpaperModeLongTapTriggered = false;
+    return;
+  }
+
+  if (event && event.clientX !== undefined) {
+    const dx = event.clientX - wallpaperModeStartX;
+    const dy = event.clientY - wallpaperModeStartY;
+    if (Math.abs(dx) > 12 || Math.abs(dy) > 12) {
+      clearTimeout(wallpaperModePressTimer);
+      wallpaperModePressTimer = null;
+      wallpaperModeLongTapTriggered = false;
+    }
+  }
+}
+
+document.addEventListener(
+  'pointerdown',
+  startWallpaperModeLongTap
+);
+
+document.addEventListener(
+  'pointermove',
+  cancelWallpaperModeLongTap
+);
+
+document.addEventListener(
+  'pointerup',
+  cancelWallpaperModeLongTap
+);
+
+document.addEventListener(
+  'pointercancel',
+  cancelWallpaperModeLongTap
+);
+
+
 /* ========================================
    壁紙
    ======================================== */
@@ -4727,13 +4969,38 @@ indexedDBResetButton.addEventListener(
   resetIndexedDBCompletely
 );
 
-/* Ver.01q IndexedDB状態表示
-   起動時に再生用IndexedDBへ追加アクセスしない。
-   GitHubは固定Gold、Local / Externalは既存の
-   restoreMusicTable / scan / 初期化処理から状態を更新する。 */
+/* Ver.01y IndexedDB状態復元
+   再起動時も、保存済みのLocal / External Tableを復元する。
+   これにより、IndexedDB構築完了済みならGold表示を維持し、
+   そのままソース切替え時にactivateLocalMusicCache()を使用できる。
+   GitHubは固定Gold。
+*/
 setMusicSourceNameStatus('github', 'gold');
-setMusicSourceNameStatus('local', 'white');
-setMusicSourceNameStatus('extra', 'white');
+
+(async function restoreLocalExternalStateOnStartup() {
+  try {
+    await directoryHandlesRestorePromise;
+
+    /*
+       Local / Externalの保存済みTableを起動時に復元する。
+       restoreMusicTable()内でcompleted=trueならGold表示、
+       未完了なら白点滅、Tableなしなら白表示へ更新する。
+    */
+    await Promise.all([
+      restoreMusicTable('local'),
+      restoreMusicTable('extra')
+    ]);
+
+  } catch (error) {
+    console.log(
+      '起動時のLocal / External IndexedDB状態復元に失敗しました:',
+      error
+    );
+
+    setMusicSourceNameStatus('local', 'white');
+    setMusicSourceNameStatus('extra', 'white');
+  }
+})();
 
 
 /* ========================================
