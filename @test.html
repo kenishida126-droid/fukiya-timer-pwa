@@ -829,7 +829,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.02d》
+    戻　る
   </button>
 
 
@@ -1915,6 +1915,56 @@ const sourcePreparationPromises = {
 
 /* 旧コードとの接続用。実体はFileキャッシュではなくTable復元完了を待つ。 */
 const musicTablesRestorePromise = directoryHandlesRestorePromise;
+
+/*
+   Ver.02i
+   再起動後に未完成Tableを継続構築するための起動時専用処理。
+   保存済みHandleのpermissionがgrantedなら直ちに構築を再開する。
+   permissionがpromptの場合はrequestPermission()で許可を取得してから再開する。
+   完了済みTableや通常の再生処理には触れない。
+*/
+async function resumeIncompleteMusicTableOnStartup(source, allowPermissionRequest) {
+  if (source !== 'local' && source !== 'extra') return false;
+
+  const handle = sourceDirectoryHandles[source];
+  const table = sourceMusicTables[source];
+
+  if (!handle || !table || !table.meta || table.meta.completed !== false) {
+    return false;
+  }
+
+  setMusicSourceNameStatus(source, 'blink');
+
+  try {
+    let permission = await handle.queryPermission({ mode: 'read' });
+
+    if (permission !== 'granted') {
+      if (!allowPermissionRequest) {
+        return false;
+      }
+
+      permission = await handle.requestPermission({ mode: 'read' });
+    }
+
+    if (permission !== 'granted') {
+      return false;
+    }
+
+    await scanMusicTableInBackground(source, handle);
+    return !!(
+      sourceMusicTables[source] &&
+      sourceMusicTables[source].meta &&
+      sourceMusicTables[source].meta.completed === true
+    );
+
+  } catch (error) {
+    console.log(
+      `${source} の再起動後IndexedDB構築再開に失敗しました:`,
+      error
+    );
+    return false;
+  }
+}
 
 async function prepareLocalMusicSourceInBackground(source) {
   if (source !== 'local' && source !== 'extra') return false;
@@ -4992,25 +5042,27 @@ setMusicSourceNameStatus('github', 'gold');
     ]);
 
     /*
+       Ver.02h
        再起動時、IndexedDB Tableが未完成なら、
        保存済みpendingEntriesの続きからバックグラウンド構築を再開する。
        completed=trueのTableには再走査を行わない。
-       現在の再生元や再生状態には触れない。
+       既存の構築処理・再生処理には変更を加えない。
     */
     const startupPreparationPromises = [];
 
     ['local', 'extra'].forEach(function(source) {
       const table = sourceMusicTables[source];
+      const handle = sourceDirectoryHandles[source];
 
       if (
         table &&
         table.meta &&
         table.meta.completed === false &&
-        sourceDirectoryHandles[source]
+        handle
       ) {
         setMusicSourceNameStatus(source, 'blink');
         startupPreparationPromises.push(
-          prepareLocalMusicSourceInBackground(source)
+          resumeIncompleteMusicTableOnStartup(source, false)
         );
       }
     });
@@ -5027,6 +5079,48 @@ setMusicSourceNameStatus('github', 'gold');
     setMusicSourceNameStatus('extra', 'white');
   }
 })();
+
+/*
+   Ver.02j
+   再起動後にIndexedDBから復元したDirectoryHandleのpermissionが
+   「prompt」の場合、requestPermission()にはユーザー操作が必要。
+   起動処理からrequestPermission()を呼ばず、最初のユーザー操作を
+   利用して未完成Tableの構築を再開する。
+
+   permissionがすでにgrantedなら起動時処理だけで自動再開する。
+   promptの場合のみ、このイベントで権限取得→構築再開を行う。
+*/
+let startupPermissionResumeDone = false;
+
+async function resumeIncompleteMusicTablesAfterUserAction() {
+  if (startupPermissionResumeDone) return;
+
+  const pendingSources = ['local', 'extra'].filter(function(source) {
+    const table = sourceMusicTables[source];
+    return !!(
+      sourceDirectoryHandles[source] &&
+      table &&
+      table.meta &&
+      table.meta.completed === false
+    );
+  });
+
+  if (pendingSources.length === 0) return;
+
+  startupPermissionResumeDone = true;
+
+  for (const source of pendingSources) {
+    await resumeIncompleteMusicTableOnStartup(source, true);
+  }
+}
+
+document.addEventListener(
+  'pointerdown',
+  function() {
+    resumeIncompleteMusicTablesAfterUserAction();
+  },
+  { once: false, passive: true }
+);
 
 
 /* ========================================
