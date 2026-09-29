@@ -829,7 +829,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る
+    戻　る《ver.02d》
   </button>
 
 
@@ -4990,6 +4990,32 @@ setMusicSourceNameStatus('github', 'gold');
       restoreMusicTable('local'),
       restoreMusicTable('extra')
     ]);
+
+    /*
+       再起動時、IndexedDB Tableが未完成なら、
+       保存済みpendingEntriesの続きからバックグラウンド構築を再開する。
+       completed=trueのTableには再走査を行わない。
+       現在の再生元や再生状態には触れない。
+    */
+    const startupPreparationPromises = [];
+
+    ['local', 'extra'].forEach(function(source) {
+      const table = sourceMusicTables[source];
+
+      if (
+        table &&
+        table.meta &&
+        table.meta.completed === false &&
+        sourceDirectoryHandles[source]
+      ) {
+        setMusicSourceNameStatus(source, 'blink');
+        startupPreparationPromises.push(
+          prepareLocalMusicSourceInBackground(source)
+        );
+      }
+    });
+
+    await Promise.allSettled(startupPreparationPromises);
 
   } catch (error) {
     console.log(
