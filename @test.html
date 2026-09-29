@@ -2182,6 +2182,19 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
     selectedMusicFolderName = directoryHandle.name || '';
 
     /*
+       Long-tapでフォルダーを変更した場合、旧フォルダーの再生を
+       DB構築開始前に停止する。
+       これをDB構築完了後に行うと、構築中に再生を開始した新フォルダーの曲まで
+       「旧フォルダーの停止処理」として停止してしまう。
+    */
+    if (isFolderChange && source === musicSource) {
+      music.pause();
+      music.currentTime = 0;
+      music.src = '';
+      musicMode = 'none';
+    }
+
+    /*
        フォルダー選択時に、同じソースのバックグラウンド走査が
        並行して動いている場合は、先にその完了を待つ。
        走査処理はグローバルな musicFileMap / musicFilesFound / musicCount を
@@ -2239,13 +2252,6 @@ async function chooseLocalMusicFolder(source, forcePicker = false, autoPlay = fa
       currentMusic = 1;
       saveMusicForSource(source, 1);
 
-      /* フォルダー変更前の音楽が再生中なら、旧フォルダーの曲を停止する。 */
-      if (source === musicSource) {
-        music.pause();
-        music.currentTime = 0;
-        music.src = '';
-        musicMode = 'none';
-      }
     } else {
       currentMusic = currentMusicBySource[source] || getSavedMusicForSource(source);
     }
