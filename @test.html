@@ -829,7 +829,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る
+    戻　る《ver.02l》
   </button>
 
 
@@ -3267,6 +3267,14 @@ function musicSwipeCancel() {
 
 document.addEventListener('pointerdown', function(event) {
 
+  /* 全画面壁紙モードでは画面全体を左右フリック選曲に使用する。
+     Long-tap判定側はpointermoveで解除されるため、通常の短い左右フリックを
+     ここでそのまま音楽フリックとして受け付ける。 */
+  if (document.body.classList.contains('fullWallpaperMode')) {
+    musicSwipeStart(event);
+    return;
+  }
+
   const buttonRect =
     musicButton.getBoundingClientRect();
 
@@ -3307,6 +3315,10 @@ let topTouchStartY = 0;
 
 document.addEventListener('touchstart', function(event) {
 
+  /* 全画面壁紙モードではpointer側でフリックを処理する。
+     touch側との二重処理を避けるため、ここでは追跡しない。 */
+  if (document.body.classList.contains('fullWallpaperMode')) return;
+
   if (musicMode === 'none' || !music.src) return;
   if (!musicReady || musicFilesFound.size === 0) return;
   if (musicMenu.contains(event.target) || musicButton.contains(event.target)) return;
@@ -3323,6 +3335,7 @@ document.addEventListener('touchstart', function(event) {
 
 document.addEventListener('touchend', async function(event) {
 
+  if (document.body.classList.contains('fullWallpaperMode')) return;
   if (!topTouchTracking) return;
   topTouchTracking = false;
 
@@ -3391,6 +3404,9 @@ let bottomTouchStartY = 0;
 
 document.addEventListener('touchstart', function(event) {
 
+  /* 全画面壁紙モードでは上側のpointerフリック処理だけを使用する。 */
+  if (document.body.classList.contains('fullWallpaperMode')) return;
+
   if (musicMode === 'none' || !music.src) return;
   if (!musicReady || musicFilesFound.size === 0) return;
   if (!event.touches || event.touches.length === 0) return;
@@ -3431,6 +3447,7 @@ document.addEventListener('touchmove', function(event) {
 
 document.addEventListener('touchend', async function(event) {
 
+  if (document.body.classList.contains('fullWallpaperMode')) return;
   if (!bottomTouchTracking) return;
   bottomTouchTracking = false;
 
