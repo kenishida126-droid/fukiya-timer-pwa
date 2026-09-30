@@ -677,6 +677,7 @@
   */
   body.fullWallpaperMode {
     overflow: hidden;
+    touch-action: pan-y;
   }
 
   body.fullWallpaperMode .container > *:not(#wallpaperNumber) {
@@ -829,7 +830,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.02l》
+    戻　る《ver.02m》
   </button>
 
 
@@ -3271,6 +3272,13 @@ document.addEventListener('pointerdown', function(event) {
      Long-tap判定側はpointermoveで解除されるため、通常の短い左右フリックを
      ここでそのまま音楽フリックとして受け付ける。 */
   if (document.body.classList.contains('fullWallpaperMode')) {
+    /*
+       タッチ端末ではtouchstart/touchend側で通常画面と同じ
+       musicSwipeStart / musicSwipeEndを使用する。
+       pointer側と二重処理しない。
+    */
+    if (event.pointerType === 'touch') return;
+
     musicSwipeStart(event);
     return;
   }
@@ -3315,9 +3323,20 @@ let topTouchStartY = 0;
 
 document.addEventListener('touchstart', function(event) {
 
-  /* 全画面壁紙モードではpointer側でフリックを処理する。
-     touch側との二重処理を避けるため、ここでは追跡しない。 */
-  if (document.body.classList.contains('fullWallpaperMode')) return;
+  /*
+     全画面壁紙モードでは画面全体を、通常画面と同じ
+     musicSwipeStart() で追跡する。
+  */
+  if (document.body.classList.contains('fullWallpaperMode')) {
+    if (!event.touches || event.touches.length === 0) return;
+
+    const touch = event.touches[0];
+    musicSwipeStart({
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    });
+    return;
+  }
 
   if (musicMode === 'none' || !music.src) return;
   if (!musicReady || musicFilesFound.size === 0) return;
@@ -3335,7 +3354,18 @@ document.addEventListener('touchstart', function(event) {
 
 document.addEventListener('touchend', async function(event) {
 
-  if (document.body.classList.contains('fullWallpaperMode')) return;
+  /* 全画面壁紙モードは通常画面と同じmusicSwipeEnd()を使用する。 */
+  if (document.body.classList.contains('fullWallpaperMode')) {
+    if (!event.changedTouches || event.changedTouches.length === 0) return;
+
+    const touch = event.changedTouches[0];
+    await musicSwipeEnd({
+      clientX: touch.clientX,
+      clientY: touch.clientY
+    });
+    return;
+  }
+
   if (!topTouchTracking) return;
   topTouchTracking = false;
 
@@ -3389,6 +3419,23 @@ document.addEventListener('touchend', async function(event) {
 document.addEventListener('touchcancel', function() {
   topTouchTracking = false;
 }, { passive: true });
+
+/*
+   全画面壁紙モードでは横方向のブラウザジェスチャーに奪われないようにする。
+   選曲判定そのものは通常画面と同じmusicSwipeStart/musicSwipeEndを使用する。
+*/
+document.addEventListener('touchmove', function(event) {
+  if (!document.body.classList.contains('fullWallpaperMode')) return;
+  if (!event.touches || event.touches.length === 0) return;
+
+  const touch = event.touches[0];
+  const dx = touch.clientX - swipeStartX;
+  const dy = touch.clientY - swipeStartY;
+
+  if (swipeTracking && Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) >= 10) {
+    event.preventDefault();
+  }
+}, { passive: false });
 
 
 /*
