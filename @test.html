@@ -127,6 +127,21 @@
     white-space: nowrap;
   }
 
+  /* 全画面壁紙モード：再生元・フォルダー・曲番号 */
+  #fullWallpaperMusicLabel {
+    position: fixed;
+    top: 6px;
+    left: 6px;
+    z-index: 2001;
+    font-size: 1.2em;
+    font-weight: bold;
+    line-height: 1;
+    color: gold;
+    text-shadow: 2px 2px 4px #000, -1px -1px 2px #000;
+    white-space: nowrap;
+    visibility: hidden;
+  }
+
   .date {
     font-size: 2.0em;
     font-weight: bold;
@@ -693,8 +708,12 @@
   }
 
   body.fullWallpaperMode #indexedDBResetButton {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  body.fullWallpaperMode #fullWallpaperMusicLabel {
     visibility: visible;
-    pointer-events: auto;
   }
 
 </style>
@@ -708,6 +727,9 @@
 <body>
 <div id="wallpaperLayerA"></div>
 <div id="wallpaperLayerB"></div>
+
+<!-- 全画面壁紙モード：再生元・フォルダー・曲番号 -->
+<div id="fullWallpaperMusicLabel"></div>
 
 <!-- ========================================
      Ver.02a 全画面壁紙モード移行確認
@@ -830,7 +852,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る《ver.02m》
+    戻　る
   </button>
 
 
@@ -2404,6 +2426,7 @@ musicSourceSelector.addEventListener(
     }
 
     musicSource = nextSource;
+    updateFullWallpaperMusicLabel();
     musicDetectionGeneration++;
     musicDetectionStarted = false;
 
@@ -2930,6 +2953,34 @@ let musicMode = 'none';
 */
 
 let currentMusic = 1;
+
+const fullWallpaperMusicLabel =
+  document.getElementById('fullWallpaperMusicLabel');
+
+function getFullWallpaperMusicLabel() {
+  const number = String(currentMusic).padStart(2, '0');
+
+  if (musicSource === 'github') {
+    return `G-${number}`;
+  }
+
+  const table = sourceMusicTables[musicSource];
+  const record = table ? table.records.get(currentMusic) : null;
+  const displayId = getDisplayMusicId(record);
+
+  if (displayId) {
+    const prefix = musicSource === 'local' ? 'L-' : 'E-';
+    return prefix + displayId.replace(/^Music-/, '');
+  }
+
+  const prefix = musicSource === 'local' ? 'L-' : 'E-';
+  return `${prefix}F1-${number}`;
+}
+
+function updateFullWallpaperMusicLabel() {
+  if (!fullWallpaperMusicLabel) return;
+  fullWallpaperMusicLabel.textContent = getFullWallpaperMusicLabel();
+}
 
 
 /*
@@ -3573,6 +3624,8 @@ function getCurrentMusicDisplayLabel() {
 
 function showPlayingButton() {
 
+  updateFullWallpaperMusicLabel();
+
   musicHint.style.visibility =
     'visible';
 
@@ -3589,6 +3642,8 @@ function showPlayingButton() {
 
 function showPausedButton() {
 
+  updateFullWallpaperMusicLabel();
+
   musicHint.style.visibility =
     'visible';
 
@@ -3604,6 +3659,8 @@ function showPausedButton() {
    ======================================== */
 
 function showInitialButton() {
+
+  updateFullWallpaperMusicLabel();
 
   musicHint.style.visibility =
     'hidden';
@@ -4574,6 +4631,7 @@ function hideWallpaperModeDialog() {
 
 function enterFullWallpaperMode() {
   hideWallpaperModeDialog();
+  updateFullWallpaperMusicLabel();
   document.body.classList.add('fullWallpaperMode');
 }
 
