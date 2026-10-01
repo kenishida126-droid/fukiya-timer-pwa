@@ -213,13 +213,22 @@
     box-shadow: 0 3px 0 #111;
     cursor: pointer;
   }
-  #recacheButton.reCaching,
+  #recacheButton.reCaching {
+    color: red;
+    animation: recacheTextBlink 1s infinite;
+  }
+
   #recacheButton:active {
     transform: translateY(3px);
     background: #888;
     box-shadow: 0 0 0 #111;
   }
+
   #recacheButton:disabled { cursor: default; }
+
+  @keyframes recacheTextBlink {
+    50% { opacity: 0; }
+  }
   #pwaDisplayArea .pwa-status{font-family: monospace;font-size: 1.2em;}
   #pwaDisplayArea .pwa-note { margin-top: 0.4em; }
   #pwaDisplayArea .pwa-note { margin-top: 0.7em; }
@@ -247,7 +256,7 @@
 <div id="cacheStatus"></div>
 <div id="cacheElapsed"></div>
 
-<h1>≪ 吹矢Timer MENU ver.04 ≫</h1>
+<h1>≪ 吹矢Timer MENU ver.05 ≫</h1>
 <h2>Design/Development: Ken.Ishida</h2>
 
 <div class="category-title">★ 競技会向け</div>
@@ -458,6 +467,7 @@ fetch('./service-worker.js', {
     if (event.data.type === 'CACHE_START') {
       cacheUpdating = true;
       recacheButton.classList.add('reCaching');
+      recacheButton.textContent = 'Now Caching';
       recacheButton.disabled = true;
 
       cacheStatus.style.display = 'block';
@@ -482,6 +492,7 @@ fetch('./service-worker.js', {
 
     if (event.data.type === 'CACHE_UPDATED') {
       recacheButton.classList.remove('reCaching');
+      recacheButton.textContent = 'Request reCaching';
       recacheButton.disabled = false;
       stopCacheElapsed();
       showCacheGreen();
