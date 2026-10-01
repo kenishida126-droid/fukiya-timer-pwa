@@ -201,7 +201,7 @@
   #pwaDisplayArea .pwa-intro { margin-bottom: 0.8em; }
   #recacheButton {
     display: block;
-    margin: 0.1em auto 0 auto;
+    margin: 0.1em auto 0.9em auto;
     padding: 0.45em 1.0em;
     font-family: monospace;
     font-size: 1.3em;
@@ -213,34 +213,65 @@
     box-shadow: 0 3px 0 #111;
     cursor: pointer;
   }
+  #recacheButton.reCaching,
   #recacheButton:active {
     transform: translateY(3px);
     background: #888;
     box-shadow: 0 0 0 #111;
   }
   #recacheButton:disabled { cursor: default; }
-  #recacheButtonText {
-    display: inline-block;
-    width: 17ch;
-    text-align: center;
-  }
-  #recacheButtonText.reCaching {
-    color: red;
-    animation: cacheBlink 1s infinite;
-  }
-  #recacheProgress {
-    height: 1.45em;
-    margin: 0 auto 0.9em auto;
-    color: gold;
-    font-family: monospace;
-    font-size: 1.2em;
-    line-height: 1.45;
-    text-align: center;
-    visibility: hidden;
-  }
   #pwaDisplayArea .pwa-status{font-family: monospace;font-size: 1.2em;}
   #pwaDisplayArea .pwa-note { margin-top: 0.4em; }
   #pwaDisplayArea .pwa-note { margin-top: 0.7em; }
+
+
+  /* ===== Update Available Pop-Up ===== */
+  #updatePopupOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.72);
+    align-items: center;
+    justify-content: center;
+  }
+
+  #updatePopup {
+    width: 82%;
+    max-width: 420px;
+    box-sizing: border-box;
+    padding: 1.2em 1.0em 1.0em 1.0em;
+    background: #222;
+    border: 2px solid gold;
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    font-size: 1.05em;
+    line-height: 1.55;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.7);
+  }
+
+  #updatePopupTitle {
+    color: gold;
+    font-weight: bold;
+    margin-bottom: 0.7em;
+  }
+
+  #updatePopupOk {
+    margin-top: 0.9em;
+    padding: 0.35em 1.8em;
+    font-size: 1.05em;
+    font-weight: bold;
+    color: #fff;
+    background: #555;
+    border: 1px solid #aaa;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  #updatePopupOk:active {
+    background: #888;
+  }
 
   @keyframes fadeIn {
     0% { opacity: 0; }
@@ -361,8 +392,7 @@
     以下を tap してください<br>
     ⬇
   </div>
-  <button id="recacheButton" type="button"><span id="recacheButtonText">Request reCaching</span></button>
-  <div id="recacheProgress" aria-live="polite">&nbsp;</div>
+  <button id="recacheButton" type="button">Request reCaching</button>
   <div class="pwa-status">《 CACHE Status 》</div>
   <div class="pwa-status">
     &nbsp;&nbsp;<span class="status-yellow-blink">●</span>：Update Available</div>
@@ -375,6 +405,23 @@
   <div class="pwa-note">
     ※ 100MB 弱の File を Caching します<br>
     　Wi-Fi 環境下での実行を推奨します
+  </div>
+</div>
+
+
+<!-- ===== Update Available Pop-Up ===== -->
+<div id="updatePopupOverlay">
+  <div id="updatePopup">
+    <div id="updatePopupTitle">吹矢Timer_PWAが更新されてます</div>
+    <div>
+      本MENU画面下方の<br>
+      「Request reCaching」tapにて<br>
+      更新してください<br>
+      <br>
+      100MB弱のFileをCachingします<br>
+      Wi-Fi環境下での実行を推奨します
+    </div>
+    <button id="updatePopupOk" type="button">OK</button>
   </div>
 </div>
 
@@ -398,12 +445,18 @@ const cacheStatus = document.getElementById('cacheStatus');
 const cacheElapsed = document.getElementById('cacheElapsed');
 const pwaDisplayArea = document.getElementById('pwaDisplayArea');
 const recacheButton = document.getElementById('recacheButton');
-const recacheButtonText = document.getElementById('recacheButtonText');
-const recacheProgress = document.getElementById('recacheProgress');
 
 let cacheUpdating = false;
 let cacheStartTime = 0;
 let cacheElapsedTimer = null;
+
+const updatePopupOverlay = document.getElementById('updatePopupOverlay');
+const updatePopupOk = document.getElementById('updatePopupOk');
+
+updatePopupOk.addEventListener('click', function() {
+  updatePopupOverlay.style.display = 'none';
+});
+
 
 function showCacheGreen() {
   cacheUpdating = false;
@@ -459,11 +512,8 @@ fetch('./service-worker.js', {
   recacheButton.addEventListener('click', function() {
     const worker = navigator.serviceWorker.controller;
     if (!worker) return;
-    recacheButtonText.classList.add('reCaching');
-    recacheButtonText.textContent = 'Now Caching';
+    recacheButton.classList.add('reCaching');
     recacheButton.disabled = true;
-    recacheProgress.style.visibility = 'visible';
-    recacheProgress.textContent = '0 / 74';
     worker.postMessage({ type: 'RECACHE' });
   });
 
@@ -476,16 +526,15 @@ fetch('./service-worker.js', {
       cacheStatus.style.display = 'block';
       cacheStatus.style.background = 'yellow';
       cacheStatus.classList.add('updating');
+
+      updatePopupOverlay.style.display = 'flex';
       return;
     }
 
     if (event.data.type === 'CACHE_START') {
       cacheUpdating = true;
-      recacheButtonText.classList.add('reCaching');
-      recacheButtonText.textContent = 'Now Caching';
+      recacheButton.classList.add('reCaching');
       recacheButton.disabled = true;
-      recacheProgress.style.visibility = 'visible';
-      recacheProgress.textContent = '0 / 74';
 
       cacheStatus.style.display = 'block';
       cacheStatus.style.background = 'red';
@@ -507,22 +556,11 @@ fetch('./service-worker.js', {
       return;
     }
 
-    if (event.data.type === 'CACHE_PROGRESS') {
-      recacheProgress.style.visibility = 'visible';
-      recacheProgress.textContent = `${event.data.current} / ${event.data.total}`;
-      return;
-    }
-
     if (event.data.type === 'CACHE_UPDATED') {
-      recacheButtonText.classList.remove('reCaching');
-      recacheButtonText.textContent = 'Request reCaching';
+      recacheButton.classList.remove('reCaching');
       recacheButton.disabled = false;
       stopCacheElapsed();
       showCacheGreen();
-
-      const totalMB = event.data.totalBytes / (1024 * 1024);
-      recacheProgress.style.visibility = 'visible';
-      recacheProgress.textContent = `${event.data.total} / ${event.data.total}　：${totalMB.toFixed(1)}MB`;
 
       alert(
         '吹矢Timer_PWA が更新されました\n' +
