@@ -852,7 +852,7 @@
        ======================================== -->
 
   <button class="button" id="backButton">
-    戻　る》
+    戻　る
   </button>
 
 
@@ -2351,6 +2351,18 @@ function startSourceLongTap(source) {
 function cancelSourceLongTap() {
   clearTimeout(sourceLongTapTimer);
   sourceLongTapTimer = null;
+}
+
+/* ========================================
+   Ver.02r iPhone / Android 音楽再生元表示
+   AndroidではGitHub / Local / Externalを表示。
+   Android以外では選択UIを表示せず、GitHubをDefaultのまま使用する。
+   ======================================== */
+const isAndroidDevice = /Android/i.test(navigator.userAgent);
+
+if (!isAndroidDevice) {
+  musicSourceSelector.style.display = 'none';
+  musicSourceHint.style.display = 'none';
 }
 
 const sourceLabels =
