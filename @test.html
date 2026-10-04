@@ -2354,15 +2354,17 @@ function cancelSourceLongTap() {
 }
 
 /* ========================================
-   Ver.02r iPhone / Android 音楽再生元表示
-   AndroidではGitHub / Local / Externalを表示。
-   Android以外では選択UIを表示せず、GitHubをDefaultのまま使用する。
+   Ver.02s iPhone 音楽再生元 / DB初期化表示
+   iPhoneでは音楽再生元選択UIとDB初期化釦を表示しない。
+   Android / PCでは従来どおり表示する。
+   GitHubは内部的にDefaultのまま使用する。
    ======================================== */
-const isAndroidDevice = /Android/i.test(navigator.userAgent);
+const isIPhoneDevice = /iPhone/i.test(navigator.userAgent);
 
-if (!isAndroidDevice) {
+if (isIPhoneDevice) {
   musicSourceSelector.style.display = 'none';
   musicSourceHint.style.display = 'none';
+  document.getElementById('indexedDBResetButton').style.display = 'none';
 }
 
 const sourceLabels =
