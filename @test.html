@@ -718,8 +718,26 @@
 
 
 
-  /* ===== Ver.11.1a：縦逆さま自動補正（壁紙も180°回転） ===== */
-  body.upsideDown {
+  /* ===== 縦逆さま表示：画面全体ではなく画面サイズのUI領域を回転 ===== */
+  #orientationRoot {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: none;
+    transform-origin: center center;
+    background: transparent;
+  }
+
+  body.upsideDown #orientationRoot {
+    transform: rotate(180deg);
+  }
+
+  /* 壁紙はUIスクロールから独立したまま、同じ180°だけ回転 */
+  body.upsideDown #wallpaperLayerA,
+  body.upsideDown #wallpaperLayerB {
     transform: rotate(180deg);
     transform-origin: center center;
   }
@@ -735,6 +753,8 @@
 <body>
 <div id="wallpaperLayerA"></div>
 <div id="wallpaperLayerB"></div>
+
+<div id="orientationRoot">
 
 <!-- 全画面壁紙モード：再生元・フォルダー・曲番号 -->
 <div id="fullWallpaperMusicLabel"></div>
@@ -2471,6 +2491,8 @@ musicSourceSelector.addEventListener(
     if (nextSource === 'github') {
       clearActiveLocalMusicState();
       saveCurrentMusic();
+      /* GitHubへ戻した場合は、選曲に必要な曲一覧を再検出する。 */
+      startMusicDetection();
       return;
     }
 
@@ -3205,6 +3227,23 @@ function saveCurrentMusic() {
 
 
 /* ========================================
+   GitHub初曲再生直後のフリック準備
+   ======================================== */
+
+let musicDetectionPromise = null;
+
+async function waitForSwipeMusicReady() {
+  if (musicSource === 'github' && !musicReady) {
+    startMusicDetection();
+    if (musicDetectionPromise) {
+      await musicDetectionPromise;
+    }
+  }
+  return musicReady && musicFilesFound.size > 0;
+}
+
+
+/* ========================================
    音楽左右フリック
    有効範囲：音楽ボタンより上の既存領域全体
              ＋戻るボタン下方の固定エリア
@@ -3241,8 +3280,13 @@ async function musicSwipeEnd(event) {
 
   swipeTracking = false;
 
-  const dx = event.clientX - swipeStartX;
+  let dx = event.clientX - swipeStartX;
   const dy = event.clientY - swipeStartY;
+
+  /* 逆さま表示中は、画面上の左右スワイプ方向を反転して選曲する */
+  if (document.body.classList.contains('upsideDown')) {
+    dx = -dx;
+  }
 
   /* 左右移動が小さい／上下移動が大きい場合は無視 */
   if (
@@ -3252,8 +3296,8 @@ async function musicSwipeEnd(event) {
     return;
   }
 
-  /* MP3検出完了前は曲送りを行わない */
-  if (!musicReady || musicFilesFound.size === 0) {
+  /* GitHubは初曲再生直後でも、検出完了を待ってから曲送りする */
+  if (!await waitForSwipeMusicReady()) {
     return;
   }
 
@@ -3412,7 +3456,7 @@ document.addEventListener('touchstart', function(event) {
   }
 
   if (musicMode === 'none' || !music.src) return;
-  if (!musicReady || musicFilesFound.size === 0) return;
+  if (musicSource !== 'github' && (!musicReady || musicFilesFound.size === 0)) return;
   if (musicMenu.contains(event.target) || musicButton.contains(event.target)) return;
 
   const touch = event.touches[0];
@@ -3443,11 +3487,16 @@ document.addEventListener('touchend', async function(event) {
   topTouchTracking = false;
 
   const touch = event.changedTouches[0];
-  const dx = touch.clientX - topTouchStartX;
+  let dx = touch.clientX - topTouchStartX;
   const dy = touch.clientY - topTouchStartY;
 
+  /* 逆さま表示中は、画面上の左右フリック方向を反転する。 */
+  if (document.body.classList.contains('upsideDown')) {
+    dx = -dx;
+  }
+
   if (Math.abs(dx) < swipeMinX || Math.abs(dy) > swipeMaxY) return;
-  if (!musicReady || musicFilesFound.size === 0) return;
+  if (!await waitForSwipeMusicReady()) return;
 
   const available = Array.from(musicFilesFound).sort((a, b) => a - b);
   if (available.length <= 1) return;
@@ -3528,7 +3577,7 @@ document.addEventListener('touchstart', function(event) {
   if (document.body.classList.contains('fullWallpaperMode')) return;
 
   if (musicMode === 'none' || !music.src) return;
-  if (!musicReady || musicFilesFound.size === 0) return;
+  if (musicSource !== 'github' && (!musicReady || musicFilesFound.size === 0)) return;
   if (!event.touches || event.touches.length === 0) return;
 
   const touch = event.touches[0];
@@ -3574,11 +3623,16 @@ document.addEventListener('touchend', async function(event) {
   if (!event.changedTouches || event.changedTouches.length === 0) return;
 
   const touch = event.changedTouches[0];
-  const dx = touch.clientX - bottomTouchStartX;
+  let dx = touch.clientX - bottomTouchStartX;
   const dy = touch.clientY - bottomTouchStartY;
 
+  /* 逆さま表示中は、画面上の左右フリック方向を反転する。 */
+  if (document.body.classList.contains('upsideDown')) {
+    dx = -dx;
+  }
+
   if (Math.abs(dx) < swipeMinX || Math.abs(dy) > swipeMaxY) return;
-  if (!musicReady || musicFilesFound.size === 0) return;
+  if (!await waitForSwipeMusicReady()) return;
 
   const available = Array.from(musicFilesFound).sort((a, b) => a - b);
   if (available.length <= 1) return;
@@ -4527,18 +4581,20 @@ let musicDetectionGeneration = 0;
 
 function startMusicDetection() {
 
-  if (musicSource !== 'github') return;
-  if (musicDetectionStarted) return;
+  if (musicSource !== 'github') return Promise.resolve(false);
+  if (musicDetectionStarted) {
+    return musicDetectionPromise || Promise.resolve(musicReady);
+  }
   musicDetectionStarted = true;
 
   const generation = ++musicDetectionGeneration;
   const detectionSource = musicSource;
 
-  detectMusicCount()
+  musicDetectionPromise = detectMusicCount()
     .then(function() {
       /* 古いGitHub検出処理の結果は破棄する */
-      if (generation !== musicDetectionGeneration) return;
-      if (musicSource !== detectionSource) return;
+      if (generation !== musicDetectionGeneration) return false;
+      if (musicSource !== detectionSource) return false;
 
       createMusicMenu();
       musicReady = true;
@@ -4549,10 +4605,11 @@ function startMusicDetection() {
       ) {
         showInitialButton();
       }
+      return true;
     })
     .catch(function(error) {
-      if (generation !== musicDetectionGeneration) return;
-      if (musicSource !== detectionSource) return;
+      if (generation !== musicDetectionGeneration) return false;
+      if (musicSource !== detectionSource) return false;
 
       console.log(
         '音楽ファイル検出中にエラーが発生しました:',
@@ -4561,7 +4618,13 @@ function startMusicDetection() {
 
       musicReady = true;
       createMusicMenu();
+      return false;
+    })
+    .finally(function() {
+      musicDetectionPromise = null;
     });
+
+  return musicDetectionPromise;
 }
 
 async function initializeMusic() {
@@ -5307,21 +5370,23 @@ function beginAddressBarScrollOut() {
   }
 }
 
+const orientationRoot = document.getElementById('orientationRoot');
+
 function finishAddressBarScrollOut() {
   if (addressBarClampTimer !== null) {
     clearTimeout(addressBarClampTimer);
   }
   addressBarClampTimer = setTimeout(function() {
     addressBarClampEnabled = true;
-    if (window.scrollY > 1) {
-      window.scrollTo(0, 1);
+    if (orientationRoot && orientationRoot.scrollTop > 1) {
+      orientationRoot.scrollTop = 1;
     }
   }, 300);
 }
 
 function limitAddressBarScroll() {
-  if (addressBarClampEnabled && window.scrollY > 1) {
-    window.scrollTo(0, 1);
+  if (addressBarClampEnabled && orientationRoot && orientationRoot.scrollTop > 1) {
+    orientationRoot.scrollTop = 1;
   }
 }
 
@@ -5336,7 +5401,7 @@ if (addressBarSpacer) {
   addressBarSpacer.addEventListener('pointercancel', finishAddressBarScrollOut);
 }
 
-window.addEventListener('scroll', limitAddressBarScroll, { passive: true });
+if (orientationRoot) orientationRoot.addEventListener('scroll', limitAddressBarScroll, { passive: true });
 
 window.addEventListener('resize', function() {
   addressBarClampEnabled = false;
@@ -5345,13 +5410,13 @@ window.addEventListener('resize', function() {
 window.addEventListener('orientationchange', function() {
   addressBarClampEnabled = false;
   setTimeout(function() {
-    if (window.scrollY > 1) window.scrollTo(0, 1);
+    if (orientationRoot && orientationRoot.scrollTop > 1) orientationRoot.scrollTop = 1;
   }, 500);
 });
 
 window.addEventListener('load', function() {
   addressBarClampEnabled = false;
-  window.scrollTo(0, 0);
+  if (orientationRoot) orientationRoot.scrollTop = 0;
 });
 
 window.addEventListener('resize', syncMusicHintWidth);
@@ -5361,11 +5426,7 @@ syncMusicHintWidth();
 
 
 /* ===== Ver.11.1a：縦逆さま自動補正（Android / iPhone対応） ===== */
-/*
-   正立／逆さまの切替は「直立状態から±30°以内」を確認ゾーンとする。
-   30°を超えている途中の姿勢（平置きを含む）では状態を変更しない。
-   左右スワイプによる選曲処理には手を加えない。
-*/
+/* Official-Portrait Ver.11.1a の姿勢判定ロジックを使用 */
 let orientationSensorStarted = false;
 const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 let orientationState = 'upright';
@@ -5376,11 +5437,9 @@ const ORIENTATION_ZONE_DEG = 30;
 
 async function startOrientationSensor() {
   if (orientationSensorStarted) return;
+  if (typeof DeviceMotionEvent === 'undefined') return;
 
-  if (
-    typeof DeviceMotionEvent !== 'undefined' &&
-    typeof DeviceMotionEvent.requestPermission === 'function'
-  ) {
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {
     try {
       const permission = await DeviceMotionEvent.requestPermission();
       if (permission !== 'granted') return;
@@ -5397,26 +5456,23 @@ async function startOrientationSensor() {
 function handleOrientationMotion(event) {
   const acc = event.accelerationIncludingGravity;
   if (!acc) return;
-
   const x = acc.x || 0;
   const y = acc.y || 0;
   const z = acc.z || 0;
-
-  // 縦方向の判定。横向き・平置き付近では状態を変更しない。
   const isPortrait = Math.abs(y) > Math.abs(x);
+
   if (!isPortrait) {
     orientationCandidate = null;
     orientationCandidateSince = 0;
     return;
   }
 
-  // iPhone/iPadではY方向の判定を反転する。
   const orientationY = isIOSDevice ? -y : y;
   const absY = Math.abs(orientationY);
   const absZ = Math.abs(z);
   const tiltFromVertical = Math.atan2(absZ, absY) * 180 / Math.PI;
-
   let targetState = null;
+
   if (orientationY > 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG) {
     targetState = 'upright';
   } else if (orientationY < 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG) {
@@ -5449,31 +5505,23 @@ function handleOrientationMotion(event) {
     orientationCandidateSince = 0;
     document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
 
-    // 既存のスクロール／選曲処理は変更せず、反転時の表示位置のみ調整。
     requestAnimationFrame(() => {
-      if (orientationState === 'upsideDown') {
-        const maxScroll = Math.max(
-          document.documentElement.scrollHeight - window.innerHeight,
-          document.body.scrollHeight - window.innerHeight,
-          0
-        );
-        window.scrollTo(0, maxScroll);
-        document.documentElement.scrollTop = maxScroll;
-        document.body.scrollTop = maxScroll;
-      } else {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-      }
+      if (!orientationRoot) return;
+      /* 画面回転時にスクロール位置を最下端へ移動させない。 */
+      orientationRoot.scrollTop = 0;
     });
   }
 }
 
-// このページには起動用の南京錠ボタンがないため、最初のユーザー操作で開始。
-// iOSのセンサー許可要求もユーザー操作中に行う。
-document.addEventListener('pointerdown', function startOrientationOnFirstPointer() {
+// Android等、許可要求のない環境ではページ読込時に開始する。
+// iPhone/iPadはセキュリティ仕様上、最初のユーザー操作で許可を取得する。
+if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
   startOrientationSensor();
-}, { once: true });
+} else {
+  document.addEventListener('pointerdown', function startOrientationOnFirstPointer() {
+    startOrientationSensor();
+  }, { once: true, passive: true });
+}
 
 window.addEventListener('resize', () => {
   if (window.innerWidth > window.innerHeight) {
@@ -5485,5 +5533,6 @@ window.addEventListener('resize', () => {
 
 </script>
 
+</div><!-- /#orientationRoot -->
 </body>
 </html>
