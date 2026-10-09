@@ -716,6 +716,14 @@
     visibility: visible;
   }
 
+
+
+  /* ===== Ver.11.1a：縦逆さま自動補正（壁紙も180°回転） ===== */
+  body.upsideDown {
+    transform: rotate(180deg);
+    transform-origin: center center;
+  }
+
 </style>
 </head>
 
@@ -5349,6 +5357,131 @@ window.addEventListener('load', function() {
 window.addEventListener('resize', syncMusicHintWidth);
 window.addEventListener('orientationchange', syncMusicHintWidth);
 syncMusicHintWidth();
+
+
+
+/* ===== Ver.11.1a：縦逆さま自動補正（Android / iPhone対応） ===== */
+/*
+   正立／逆さまの切替は「直立状態から±30°以内」を確認ゾーンとする。
+   30°を超えている途中の姿勢（平置きを含む）では状態を変更しない。
+   左右スワイプによる選曲処理には手を加えない。
+*/
+let orientationSensorStarted = false;
+const isIOSDevice = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+let orientationState = 'upright';
+let orientationCandidate = null;
+let orientationCandidateSince = 0;
+const ORIENTATION_CONFIRM_MS = 350;
+const ORIENTATION_ZONE_DEG = 30;
+
+async function startOrientationSensor() {
+  if (orientationSensorStarted) return;
+
+  if (
+    typeof DeviceMotionEvent !== 'undefined' &&
+    typeof DeviceMotionEvent.requestPermission === 'function'
+  ) {
+    try {
+      const permission = await DeviceMotionEvent.requestPermission();
+      if (permission !== 'granted') return;
+    } catch (e) {
+      console.warn('DeviceMotion permission error', e);
+      return;
+    }
+  }
+
+  window.addEventListener('devicemotion', handleOrientationMotion, true);
+  orientationSensorStarted = true;
+}
+
+function handleOrientationMotion(event) {
+  const acc = event.accelerationIncludingGravity;
+  if (!acc) return;
+
+  const x = acc.x || 0;
+  const y = acc.y || 0;
+  const z = acc.z || 0;
+
+  // 縦方向の判定。横向き・平置き付近では状態を変更しない。
+  const isPortrait = Math.abs(y) > Math.abs(x);
+  if (!isPortrait) {
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    return;
+  }
+
+  // iPhone/iPadではY方向の判定を反転する。
+  const orientationY = isIOSDevice ? -y : y;
+  const absY = Math.abs(orientationY);
+  const absZ = Math.abs(z);
+  const tiltFromVertical = Math.atan2(absZ, absY) * 180 / Math.PI;
+
+  let targetState = null;
+  if (orientationY > 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG) {
+    targetState = 'upright';
+  } else if (orientationY < 0 && tiltFromVertical <= ORIENTATION_ZONE_DEG) {
+    targetState = 'upsideDown';
+  }
+
+  if (targetState === null) {
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
+    return;
+  }
+
+  if (targetState === orientationState) {
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
+    return;
+  }
+
+  if (orientationCandidate !== targetState) {
+    orientationCandidate = targetState;
+    orientationCandidateSince = performance.now();
+    return;
+  }
+
+  if (performance.now() - orientationCandidateSince >= ORIENTATION_CONFIRM_MS) {
+    orientationState = targetState;
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    document.body.classList.toggle('upsideDown', orientationState === 'upsideDown');
+
+    // 既存のスクロール／選曲処理は変更せず、反転時の表示位置のみ調整。
+    requestAnimationFrame(() => {
+      if (orientationState === 'upsideDown') {
+        const maxScroll = Math.max(
+          document.documentElement.scrollHeight - window.innerHeight,
+          document.body.scrollHeight - window.innerHeight,
+          0
+        );
+        window.scrollTo(0, maxScroll);
+        document.documentElement.scrollTop = maxScroll;
+        document.body.scrollTop = maxScroll;
+      } else {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
+    });
+  }
+}
+
+// このページには起動用の南京錠ボタンがないため、最初のユーザー操作で開始。
+// iOSのセンサー許可要求もユーザー操作中に行う。
+document.addEventListener('pointerdown', function startOrientationOnFirstPointer() {
+  startOrientationSensor();
+}, { once: true });
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > window.innerHeight) {
+    orientationCandidate = null;
+    orientationCandidateSince = 0;
+    document.body.classList.remove('upsideDown');
+  }
+});
 
 </script>
 
