@@ -5514,13 +5514,13 @@ function handleOrientationMotion(event) {
 }
 
 // Android等、許可要求のない環境ではページ読込時に開始する。
-// iPhone/iPadはセキュリティ仕様上、最初のユーザー操作で許可を取得する。
+// iPhone/iPadはOfficial-Portrait版と同様、ユーザーのclick操作から許可取得を開始する。
 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
   startOrientationSensor();
 } else {
-  document.addEventListener('pointerdown', function startOrientationOnFirstPointer() {
+  document.addEventListener('click', function startOrientationOnFirstClick() {
     startOrientationSensor();
-  }, { once: true, passive: true });
+  }, { once: true });
 }
 
 window.addEventListener('resize', () => {
