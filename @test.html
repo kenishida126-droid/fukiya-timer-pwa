@@ -814,8 +814,8 @@
          ======================================== -->
 
     <button class="button" id="musicButton">
-      癒やしの音楽<br>
-      ♪「OtoLogic」より ♫
+      <span>癒やしの音楽<span style="color: lime;">　▶</span></span>
+      <span>♪「OtoLogic」より ♫</span>
     </button>
 
     <!-- ========================================
@@ -3725,7 +3725,7 @@ function showPausedButton() {
 
   musicButton.innerHTML =
     `${getCurrentMusicDisplayLabel()}<br>
-     <span class="music-play">▶</span>`;
+     <span class="music-play">　▶</span>`;
 
 }
 
@@ -3744,8 +3744,8 @@ function showInitialButton() {
   if (musicSource === 'local') {
 
     musicButton.innerHTML =
-      `My MUSIC再生<br>
-       ♪内部メモリ(Local)より♫`;
+      `<span>My MUSIC再生<span style="color: lime;">　▶</span></span>
+       <span>♪内部メモリ(Local)より♫</span>`;
 
     return;
   }
@@ -3753,16 +3753,16 @@ function showInitialButton() {
   if (musicSource === 'extra') {
 
     musicButton.innerHTML =
-      `My MUSIC再生<br>
-       ♪SDカード(External)より♫`;
+      `<span>My MUSIC再生<span style="color: lime;">　▶</span></span>
+       <span>♪SDカード(External)より♫</span>`;
 
     return;
   }
 
   /* GitHub */
   musicButton.innerHTML =
-    `癒やしの音楽<br>
-     ♪「OtoLogic」より♫`;
+    `<span>癒やしの音楽<span style="color: lime;">　▶</span></span>
+     <span>♪「OtoLogic」より♫</span>`;
 
 }
 
