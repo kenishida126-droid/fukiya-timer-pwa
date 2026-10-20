@@ -1079,15 +1079,36 @@ if(remaining <= 0){
 }
 
 function speakRemaining(sec){
-    if(!("speechSynthesis" in window)) return;
-    const msg = new SpeechSynthesisUtterance(
-    `少し早すぎます、${sec}秒、残ってました。`
+  try{
+    if(!('speechSynthesis' in window)) return;
+
+    speechSynthesis.cancel(); // 念のため
+
+    const msg1 = new SpeechSynthesisUtterance(
+      '少し早すぎます'
     );
-    msg.lang = "ja-JP";
-    msg.rate = 1.0;
-    msg.pitch = 1.0;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(msg);
+    msg1.lang = 'ja-JP';
+    msg1.rate = 1.0;
+    msg1.pitch = 1.0;
+
+    const msg2 = new SpeechSynthesisUtterance(
+      `${sec}秒、残ってました。`
+    );
+    msg2.lang = 'ja-JP';
+    msg2.rate = 1.0;
+    msg2.pitch = 1.0;
+
+    msg1.onend = function(){
+      setTimeout(function(){
+        speechSynthesis.speak(msg2);
+      }, 500); // msg1～msg2間 0.5秒のGAP
+    };
+
+    speechSynthesis.speak(msg1);
+
+  }catch(e){
+    console.warn('speech error', e);
+  }
 }
 
 function handleEarlyEnd(){
@@ -1098,9 +1119,19 @@ function handleEarlyEnd(){
         startTimerTimeout = null;
     }
     if(!started) return;
+
     const remainSec = remaining;
-    if(timer){ clearInterval(timer); timer = null; }
-    if(audioStartTimeout){ clearTimeout( audioStartTimeout ); audioStartTimeout = null; }
+
+    if(timer){
+        clearInterval(timer);
+        timer = null;
+    }
+
+    if(audioStartTimeout){
+        clearTimeout(audioStartTimeout);
+        audioStartTimeout = null;
+    }
+
     if(currentAudioStart){
         try{
             currentAudioStart.pause();
@@ -1108,31 +1139,40 @@ function handleEarlyEnd(){
         }catch(e){}
         currentAudioStart = null;
     }
+
     started = false;
     disableWakeLock();
+
     startBtn.classList.remove(
         "locked"
     );
+
     bounceOn = false;
+
     pulseFired = {
         p305:false,
         p300:false,
         p030:false,
         p010:false
     };
+
     audioEndTandoku.currentTime = 0;
+
     audioEndTandoku.play()
         .catch(()=>{});
+
     audioEndTandoku.addEventListener(
         "ended",
         ()=>{
-            speakRemaining(
-                remainSec
-            );
+            setTimeout(()=>{
+                speakRemaining(remainSec);
+            }, 500); // 「終了」～0.5秒～「少し早すぎます」のGAP
         },
         { once:true }
     );
+
     remaining = 180;
+
     updateBounceButton();
     updateDisplay();
 }
