@@ -5,7 +5,7 @@
    /fukiya-timer-pwa/service-worker.js
    ========================================================= */
 
-const CACHE_NAME = 'fukiya-timer-pwa-20261021-1'; 
+const CACHE_NAME = 'fukiya-timer-pwa-20261021-1';
 
 /* --- install 時に一気にキャッシュする対象 ---
    ※ すべて「/fukiya-timer-pwa/」からの絶対パス */
@@ -52,9 +52,9 @@ const PRECACHE_URLS = [
   '/fukiya-timer-pwa/gemini/30sec.mp3',
   '/fukiya-timer-pwa/gemini/end.mp3',
 
-/* --- @test.html(癒やしのページ版)向けファイル群 ---
-   ※ すべて「/fukiya-timer-pwa/」からの絶対パス 
-      当初「/fukiya-timer/」としてたが無意味と判明  */
+  /* --- @test.html(癒やしのページ版)向けファイル群 ---
+     ※ すべて「/fukiya-timer-pwa/」からの絶対パス
+        当初「/fukiya-timer/」としてたが無意味と判明 */
   '/fukiya-timer-pwa/@test.html',
   '/fukiya-timer-pwa/@music-1.mp3',
   '/fukiya-timer-pwa/@music-2.mp3',
@@ -196,9 +196,11 @@ self.addEventListener('message', event => {
        */
       const cache = await caches.open(CACHE_NAME);
       const totalFiles = PRECACHE_URLS.length;
+      let failedFiles = 0;
 
       for (let i = 0; i < totalFiles; i++) {
         const url = PRECACHE_URLS[i];
+
         try {
           /*
            * HTTP Cacheを使わず、ネットワークから最新ファイルを取得する。
@@ -214,7 +216,9 @@ self.addEventListener('message', event => {
 
           await cache.put(url, response);
           console.log("OK :", url);
+
         } catch (e) {
+          failedFiles++;
           console.error("NG :", url);
           console.error(e);
         }
@@ -224,6 +228,7 @@ self.addEventListener('message', event => {
           includeUncontrolled: true,
           type: 'window'
         });
+
         for (const client of progressClients) {
           client.postMessage({
             type: 'CACHE_PROGRESS',
@@ -234,7 +239,29 @@ self.addEventListener('message', event => {
       }
 
       /*
-       * 新CACHEのCaching完了後、
+       * 1ファイルでも取得に失敗した場合は成功扱いにしない。
+       * 旧CACHEを残し、MENUへ失敗を通知して再試行可能にする。
+       */
+      if (failedFiles > 0) {
+        const failedClients = await self.clients.matchAll({
+          includeUncontrolled: true,
+          type: 'window'
+        });
+
+        for (const client of failedClients) {
+          client.postMessage({
+            type: 'CACHE_FAILED',
+            cacheName: CACHE_NAME,
+            failedFiles: failedFiles,
+            total: totalFiles
+          });
+        }
+
+        return;
+      }
+
+      /*
+       * 全ファイルの取得成功後に、
        * Fukiya Timer PWAの旧CACHEを削除する。
        */
       const keys = await caches.keys();
@@ -251,11 +278,13 @@ self.addEventListener('message', event => {
        * Content-Lengthが無い場合はResponseのbodyサイズを取得する。
        */
       let totalBytes = 0;
+
       for (const url of PRECACHE_URLS) {
         const response = await cache.match(url);
         if (!response) continue;
 
         const contentLength = response.headers.get('content-length');
+
         if (contentLength && /^\d+$/.test(contentLength)) {
           totalBytes += Number(contentLength);
         } else {
@@ -303,6 +332,7 @@ self.addEventListener('fetch', event => {
       fetch(event.request)
         .catch(() => caches.match(event.request))
     );
+
     return;
   }
 
@@ -315,6 +345,7 @@ self.addEventListener('fetch', event => {
         )
       )
     );
+
     return;
   }
 

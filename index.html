@@ -472,8 +472,12 @@ updatePopupOk.addEventListener('click', function() {
 });
 
 let cacheUpdating = false;
+let cacheUpdatePending = false;
 let cacheStartTime = 0;
 let cacheElapsedTimer = null;
+
+/* 最後に正常なreCachingが完了したCACHE_NAMEを保存 */
+const recachedCacheNameKey = 'fukiya-timer-pwa-last-successful-cache-name';
 
 function showCacheGreen() {
   cacheUpdating = false;
@@ -542,6 +546,7 @@ fetch('./service-worker.js', {
     if (!event.data || !cacheStatus) return;
 
     if (event.data.type === 'CACHE_AVAILABLE') {
+      cacheUpdatePending = true;
       cacheUpdating = false;
       cacheStatus.style.display = 'block';
       cacheStatus.style.background = 'yellow';
@@ -570,12 +575,23 @@ fetch('./service-worker.js', {
     if (event.data.type === 'CACHE_STATUS') {
       /*
          CACHE_STATUSは「確認完了」の合図。
-         ただしCACHE_START後は、旧Service Worker等からの
-         CACHE_STATUSで赤点滅を緑に戻してはいけない。
+         CACHE_START後は、旧Service Worker等からの通知で
+         赤点滅を緑に戻さない。
       */
       if (cacheUpdating) return;
 
-      showCacheGreen();
+      const completedCacheName = localStorage.getItem(recachedCacheNameKey);
+      if (!cacheUpdatePending &&
+          event.data.cacheName &&
+          event.data.cacheName === completedCacheName) {
+        showCacheGreen();
+      } else {
+        /* 現在のCACHE_NAMEへのreCachingが未完了 */
+        cacheStatus.style.display = 'block';
+        cacheStatus.style.background = 'yellow';
+        cacheStatus.classList.add('updating');
+        updatePopupOverlay.style.display = 'flex';
+      }
       return;
     }
 
@@ -585,7 +601,36 @@ fetch('./service-worker.js', {
       return;
     }
 
+    if (event.data.type === 'CACHE_FAILED') {
+      cacheUpdatePending = true;
+      cacheUpdating = false;
+      recacheButtonText.classList.remove('reCaching');
+      recacheButtonText.textContent = 'Request reCaching';
+      recacheButton.disabled = false;
+      stopCacheElapsed();
+
+      cacheStatus.style.display = 'block';
+      cacheStatus.style.background = 'yellow';
+      cacheStatus.classList.add('updating');
+      recacheProgress.style.visibility = 'visible';
+      recacheProgress.textContent =
+        `取得失敗：${event.data.failedFiles}件。Wi-Fi環境で再試行してください`;
+
+      alert(
+        '一部ファイルを取得できませんでした。\n' +
+        'CACHE Statusは更新待ちのままです。\n' +
+        '通信環境を確認して、再度 Request reCaching を実行してください。'
+      );
+      return;
+    }
+
     if (event.data.type === 'CACHE_UPDATED') {
+      /* 正常完了したCACHE_NAMEだけを更新済みとして保存 */
+      if (event.data.cacheName) {
+        localStorage.setItem(recachedCacheNameKey, event.data.cacheName);
+      }
+      cacheUpdatePending = false;
+
       recacheButtonText.classList.remove('reCaching');
       recacheButtonText.textContent = 'Request reCaching';
       recacheButton.disabled = false;
