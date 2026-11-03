@@ -9,7 +9,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Official Landscape ver.01 by Ken.Ishida</title>
+<title>Official Landscape ver.01.1 by Ken.Ishida</title>
 
 <style>
 
@@ -534,7 +534,7 @@ body{
         <div id="title">
             <h1>
                 <span id="titleMain">
-                    《 Official Landscape ver.01a 》
+                    《 Official Landscape ver.01.1 》
                 </span>
                 <span id="titleAuthor">
                     ～ by Ken.Ishida ～
@@ -604,7 +604,6 @@ body{
 <script>
 
 /* ===== Ver.01 Step1 ===== */
-const audioWhistleStart = document.getElementById("audioWhistleStart");
 const audio30 = document.getElementById("audio30");
 const audioEnd = document.getElementById("audioEnd");
 const audioEndHaneya = document.getElementById("audioEndHaneya");
@@ -617,6 +616,9 @@ const audioStart3 = document.getElementById("audioStart3");
 const audioStart4 = document.getElementById("audioStart4");
 const audioStart5 = document.getElementById("audioStart5");
 const audioStart6 = document.getElementById("audioStart6");
+const audioWhistleStart = document.getElementById("audioWhistleStart");
+// whistle_start.mp3 個別音量調整（100％＝原音）
+const WHISTLE_START_VOLUME = 0.5;
 
 const startAudios = [
     audioStart0,
@@ -1235,9 +1237,11 @@ startBtn.addEventListener("click", ()=>{
         ){
             return;
         }
+
+        audioWhistleStart.volume = WHISTLE_START_VOLUME;
         audioWhistleStart.currentTime = 0;
-        audioWhistleStart.play()
-            .catch(()=>{});
+        audioWhistleStart.play().catch(()=>{});
+
         if(startTimerTimeout){
                     clearTimeout(
                 startTimerTimeout

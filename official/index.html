@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.11.1a Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.11.2 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -411,7 +411,7 @@ body.upsideDown{
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.11.1a Ken.Ishida≫</h2>
+      <h2>≪ver.11.2 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -573,6 +573,8 @@ const audioEndHaneya = document.getElementById('audioEndHaneya');
 const audioEndTandoku = document.getElementById('audioEndTandoku');
 const audioClean = document.getElementById('audioClean');
 const audioWhistleStart = document.getElementById('audioWhistleStart');
+// whistle_start.mp3 個別音量調整（100％＝原音）
+const WHISTLE_START_VOLUME = 0.5;
 
 const startAudios = [
   document.getElementById('audioStart0'),
@@ -1523,9 +1525,12 @@ startBtn.addEventListener('click', ()=>{
   }
   // 開始ビープ前に押込み維持
   startBtn.classList.add('pressed');
-  // Ver.10.5a
+
+  // Ver.11.2 whistle_start.mp3個別音量調整機能追加で修正
+  audioWhistleStart.volume = WHISTLE_START_VOLUME;
   audioWhistleStart.currentTime = 0;
   audioWhistleStart.play().catch(()=>{});
+
   // 上級テク: 少し遅らせてタイマー開始（ビープ優先）
   if(startTimerTimeout){
     clearTimeout(startTimerTimeout);
