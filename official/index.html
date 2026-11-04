@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>スポーツ吹矢タイマー ≪Ver.11.2 Ken.Ishida≫</title>
+<title>スポーツ吹矢タイマー ≪Ver.12.1 Ken.Ishida≫</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <style>
 :root{
@@ -411,7 +411,7 @@ body.upsideDown{
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.11.2 Ken.Ishida≫</h2>
+      <h2>≪ver.12.0 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -454,6 +454,7 @@ body.upsideDown{
       <span id="wallToggleLabel">Wallpaper: OFF</span>
       <span id="wallNum">-0-</span>
     </div>
+    <input type="file" id="wallUserFile" accept="image/*" style="display:none">
 
     <!-- Metronome row -->
     <div class="toggle-row" id="metroRow">
@@ -534,6 +535,8 @@ let bounceOn = false; // 撥ね矢 initial OFF
 const MAX_WALL = 30;
 let wallpapers = [], currentIndex = 0;
 let wallpaperOn = false; // default if no saved state
+let userWallpaperUrl = null;
+let clockWallpaperTimer = null;
 
 /* metronome */
 let audioCtx = null;
@@ -564,6 +567,8 @@ const resetBtn = document.getElementById("resetBtn");
 const wallToggle = document.getElementById("wallToggle");
 const wallToggleLabel = document.getElementById("wallToggleLabel");
 const wallNumEl = document.getElementById("wallNum");
+const wallRow = document.getElementById("wallRow");
+const wallUserFile = document.getElementById("wallUserFile");
 const metroToggle = document.getElementById("metroToggle");
 const metroToggleLabel = document.getElementById("metroToggleLabel");
 const toneRadios = document.querySelectorAll('input[name="metronomeTone"]');
@@ -1545,65 +1550,224 @@ startBtn.addEventListener('click', ()=>{
 
 resetBtn.addEventListener('click', ()=>{ resetAction(); });
 
-/* wallpaper handling: build list of available wallpaper-N.jpg */
+/* wallpaper handling: wallpaper-1～30 / CLOCK-31 / USER-32 */
 function checkImageExists(src){ return new Promise(resolve=>{ const img = new Image(); img.onload = ()=>resolve(true); img.onerror = ()=>resolve(false); img.src = src; }); }
+
+const WALL_DB_NAME = 'FukiyaTimerWallpaperDB';
+const WALL_DB_STORE = 'wallpapers';
+function openWallpaperDB(){
+  return new Promise((resolve,reject)=>{
+    if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
+    const req = indexedDB.open(WALL_DB_NAME, 1);
+    req.onupgradeneeded = ()=>{
+      const db = req.result;
+      if(!db.objectStoreNames.contains(WALL_DB_STORE)) db.createObjectStore(WALL_DB_STORE);
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function loadUserWallpaper(){
+  try{
+    const db = await openWallpaperDB();
+    const blob = await new Promise((resolve,reject)=>{
+      const req = db.transaction(WALL_DB_STORE,'readonly').objectStore(WALL_DB_STORE).get('user');
+      req.onsuccess = ()=>resolve(req.result || null);
+      req.onerror = ()=>reject(req.error);
+    });
+    db.close();
+    if(blob){
+      userWallpaperUrl = URL.createObjectURL(blob);
+      return { type:'user', number:32, src:userWallpaperUrl, filename:blob.name || 'wallpaper-32.jpg' };
+    }
+  }catch(e){ console.warn('USER wallpaper load failed:',e); }
+  return null;
+}
+async function saveUserWallpaper(file){
+  const db = await openWallpaperDB();
+  await new Promise((resolve,reject)=>{
+    const req = db.transaction(WALL_DB_STORE,'readwrite').objectStore(WALL_DB_STORE).put(file,'user');
+    req.onsuccess = ()=>resolve();
+    req.onerror = ()=>reject(req.error);
+  });
+  db.close();
+}
 
 async function buildWallpaperList(){
   wallpapers = [];
   for(let i=1;i<=MAX_WALL;i++){
     const src = `wallpaper-${i}.jpg`;
-    // small await to check existence
-    try{
-      const ok = await checkImageExists(src);
-      if(ok) wallpapers.push(src);
-    }catch(e){}
+    try{ const ok = await checkImageExists(src); if(ok) wallpapers.push({type:'image',number:i,src}); }catch(e){}
   }
-  // restore saved index if valid
+  wallpapers.push({type:'clock',number:31});
+  const userWall = await loadUserWallpaper();
+  if(userWall) wallpapers.push(userWall);
   const savedIndex = parseInt(localStorage.getItem('lastWallpaperIndex'));
   currentIndex = (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < wallpapers.length) ? savedIndex : 0;
 }
 
-/* setWallpaperByIndex */
+function clockSvgData(){
+  const now = new Date();
+  const sec = now.getSeconds(), min = now.getMinutes(), hour = now.getHours()%12;
+  const sa = sec*6-90, ma = (min+sec/60)*6-90, ha = (hour+min/60)*30-90;
+  const rad = d => d*Math.PI/180;
+  const point = (angle,r) => ({x:500+Math.cos(rad(angle))*r,y:500+Math.sin(rad(angle))*r});
+
+  // 文字盤：緑色の数字と60分目盛り
+  let ticks='';
+  for(let i=0;i<60;i++){
+    const a=i*6-90;
+    const r1=(i%5===0)?405:425, r2=455;
+    const p1=point(a,r1), p2=point(a,r2);
+    ticks += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#00ff00" stroke-width="${i%5===0?12:5}" stroke-linecap="round"/>`;
+  }
+  let numbers='';
+  for(let i=1;i<=12;i++){
+    const p=point(i*30-90,350);
+    numbers += `<text x="${p.x}" y="${p.y}" fill="#00ff00" font-size="70" font-family="Arial,sans-serif" text-anchor="middle" dominant-baseline="central">${i}</text>`;
+  }
+  const hand=(angle,r,width,color)=>{
+    const p=point(angle,r);
+    return `<line x1="500" y1="500" x2="${p.x}" y2="${p.y}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
+  };
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
+    <circle cx="500" cy="500" r="490" fill="none"/>
+    ${ticks}${numbers}
+    ${hand(ha,260,28,'#00ff00')}
+    ${hand(ma,390,18,'#00ff00')}
+    ${hand(sa,420,8,'#ff2020')}
+    <circle cx="500" cy="500" r="23" fill="#00ff00"/>
+  </svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+function stopClockWallpaper(){
+  if(clockWallpaperTimer){ clearInterval(clockWallpaperTimer); clockWallpaperTimer=null; }
+  const clockEl=document.getElementById('clockWallpaperDisplay');
+  if(clockEl) clockEl.remove();
+}
+function showClockWallpaper(){
+  const item=wallpapers[currentIndex];
+  if(!item || item.type!=='clock' || !wallpaperOn) return;
+
+  // CLOCK選択時は背景をBlackBackにし、文字盤は画面上方に独立表示する。
+  document.body.style.backgroundImage='none';
+  document.body.style.backgroundColor='#000';
+
+  let clockEl=document.getElementById('clockWallpaperDisplay');
+  if(!clockEl){
+    clockEl=document.createElement('div');
+    clockEl.id='clockWallpaperDisplay';
+    clockEl.style.position='fixed';
+    clockEl.style.top='14vh';
+    clockEl.style.left='50%';
+    clockEl.style.transform='translateX(-50%)';
+    clockEl.style.width='min(75vw, 75vh)';
+    clockEl.style.height='min(75vw, 75vh)';
+    clockEl.style.backgroundRepeat='no-repeat';
+    clockEl.style.backgroundPosition='center';
+    clockEl.style.backgroundSize='contain';
+    clockEl.style.pointerEvents='none';
+    clockEl.style.zIndex='1';
+    document.body.appendChild(clockEl);
+  }
+  clockEl.style.backgroundImage=`url("${clockSvgData()}")`;
+  updateWallNum();
+}
+
 function setWallpaperByIndex(idx){
   if(wallpapers.length===0){ updateWallNum(); return; }
-  currentIndex = ((idx % wallpapers.length) + wallpapers.length) % wallpapers.length;
-  if(!wallpaperOn){
-    updateWallNum();
-    try{ localStorage.setItem('lastWallpaperIndex', String(currentIndex)); }catch(e){}
+  currentIndex=((idx%wallpapers.length)+wallpapers.length)%wallpapers.length;
+  if(!wallpaperOn){ updateWallNum(); try{localStorage.setItem('lastWallpaperIndex',String(currentIndex));}catch(e){} return; }
+  stopClockWallpaper();
+  const item=wallpapers[currentIndex];
+  if(item.type==='clock'){
+    showClockWallpaper();
+    clockWallpaperTimer=setInterval(showClockWallpaper,1000);
+    try{localStorage.setItem('lastWallpaperIndex',String(currentIndex));}catch(e){}
     return;
   }
-  const src = wallpapers[currentIndex];
-  const img = new Image();
-  img.onload = ()=>{ document.body.style.backgroundImage = `url('${src}'), linear-gradient(to bottom,var(--bg1),var(--bg2))`; document.body.style.backgroundColor = ''; updateWallNum(); try{ localStorage.setItem('lastWallpaperIndex', String(currentIndex)); }catch(e){} };
-  img.src = src;
+  const img=new Image();
+  img.onload=()=>{
+    if(wallpapers[currentIndex]!==item || !wallpaperOn) return;
+    document.body.style.backgroundImage=`url("${item.src}"), linear-gradient(to bottom,var(--bg1),var(--bg2))`;
+    document.body.style.backgroundSize='cover';
+    document.body.style.backgroundRepeat='';
+    document.body.style.backgroundPosition='center';
+    document.body.style.backgroundColor=''; updateWallNum();
+    try{localStorage.setItem('lastWallpaperIndex',String(currentIndex));}catch(e){}
+  };
+  img.src=item.src;
 }
 
-function updateWallNum() {
-  if (!wallNumEl) return;
-
-  if (!wallpaperOn) {        // Wallpaper OFF の場合は空白
-    wallNumEl.textContent = '';
-    wallNumEl.style.display = 'none';
-    return;
-  }
-
-  const filename = wallpapers[currentIndex];
-  const match = filename ? filename.match(/wallpaper-(\d+)\.jpg/i) : null;
-  const num = match ? match[1] : "0";   // ファイル無 → 0
-  wallNumEl.textContent = `-${num}-`;
-  wallNumEl.style.display = '';         // 表示
+function updateWallNum(){
+  if(!wallNumEl) return;
+  if(!wallpaperOn){ wallNumEl.textContent=''; wallNumEl.style.display='none'; return; }
+  const item=wallpapers[currentIndex];
+  const num=item ? item.number : 0;
+  wallNumEl.textContent=`-${num}-`;
+  wallNumEl.style.display='';
 }
 
-/* apply wallpaper state (use currentIndex) */
 function applyWallpaperState(){
-  if(!wallpaperOn || wallpapers.length === 0){
-    document.body.style.backgroundImage = 'none';
-    document.body.style.backgroundColor = '#000';
+  if(!wallpaperOn || wallpapers.length===0){
+    stopClockWallpaper();
+    document.body.style.backgroundImage='none';
+    document.body.style.backgroundColor='#000';
     updateWallNum();
-  } else {
-    document.body.style.backgroundColor = '';
+  }else{
+    document.body.style.backgroundColor='';
     setWallpaperByIndex(currentIndex);
   }
+}
+
+/* Wallpaper行の長押しでUSER画像を登録 */
+let wallLongPressStart=0;
+let wallLongPressDone=false;
+if(wallRow && wallUserFile){
+  wallRow.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    wallLongPressStart=Date.now(); wallLongPressDone=false;
+  });
+  wallRow.addEventListener('pointerup',e=>{
+    if(!wallLongPressStart) return;
+    const elapsed=Date.now()-wallLongPressStart; wallLongPressStart=0;
+    if(elapsed>=650){
+      wallLongPressDone=true;
+      e.preventDefault(); e.stopPropagation();
+      wallUserFile.click();
+      setTimeout(()=>{ wallLongPressDone=false; },500);
+    }
+  });
+  wallRow.addEventListener('pointercancel',()=>{wallLongPressStart=0;});
+  wallRow.addEventListener('click',e=>{
+    if(wallLongPressDone){ e.preventDefault(); e.stopPropagation(); wallLongPressDone=false; }
+  },true);
+}
+if(wallUserFile){
+  wallUserFile.addEventListener('change',async()=>{
+    const file=wallUserFile.files && wallUserFile.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){ alert('画像ファイルを選択してください。'); wallUserFile.value=''; return; }
+    try{
+      await saveUserWallpaper(file);
+      if(userWallpaperUrl) URL.revokeObjectURL(userWallpaperUrl);
+      userWallpaperUrl=URL.createObjectURL(file);
+      wallpapers=wallpapers.filter(item=>item.type!=='user');
+      wallpapers.push({type:'user',number:32,src:userWallpaperUrl,filename:file.name});
+      currentIndex=wallpapers.length-1;
+      wallpaperOn=true;
+      wallToggle.checked=true;
+      wallToggleLabel.textContent='Wallpaper: ON';
+      try{
+        localStorage.setItem('wallpaperOn','true');
+        localStorage.setItem('lastWallpaperIndex',String(currentIndex));
+      }catch(e){}
+      applyWallpaperState();
+    }catch(err){
+      console.error('USER wallpaper save failed:',err);
+      alert('USER画像の保存に失敗しました。');
+    }finally{ wallUserFile.value=''; }
+  });
 }
 
 /* wallpaper swipe */
@@ -2023,13 +2187,7 @@ mainTitle.addEventListener('click', async (ev)=>{
   if(wallToggleElem){
     wallToggleElem.checked = wallpaperOn;
     wallToggleLabel.textContent = wallpaperOn ? 'Wallpaper: ON' : 'Wallpaper: OFF';
-    if(wallpaperOn) applyWallpaperState(); else { document.body.style.backgroundImage = 'none'; document.body.style.backgroundColor = '#000'; updateWallNum(); }
-    wallToggleElem.addEventListener('change', async ()=>{
-      wallpaperOn = wallToggleElem.checked;
-      wallToggleLabel.textContent = wallpaperOn ? 'Wallpaper: ON' : 'Wallpaper: OFF';
-      try{ localStorage.setItem('wallpaperOn', String(wallpaperOn)); }catch(e){}
-      if(wallpaperOn) applyWallpaperState(); else { document.body.style.backgroundImage='none'; document.body.style.backgroundColor='#000'; wallNumEl.textContent='-0-'; }
-    });
+    applyWallpaperState();
   }
 
   // Metronome: initial OFF per spec (do not restore previous ON/OFF)
