@@ -1617,13 +1617,13 @@ function clockSvgData(){
   let ticks='';
   for(let i=0;i<60;i++){
     const a=i*6-90;
-    const r1=(i%5===0)?405:425, r2=455;
+    const r1=(i%5===0)?430:440, r2=455;
     const p1=point(a,r1), p2=point(a,r2);
     ticks += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#00ff00" stroke-width="${i%5===0?12:5}" stroke-linecap="round"/>`;
   }
   let numbers='';
   for(let i=1;i<=12;i++){
-    const p=point(i*30-90,350);
+    const p=point(i*30-90,375);
     numbers += `<text x="${p.x}" y="${p.y}" fill="#00ff00" font-size="70" font-family="Arial,sans-serif" text-anchor="middle" dominant-baseline="central">${i}</text>`;
   }
   const hand=(angle,r,width,color)=>{
@@ -1720,28 +1720,13 @@ function applyWallpaperState(){
   }
 }
 
-/* Wallpaper行の長押しでUSER画像を登録 */
-let wallLongPressStart=0;
-let wallLongPressDone=false;
-if(wallRow && wallUserFile){
-  wallRow.addEventListener('pointerdown',e=>{
-    if(e.pointerType==='mouse' && e.button!==0) return;
-    wallLongPressStart=Date.now(); wallLongPressDone=false;
+/* Wallpaper文字列のShort-tapでUSER画像を選択（iPhone/Android共通） */
+if(wallToggleLabel && wallUserFile){
+  wallToggleLabel.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    wallUserFile.click();
   });
-  wallRow.addEventListener('pointerup',e=>{
-    if(!wallLongPressStart) return;
-    const elapsed=Date.now()-wallLongPressStart; wallLongPressStart=0;
-    if(elapsed>=650){
-      wallLongPressDone=true;
-      e.preventDefault(); e.stopPropagation();
-      wallUserFile.click();
-      setTimeout(()=>{ wallLongPressDone=false; },500);
-    }
-  });
-  wallRow.addEventListener('pointercancel',()=>{wallLongPressStart=0;});
-  wallRow.addEventListener('click',e=>{
-    if(wallLongPressDone){ e.preventDefault(); e.stopPropagation(); wallLongPressDone=false; }
-  },true);
 }
 if(wallUserFile){
   wallUserFile.addEventListener('change',async()=>{
