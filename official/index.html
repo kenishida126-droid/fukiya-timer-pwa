@@ -1630,13 +1630,16 @@ function clockSvgData(){
     const p=point(angle,r);
     return `<line x1="500" y1="500" x2="${p.x}" y2="${p.y}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
   };
+  // 秒針：先端側420、中心後方に65の尻尾を追加
+  const secTail=point(sa,-130), secTip=point(sa,420);
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
     <circle cx="500" cy="500" r="490" fill="none"/>
     ${ticks}${numbers}
     ${hand(ha,260,28,'#00ff00')}
     ${hand(ma,390,18,'#00ff00')}
-    ${hand(sa,420,8,'#ff2020')}
     <circle cx="500" cy="500" r="23" fill="#00ff00"/>
+    <line x1="${secTail.x}" y1="${secTail.y}" x2="${secTip.x}" y2="${secTip.y}" stroke="#ff2020" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="500" cy="500" r="10" fill="#ff2020"/>
   </svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
