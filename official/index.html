@@ -1624,14 +1624,14 @@ function clockSvgData(){
   let numbers='';
   for(let i=1;i<=12;i++){
     const p=point(i*30-90,375);
-    numbers += `<text x="${p.x}" y="${p.y}" fill="#00ff00" font-size="70" font-family="Arial,sans-serif" text-anchor="middle" dominant-baseline="central">${i}</text>`;
+    numbers += `<text x="${p.x}" y="${p.y}" fill="#00ff00" font-size="80" font-family="Arial,sans-serif" text-anchor="middle" dominant-baseline="central">${i}</text>`;
   }
   const hand=(angle,r,width,color)=>{
     const p=point(angle,r);
     return `<line x1="500" y1="500" x2="${p.x}" y2="${p.y}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`;
   };
   // 秒針：先端側420、中心後方に65の尻尾を追加
-  const secTail=point(sa,-130), secTip=point(sa,420);
+  const secTail=point(sa,-140), secTip=point(sa,420);
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">
     <circle cx="500" cy="500" r="490" fill="none"/>
     ${ticks}${numbers}
@@ -1639,7 +1639,7 @@ function clockSvgData(){
     ${hand(ma,390,18,'#00ff00')}
     <circle cx="500" cy="500" r="23" fill="#00ff00"/>
     <line x1="${secTail.x}" y1="${secTail.y}" x2="${secTip.x}" y2="${secTip.y}" stroke="#ff2020" stroke-width="8" stroke-linecap="round"/>
-    <circle cx="500" cy="500" r="10" fill="#ff2020"/>
+    <circle cx="500" cy="500" r="15" fill="#ff2020"/>
   </svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
@@ -1661,11 +1661,11 @@ function showClockWallpaper(){
     clockEl=document.createElement('div');
     clockEl.id='clockWallpaperDisplay';
     clockEl.style.position='fixed';
-    clockEl.style.top='14vh';
+    clockEl.style.top='16vh';
     clockEl.style.left='50%';
     clockEl.style.transform='translateX(-50%)';
-    clockEl.style.width='min(75vw, 75vh)';
-    clockEl.style.height='min(75vw, 75vh)';
+    clockEl.style.width='min(70vw, 70vh)';
+    clockEl.style.height='min(70vw, 70vh)';
     clockEl.style.backgroundRepeat='no-repeat';
     clockEl.style.backgroundPosition='center';
     clockEl.style.backgroundSize='contain';
