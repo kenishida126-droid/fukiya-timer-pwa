@@ -9,7 +9,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Official Landscape ver.01.1 by Ken.Ishida</title>
+<title>Official Landscape ver.02.0 by Ken.Ishida</title>
 
 <style>
 
@@ -64,14 +64,34 @@ body{
 ===================== */
 
 #leftPanel{
-
+    position:relative;
     display:flex;
-
     flex-direction:column;
-
     align-items:center;
-
     overflow:hidden;
+    isolation:isolate;
+    background-color:#000;
+    background-image:none;
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+    touch-action:pan-y;
+}
+
+#wallpaperClockLayer{
+    position:absolute;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    background-position:calc(50% - 15vw) 50%;
+    background-repeat:no-repeat;
+    background-size:min(70vw,70vh) min(70vw,70vh);
+}
+
+#title,
+#timerArea{
+    position:relative;
+    z-index:1;
 }
 
 /* =====================
@@ -84,8 +104,20 @@ body{
     display:flex;
     justify-content:center;
     align-items:center;
+    position:relative;
 }
 
+#wallpaperNum{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:#ffe45c;font-size:clamp(14px,1.8vw,28px);font-weight:900;text-shadow:0 1px 3px #000;z-index:2;}
+#wallpaperLibrary{display:none;position:absolute;inset:0;z-index:5;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;background:rgba(0,0,0,.86);}
+#wallpaperLibrary.open{display:flex;}
+#wallpaperLibraryPanel{width:min(92%,560px);max-height:100%;overflow-y:auto;padding:12px;box-sizing:border-box;border:2px solid #ffe45c;border-radius:12px;background:rgba(12,12,12,.97);}
+#wallpaperLibraryHeading{margin:0 0 12px;color:#ffe45c;text-align:center;font-size:clamp(20px,2.4vw,32px);}
+.wallpaperLibraryRow{display:flex;align-items:stretch;gap:8px;margin:7px 0;}
+.wallpaperLibraryItem{flex:1;min-width:0;width:100%;min-height:52px;margin:0;padding:10px 12px;border:1px solid rgba(255,255,255,.45);border-radius:6px;color:#fff;background:#222;text-align:left;font-size:clamp(20px,2.1vw,30px);line-height:1.2;overflow-wrap:anywhere;cursor:pointer;}
+.wallpaperLibraryItem:active{background:#484848;}
+.wallpaperDeleteBtn{min-width:82px;padding:8px 10px;border:1px solid #ffaaaa;border-radius:6px;color:#fff;background:#7a2020;font-size:clamp(18px,1.8vw,24px);font-weight:bold;cursor:pointer;}
+.wallpaperDeleteBtn:active{background:#a33;}
+#wallpaperLibraryClose{width:100%;min-height:48px;margin-top:10px;padding:8px;border:1px solid #aaa;border-radius:6px;color:#fff;background:#444;font-size:clamp(18px,1.8vw,24px);cursor:pointer;}
 #title h1{
     margin:0;
     color:white;
@@ -530,16 +562,26 @@ body{
 
     <div id="leftPanel">
 
+        <div id="wallpaperClockLayer" aria-hidden="true"></div>
+        <input id="wallpaperFiles" type="file" accept="image/*,.jpg,.jpeg,.gif" style="display:none">
+        <div id="wallpaperLibrary" role="dialog" aria-modal="true" aria-label="壁紙庫">
+            <div id="wallpaperLibraryPanel">
+                <h2 id="wallpaperLibraryHeading">壁紙庫</h2>
+                <div id="wallpaperLibraryItems"></div>
+                <button id="wallpaperLibraryClose" type="button">閉じる</button>
+            </div>
+        </div>
 
         <div id="title">
             <h1>
                 <span id="titleMain">
-                    《 Official Landscape ver.01.1 》
+                    《 Official Landscape ver.02.0 》
                 </span>
                 <span id="titleAuthor">
                     ～ by Ken.Ishida ～
                 </span>
             </h1>
+            <div id="wallpaperNum" aria-live="polite"></div>
 
 </div>
 
@@ -1216,11 +1258,333 @@ function resetTimer(){
     updateDisplay();
 }
 
+/* 壁紙：Portrait版のアナログ時計とIndexedDB保存をLandscapeの左パネルへ適用 */
+const leftPanel = document.getElementById('leftPanel');
+const clockWallpaperLayer = document.getElementById('wallpaperClockLayer');
+const wallpaperFiles = document.getElementById('wallpaperFiles');
+const wallpaperLibrary = document.getElementById('wallpaperLibrary');
+const wallpaperLibraryItems = document.getElementById('wallpaperLibraryItems');
+const wallpaperLibraryClose = document.getElementById('wallpaperLibraryClose');
+const wallpaperNumEl = document.getElementById('wallpaperNum');
+const wallpaperDbName = 'FukiyaTimerWallpaperDB';
+const wallpaperDbStore = 'wallpapers';
+const wallpaperSlots = [2,3,4,5,6,7,8,9,10];
+let wallpapers = [{type:'clock', number:1}];
+let wallpaperIndex = 0;
+let wallpaperOn = false;
+let clockWallpaperTimer = null;
+let wallpaperTapTimer = null;
+let suppressTimerClickUntil = 0;
+let wallpaperPointerStart = null;
+let pendingWallpaperSlot = null;
+const wallpaperUrlBySlot = {};
+
+function wallpaperInteractionAllowed(){
+    return !started && !timer && !startTimerTimeout && remaining === 180;
+}
+
+function openWallpaperDb(){
+    return new Promise((resolve,reject)=>{
+        if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
+        const request = indexedDB.open(wallpaperDbName,1);
+        request.onupgradeneeded = ()=>{
+            const db = request.result;
+            if(!db.objectStoreNames.contains(wallpaperDbStore)) db.createObjectStore(wallpaperDbStore);
+        };
+        request.onsuccess = ()=>resolve(request.result);
+        request.onerror = ()=>reject(request.error);
+    });
+}
+
+async function getStoredWallpaper(slot){
+    const db = await openWallpaperDb();
+    const result = await new Promise((resolve,reject)=>{
+        const request = db.transaction(wallpaperDbStore,'readonly').objectStore(wallpaperDbStore).get(`landscape-${slot}`);
+        request.onsuccess = ()=>resolve(request.result || null);
+        request.onerror = ()=>reject(request.error);
+    });
+    db.close();
+    return result;
+}
+
+async function storeWallpaper(slot,file,filename=file.name || ''){
+    const db = await openWallpaperDb();
+    await new Promise((resolve,reject)=>{
+        const record={blob:file,filename:filename,type:file.type || ''};
+        const request = db.transaction(wallpaperDbStore,'readwrite').objectStore(wallpaperDbStore).put(record,`landscape-${slot}`);
+        request.onsuccess = ()=>resolve();
+        request.onerror = ()=>reject(request.error);
+    });
+    db.close();
+}
+
+async function deleteStoredWallpaper(slot){
+    const db = await openWallpaperDb();
+    await new Promise((resolve,reject)=>{
+        const request=db.transaction(wallpaperDbStore,'readwrite').objectStore(wallpaperDbStore).delete(`landscape-${slot}`);
+        request.onsuccess=()=>resolve();
+        request.onerror=()=>reject(request.error);
+    });
+    db.close();
+}
+
+function addWallpaperSlot(slot,blob,filename=''){
+    if(wallpaperUrlBySlot[slot]) URL.revokeObjectURL(wallpaperUrlBySlot[slot]);
+    const url = URL.createObjectURL(blob);
+    wallpaperUrlBySlot[slot] = url;
+    wallpapers = wallpapers.filter(item=>item.number !== slot);
+    wallpapers.push({type:'image',number:slot,src:url,filename:filename || blob.name || 'ファイル名不明（再選択で更新）'});
+    wallpapers.sort((a,b)=>a.number-b.number);
+}
+async function loadLandscapeWallpapers(){
+    for(const slot of wallpaperSlots){
+        try{
+            const stored = await getStoredWallpaper(slot);
+            if(stored){
+                const isRecord = stored.blob instanceof Blob;
+                const blob = isRecord ? stored.blob : stored;
+                const filename = isRecord ? stored.filename : (stored.name || '');
+                addWallpaperSlot(slot,blob,filename);
+                if(!isRecord && filename) storeWallpaper(slot,blob,filename).catch(error=>console.warn('Wallpaper name migration failed:',error));
+            }
+        }catch(error){ console.warn('Wallpaper load failed:',error); }
+    }
+    try{
+        const savedIndex = Number(localStorage.getItem('landscapeWallpaperIndex'));
+        if(Number.isInteger(savedIndex) && savedIndex >= 0 && savedIndex < wallpapers.length) wallpaperIndex = savedIndex;
+        wallpaperOn = localStorage.getItem('landscapeWallpaperOn') === 'true';
+    }catch(error){}
+    applyLandscapeWallpaper();
+}
+
+function clockWallpaperSvg(){
+    const now = new Date();
+    const sec=now.getSeconds(), min=now.getMinutes(), hour=now.getHours()%12;
+    const angle=d=>d*Math.PI/180;
+    const point=(a,r)=>({x:500+Math.cos(angle(a))*r,y:500+Math.sin(angle(a))*r});
+    let ticks='';
+    for(let i=0;i<60;i++){
+        const a=i*6-90, r1=i%5===0?430:440, r2=455;
+        const p1=point(a,r1),p2=point(a,r2);
+        ticks+=`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#00ff00" stroke-width="${i%5===0?12:5}" stroke-linecap="round"/>`;
+    }
+    let numbers='';
+    for(let i=1;i<=12;i++){
+        const p=point(i*30-90,375);
+        numbers+=`<text x="${p.x}" y="${p.y}" fill="#00ff00" font-size="80" font-family="Arial,sans-serif" text-anchor="middle" dominant-baseline="central">${i}</text>`;
+    }
+    const hand=(a,r,w,color)=>{const p=point(a,r);return `<line x1="500" y1="500" x2="${p.x}" y2="${p.y}" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;};
+    const secondAngle=sec*6-90, minuteAngle=(min+sec/60)*6-90, hourAngle=(hour+min/60)*30-90;
+    const tail=point(secondAngle,-140),tip=point(secondAngle,420);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><circle cx="500" cy="500" r="490" fill="none"/>${ticks}${numbers}${hand(hourAngle,260,28,'#00ff00')}${hand(minuteAngle,390,18,'#00ff00')}<circle cx="500" cy="500" r="23" fill="#00ff00"/><line x1="${tail.x}" y1="${tail.y}" x2="${tip.x}" y2="${tip.y}" stroke="#ff2020" stroke-width="8" stroke-linecap="round"/><circle cx="500" cy="500" r="15" fill="#ff2020"/></svg>`;
+    return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+function stopLandscapeClock(){
+    if(clockWallpaperTimer){ clearInterval(clockWallpaperTimer); clockWallpaperTimer=null; }
+    clockWallpaperLayer.style.backgroundImage='none';
+}
+
+function drawLandscapeClock(){
+    if(!wallpaperOn || wallpapers[wallpaperIndex]?.type !== 'clock') return;
+    clockWallpaperLayer.style.backgroundImage=`url("${clockWallpaperSvg()}")`;
+}
+
+function updateWallpaperNumber(){
+    const item=wallpapers[wallpaperIndex];
+    wallpaperNumEl.textContent=wallpaperOn && item ? `-${String(item.number).padStart(2,'0')}-` : '';
+}
+
+function applyLandscapeWallpaper(){
+    stopLandscapeClock();
+    leftPanel.style.backgroundImage='none';
+    updateWallpaperNumber();
+    if(!wallpaperOn){
+        leftPanel.style.backgroundColor='#000';
+        return;
+    }
+    const item=wallpapers[wallpaperIndex];
+    if(!item) return;
+    if(item.type==='clock'){
+        leftPanel.style.backgroundColor='#000';
+        drawLandscapeClock();
+        clockWallpaperTimer=setInterval(drawLandscapeClock,1000);
+    }else{
+        leftPanel.style.backgroundColor='';
+        leftPanel.style.backgroundImage=`url("${item.src}")`;
+    }
+}
+
+function refreshWallpaperLibrary(){
+    while(wallpaperLibraryItems.firstChild) wallpaperLibraryItems.removeChild(wallpaperLibraryItems.firstChild);
+    const clockButton=document.createElement('button');
+    clockButton.type='button';
+    clockButton.className='wallpaperLibraryItem';
+    clockButton.textContent='1: アナログ時計';
+    clockButton.addEventListener('click',()=>{
+        wallpaperIndex=0;
+        wallpaperOn=true;
+        try{
+            localStorage.setItem('landscapeWallpaperOn','true');
+            localStorage.setItem('landscapeWallpaperIndex','0');
+        }catch(error){}
+        wallpaperLibrary.classList.remove('open');
+        applyLandscapeWallpaper();
+    });
+    wallpaperLibraryItems.appendChild(clockButton);
+
+    for(const slot of wallpaperSlots){
+        const item=wallpapers.find(entry=>entry.number===slot);
+        const row=document.createElement('div');
+        row.className='wallpaperLibraryRow';
+        const chooseButton=document.createElement('button');
+        chooseButton.type='button';
+        chooseButton.className='wallpaperLibraryItem';
+        chooseButton.textContent=`${slot}: ${item ? item.filename : '-none-'}`;
+        chooseButton.addEventListener('click',()=>{
+            pendingWallpaperSlot=slot;
+            wallpaperLibrary.classList.remove('open');
+            wallpaperFiles.click();
+        });
+        row.appendChild(chooseButton);
+        if(item){
+            const deleteButton=document.createElement('button');
+            deleteButton.type='button';
+            deleteButton.className='wallpaperDeleteBtn';
+            deleteButton.textContent='削除';
+            deleteButton.setAttribute('aria-label',`${slot}番の壁紙を削除`);
+            deleteButton.addEventListener('click',()=>deleteWallpaperSlot(slot));
+            row.appendChild(deleteButton);
+        }
+        wallpaperLibraryItems.appendChild(row);
+    }
+}
+
+async function deleteWallpaperSlot(slot){
+    const selectedNumber=wallpapers[wallpaperIndex]?.number || 1;
+    try{
+        await deleteStoredWallpaper(slot);
+        if(wallpaperUrlBySlot[slot]){
+            URL.revokeObjectURL(wallpaperUrlBySlot[slot]);
+            delete wallpaperUrlBySlot[slot];
+        }
+        wallpapers=wallpapers.filter(item=>item.number!==slot);
+        if(selectedNumber===slot){
+            wallpaperIndex=0;
+        }else{
+            const retainedIndex=wallpapers.findIndex(item=>item.number===selectedNumber);
+            wallpaperIndex=retainedIndex>=0?retainedIndex:0;
+        }
+        try{localStorage.setItem('landscapeWallpaperIndex',String(wallpaperIndex));}catch(error){}
+        applyLandscapeWallpaper();
+        refreshWallpaperLibrary();
+    }catch(error){
+        console.error('Wallpaper delete failed:',error);
+        alert('壁紙を削除できませんでした。');
+    }
+}
+function showWallpaperLibrary(){
+    refreshWallpaperLibrary();
+    wallpaperLibrary.classList.add('open');
+}
+
+wallpaperLibraryClose.addEventListener('click',()=>wallpaperLibrary.classList.remove('open'));
+wallpaperLibrary.addEventListener('click',event=>{
+    if(event.target===wallpaperLibrary) wallpaperLibrary.classList.remove('open');
+});
+function setLandscapeWallpaperIndex(index){
+    if(!wallpapers.length) return;
+    wallpaperIndex=(index+wallpapers.length)%wallpapers.length;
+    try{ localStorage.setItem('landscapeWallpaperIndex',String(wallpaperIndex)); }catch(error){}
+    applyLandscapeWallpaper();
+}
+
+async function addSelectedWallpapers(){
+    const file=wallpaperFiles.files && wallpaperFiles.files[0];
+    wallpaperFiles.value='';
+    const slot=pendingWallpaperSlot;
+    pendingWallpaperSlot=null;
+    if(!file || !slot) return;
+    if(!file.type.startsWith('image/') && !/\.(jpe?g|gif)$/i.test(file.name)){
+        alert('画像ファイルを選択してください。');
+        return;
+    }
+    try{
+        await storeWallpaper(slot,file,file.name);
+        addWallpaperSlot(slot,file,file.name);
+        wallpaperIndex=wallpapers.findIndex(item=>item.number===slot);
+        wallpaperOn=true;
+        try{
+            localStorage.setItem('landscapeWallpaperOn','true');
+            localStorage.setItem('landscapeWallpaperIndex',String(wallpaperIndex));
+        }catch(error){}
+        applyLandscapeWallpaper();
+    }catch(error){
+        console.error('Wallpaper save failed:',error);
+        alert('壁紙画像の保存に失敗しました。');
+    }
+}
+wallpaperFiles.addEventListener('change',addSelectedWallpapers);
+
+leftPanel.addEventListener('click',event=>{
+    if(event.target.closest('#wallpaperLibrary') || event.target===wallpaperFiles) return;
+    if(Date.now()<suppressTimerClickUntil) return;
+    if(event.target.closest('#time') && started){
+        if(wallpaperTapTimer){ clearTimeout(wallpaperTapTimer); wallpaperTapTimer=null; }
+        suppressTimerClickUntil=Date.now()+700;
+        handleEarlyEnd();
+        return;
+    }
+
+    if(event.detail>=2){
+        if(wallpaperTapTimer){ clearTimeout(wallpaperTapTimer); wallpaperTapTimer=null; }
+        if(wallpaperInteractionAllowed()) showWallpaperLibrary();
+        return;
+    }
+    if(wallpaperTapTimer){
+        clearTimeout(wallpaperTapTimer);
+        wallpaperTapTimer=null;
+        if(wallpaperInteractionAllowed()) showWallpaperLibrary();
+        return;
+    }
+    wallpaperTapTimer=setTimeout(()=>{
+        wallpaperTapTimer=null;
+        if(!wallpaperInteractionAllowed()) return;
+        wallpaperOn=!wallpaperOn;
+        try{ localStorage.setItem('landscapeWallpaperOn',String(wallpaperOn)); }catch(error){}
+        applyLandscapeWallpaper();
+    },600);
+});
+
+leftPanel.addEventListener('dblclick',event=>{
+    if(event.target.closest('#wallpaperLibrary') || event.target===wallpaperFiles) return;
+    if(Date.now()<suppressTimerClickUntil) return;
+    if(wallpaperInteractionAllowed()){
+        if(wallpaperTapTimer){ clearTimeout(wallpaperTapTimer); wallpaperTapTimer=null; }
+        showWallpaperLibrary();
+    }
+});
+leftPanel.addEventListener('pointerdown',event=>{
+    if(!event.isPrimary) return;
+    wallpaperPointerStart={x:event.clientX,y:event.clientY};
+});
+leftPanel.addEventListener('pointerup',event=>{
+    if(!wallpaperPointerStart) return;
+    const dx=event.clientX-wallpaperPointerStart.x;
+    const dy=event.clientY-wallpaperPointerStart.y;
+    wallpaperPointerStart=null;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){
+        suppressTimerClickUntil=Date.now()+450;
+        if(wallpaperInteractionAllowed() && wallpaperOn){
+            setLandscapeWallpaperIndex(wallpaperIndex+(dx<0?1:-1));
+        }
+    }
+});
+leftPanel.addEventListener('pointercancel',()=>{ wallpaperPointerStart=null; });
+
+loadLandscapeWallpapers();
+
 /* ボタン */
-timeDiv.addEventListener(
-    "click",
-    handleEarlyEnd
-);
 
 startBtn.addEventListener("click", ()=>{
         if(
