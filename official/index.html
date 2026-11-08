@@ -411,7 +411,7 @@ body.upsideDown{
   <div id="content">
     <div id="title">
       <h1 id="mainTitle">スポーツ吹矢タイマー</h1>
-      <h2>≪ver.12.0 Ken.Ishida≫</h2>
+      <h2>≪ver.12.1 Ken.Ishida≫</h2>
     </div>
 
     <!-- Round selection (clickable label cycles) -->
@@ -864,7 +864,22 @@ window.addEventListener('resize', ()=>{
   }
 });
 
+function requestPortraitFullscreen(){
+  // 全画面が解除された後、画面をタップすると再び全画面に戻す。
+  try{
+    if(!document.fullscreenElement && document.documentElement.requestFullscreen){
+      document.documentElement.requestFullscreen().catch(()=>{});
+    }
+  }catch(e){}
+}
+
+document.addEventListener('pointerdown',()=>{
+  if(startupUnlocked) requestPortraitFullscreen();
+},true);
+
 async function unlockStartup(){
+  // 最初のタップ中に全画面を要求する（ユーザー操作の直後に呼び出す必要がある）。
+  requestPortraitFullscreen();
   // Ver.10.5b：起動時のユーザー操作を利用してセンサーを開始
   startOrientationSensor();
 
