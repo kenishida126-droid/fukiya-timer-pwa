@@ -9,7 +9,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Official Landscape ver.02.0 by Ken.Ishida</title>
+<title>Official Landscape ver.01.1 by Ken.Ishida</title>
 
 <style>
 
@@ -78,15 +78,57 @@ body{
     touch-action:pan-y;
 }
 
-#wallpaperClockLayer{
+/* アナログ時計の位置・サイズ調整はこの設定だけを変更 */
+#clockWallpaperUnit{
+    --clock-offset-x:-17vw;
+    --clock-offset-y:0vh;
+    --clock-diameter:min(70vw,70vh);
+    --clock-hit-size:clamp(52px,10vh,100px);
     position:absolute;
     inset:0;
+    pointer-events:none;
+}
+
+#wallpaperClockLayer{
+    position:absolute;
+    left:calc(50% + var(--clock-offset-x));
+    top:calc(50% + var(--clock-offset-y));
+    transform:translate(-50%,-50%);
+    width:var(--clock-diameter);
+    height:var(--clock-diameter);
     z-index:0;
     pointer-events:none;
-    background-position:calc(50% - 15vw) 50%;
+    background-position:center;
     background-repeat:no-repeat;
-    background-size:min(70vw,70vh) min(70vw,70vh);
+    background-size:contain;
 }
+
+#clockLongPressTarget{
+    display:none;
+    position:absolute;
+    left:calc(50% + var(--clock-offset-x));
+    top:calc(50% + var(--clock-offset-y));
+    transform:translate(-50%,-50%);
+    z-index:4;
+    width:var(--clock-hit-size);
+    height:var(--clock-hit-size);
+    padding:0;
+    border:0;
+    border-radius:50%;
+    outline:none;
+    background:transparent;
+    color:transparent;
+    touch-action:none;
+    pointer-events:auto;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+    user-select:none;
+}
+#leftPanel.clockForeground #wallpaperClockLayer{
+    z-index:3;
+}
+
+
 
 #title,
 #timerArea{
@@ -562,7 +604,10 @@ body{
 
     <div id="leftPanel">
 
-        <div id="wallpaperClockLayer" aria-hidden="true"></div>
+        <div id="clockWallpaperUnit">
+            <div id="wallpaperClockLayer" aria-hidden="true"></div>
+            <button id="clockLongPressTarget" type="button" aria-label="アナログ時計を前後に切替" tabindex="-1"></button>
+        </div>
         <input id="wallpaperFiles" type="file" accept="image/*,.jpg,.jpeg,.gif" style="display:none">
         <div id="wallpaperLibrary" role="dialog" aria-modal="true" aria-label="壁紙庫">
             <div id="wallpaperLibraryPanel">
@@ -575,7 +620,7 @@ body{
         <div id="title">
             <h1>
                 <span id="titleMain">
-                    《 Official Landscape ver.02.0 》
+                    《 Official Landscape ver.01.1 》
                 </span>
                 <span id="titleAuthor">
                     ～ by Ken.Ishida ～
@@ -1261,6 +1306,7 @@ function resetTimer(){
 /* 壁紙：Portrait版のアナログ時計とIndexedDB保存をLandscapeの左パネルへ適用 */
 const leftPanel = document.getElementById('leftPanel');
 const clockWallpaperLayer = document.getElementById('wallpaperClockLayer');
+const clockLongPressTarget = document.getElementById('clockLongPressTarget');
 const wallpaperFiles = document.getElementById('wallpaperFiles');
 const wallpaperLibrary = document.getElementById('wallpaperLibrary');
 const wallpaperLibraryItems = document.getElementById('wallpaperLibraryItems');
@@ -1273,6 +1319,10 @@ let wallpapers = [{type:'clock', number:1}];
 let wallpaperIndex = 0;
 let wallpaperOn = false;
 let clockWallpaperTimer = null;
+let clockLongPressTimer = null;
+let clockLongPressStart = null;
+let clockLongPressConsumed = false;
+let clockForeground = false;
 let wallpaperTapTimer = null;
 let suppressTimerClickUntil = 0;
 let wallpaperPointerStart = null;
@@ -1395,8 +1445,20 @@ function updateWallpaperNumber(){
     wallpaperNumEl.textContent=wallpaperOn && item ? `-${String(item.number).padStart(2,'0')}-` : '';
 }
 
+function setClockForeground(enabled){
+    clockForeground=enabled;
+    leftPanel.classList.toggle('clockForeground',enabled);
+}
+
+function syncClockLongPressTarget(){
+    const activeClock=wallpaperOn && wallpapers[wallpaperIndex]?.type==='clock';
+    clockLongPressTarget.style.display=activeClock?'block':'none';
+    if(!activeClock) setClockForeground(false);
+}
+
 function applyLandscapeWallpaper(){
     stopLandscapeClock();
+    syncClockLongPressTarget();
     leftPanel.style.backgroundImage='none';
     updateWallpaperNumber();
     if(!wallpaperOn){
@@ -1415,6 +1477,64 @@ function applyLandscapeWallpaper(){
     }
 }
 
+function cancelClockLongPress(){
+    if(clockLongPressTimer){ clearTimeout(clockLongPressTimer); clockLongPressTimer=null; }
+    clockLongPressStart=null;
+}
+
+function beginClockLongPress(x,y){
+    if(wallpapers[wallpaperIndex]?.type!=='clock' || !wallpaperOn) return;
+    if(clockLongPressTimer) clearTimeout(clockLongPressTimer);
+    clockLongPressConsumed=false;
+    clockLongPressStart={x,y};
+    clockLongPressTimer=setTimeout(()=>{
+        clockLongPressTimer=null;
+        clockLongPressConsumed=true;
+        setClockForeground(!clockForeground);
+    },550);
+}
+
+function moveClockLongPress(x,y){
+    if(!clockLongPressStart) return;
+    if(Math.hypot(x-clockLongPressStart.x,y-clockLongPressStart.y)>18) cancelClockLongPress();
+}
+
+clockLongPressTarget.addEventListener('click',event=>{
+    if(clockLongPressConsumed){
+        event.preventDefault();
+        event.stopPropagation();
+        clockLongPressConsumed=false;
+        return;
+    }
+    if(started){
+        event.preventDefault();
+        event.stopPropagation();
+        suppressTimerClickUntil=Date.now()+700;
+        handleEarlyEnd();
+    }
+});
+clockLongPressTarget.addEventListener('contextmenu',event=>event.preventDefault());
+
+if(window.PointerEvent){
+    clockLongPressTarget.addEventListener('pointerdown',event=>{
+        if(!event.isPrimary || (event.pointerType==='mouse' && event.button!==0)) return;
+        beginClockLongPress(event.clientX,event.clientY);
+    });
+    clockLongPressTarget.addEventListener('pointermove',event=>moveClockLongPress(event.clientX,event.clientY));
+    clockLongPressTarget.addEventListener('pointerup',cancelClockLongPress);
+    clockLongPressTarget.addEventListener('pointercancel',cancelClockLongPress);
+}else{
+    clockLongPressTarget.addEventListener('touchstart',event=>{
+        const touch=event.touches[0];
+        if(touch) beginClockLongPress(touch.clientX,touch.clientY);
+    },{passive:true});
+    clockLongPressTarget.addEventListener('touchmove',event=>{
+        const touch=event.touches[0];
+        if(touch) moveClockLongPress(touch.clientX,touch.clientY);
+    },{passive:true});
+    clockLongPressTarget.addEventListener('touchend',cancelClockLongPress,{passive:true});
+    clockLongPressTarget.addEventListener('touchcancel',cancelClockLongPress,{passive:true});
+}
 function refreshWallpaperLibrary(){
     while(wallpaperLibraryItems.firstChild) wallpaperLibraryItems.removeChild(wallpaperLibraryItems.firstChild);
     const clockButton=document.createElement('button');
