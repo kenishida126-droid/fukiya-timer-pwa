@@ -9,7 +9,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Official Landscape ver.02.1 by Ken.Ishida</title>
+<title>Official Landscape ver.02.0 by Ken.Ishida</title>
 
 <style>
 
@@ -624,7 +624,7 @@ body{
         <div id="title">
             <h1>
                 <span id="titleMain">
-                    《 Official Landscape ver.02.1 》
+                    《 Official Landscape ver.02.0 》
                 </span>
                 <span id="titleAuthor">
                     ～ by Ken.Ishida ～
@@ -2178,22 +2178,7 @@ const startupBtn =
         "startupBtn"
     );
 
-function requestLandscapeFullscreen(){
-  // 全画面が解除された後、画面をタップすると再び全画面に戻す。
-  try{
-    if(!document.fullscreenElement && document.documentElement.requestFullscreen){
-      document.documentElement.requestFullscreen().catch(()=>{});
-    }
-  }catch(e){}
-}
-
-document.addEventListener('pointerdown',()=>{
-  if(startupUnlocked) requestLandscapeFullscreen();
-},true);
-
 async function unlockStartup(){
-  // 最初のタップ中に全画面を要求する（ユーザー操作の直後に呼び出す必要がある）。
-  requestLandscapeFullscreen();
   document.getElementById(
     "tapMeText"
   ).style.display = "none";
