@@ -9,21 +9,24 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Official Landscape ver.02.0 by Ken.Ishida</title>
+<title>Official Landscape ver.02.1 by Ken.Ishida</title>
 
 <style>
 
 html{
-    min-height:101vh;
+    min-height:calc(100vh + 600px);
+    overflow-y:auto;
+    overflow-x:hidden;
 }
 
 body{
     margin:0;
+    min-height:calc(100vh + 600px);
     background:#000;
     color:#fff;
 
-    overflow-y:auto;
-    overflow-x:hidden;
+    /* 画面全体をページ本体のスクロールとしてChromeへ伝える */
+    overflow:visible;
 
 /* -----  テキスト選択を禁止  ----- */
     -webkit-user-select:none;
@@ -38,6 +41,9 @@ body{
 
 #main{
 
+    /* ページをスクロールしてもタイマー画面は上端に留める */
+    position:sticky;
+    top:0;
     width:100vw;
     height:92vh;
 
@@ -624,7 +630,7 @@ body{
         <div id="title">
             <h1>
                 <span id="titleMain">
-                    《 Official Landscape ver.02.0 》
+                    《 Official Landscape ver.02.1 》
                 </span>
                 <span id="titleAuthor">
                     ～ by Ken.Ishida ～
