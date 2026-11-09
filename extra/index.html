@@ -20,7 +20,8 @@ html, body {
 }
 
 html {
-  min-height: 100vh;
+  /* 固定した画面の下に、ブラウザバーを隠すためのページスクロール量を確保 */
+  min-height: calc(100vh + 600px);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -31,8 +32,10 @@ body {
 }
 
 #main-wrapper {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  z-index: 1;
   min-height: 101vh;
   width: 100%;
 }
