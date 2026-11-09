@@ -7,15 +7,34 @@
 
 <style>
 html, body {
-  margin: 0;
-  padding: 0;
-  background: #000;
+  background-color: #000;
   color: #fff;
   text-align: center;
+  margin: 0;
+  padding: 0;
+  width: 100%;
   -webkit-user-select: none;
   user-select: none;
-/* ===== tap highlight除去 ===== */
-   -webkit-tap-highlight-color: transparent;
+  /* ===== tap highlight除去 ===== */
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+body {
+  min-height: 100vh;
+  overflow: visible;
+}
+
+#main-wrapper {
+  position: sticky;
+  top: 0;
+  min-height: 101vh;
+  width: 100%;
 }
 
 /* ===== タイトル ===== */
@@ -99,13 +118,14 @@ html, body {
 }
 /* Extra：Android Chrome用 アドレスバー退避余白 */
 .extra-bottom-spacer {
-  height: 120px;   /* 60～150pxで微調整 */
+  height: 600px;
 }
 </style>
 </head>
 
 <body>
 
+<div id="main-wrapper">
 <div id="title">
   <div id="title-main">Arrows timer - ver.02a</div>
   <div id="title-sign">《 by Ken.Ishida 》</div>
@@ -120,6 +140,7 @@ html, body {
     <div class="arrow"></div>
   </div>
   <div id="label">Shot Pace – Arrows</div>
+</div>
 </div>
 
 <script>
