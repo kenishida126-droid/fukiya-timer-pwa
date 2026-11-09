@@ -274,11 +274,16 @@ body {
 }
 
 @media (display-mode: standalone) {
-  /* ===== Ver.11.1a：PWAでも上下ドラッグによるスクロールを許可 ===== */
-  html, body {
+  /* PWAでもスクロールはページ全体で受け、画面内容の固定を保つ */
+  html {
+    height: auto !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    height: 100%;
+    touch-action: pan-y;
+  }
+  body {
+    height: auto !important;
+    overflow: visible !important;
     touch-action: pan-y;
   }
 }
