@@ -10,18 +10,27 @@
             color: #fff;
             margin: 0;
             padding: 0;
-            height: 100%;
             width: 100%;
-            overflow-x: hidden;
-            overflow-y: scroll;
-            scroll-snap-type: y mandatory;
             -webkit-user-select: none;
             -webkit-touch-callout: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
         }
 
+        html {
+            min-height: calc(100vh + 600px);
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        body {
+            min-height: calc(100vh + 600px);
+            overflow: visible;
+        }
+
         #main-wrapper {
+            position: sticky;
+            top: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -49,7 +58,7 @@
             text-align: center;
             font-variant-numeric: tabular-nums;
             font-weight: 900;
-            font-size: 38vw;
+            font-size: 35vw;
             line-height: 0.75;
             transform: scale(1.22, 1.5);
             transform-origin: center;
