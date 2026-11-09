@@ -38,6 +38,16 @@
             width: 100%;
         }
 
+        /* インストール済みPWAでは、画面全体を表示領域の上端に固定する */
+        @media (display-mode: standalone) {
+            #main-wrapper {
+                position: fixed;
+                top: 0;
+                left: 0;
+                z-index: 1;
+            }
+        }
+
         #snap-point {
             scroll-snap-align: start;
             height: 2vh;
