@@ -94,14 +94,42 @@
         
         .outline { fill: none; stroke: #fff; stroke-width: 1; }
 
-        #mic-button { cursor: pointer; }
-        #mic-circle { fill: #000; stroke: #fff; stroke-width: 2; }
-        .mic-active #mic-icon-group { fill: #f00 !important; stroke: #f00 !important; filter: drop-shadow(0 0 5px #f00); }
-        .mic-waiting #mic-icon-group { animation: mic-blink 1.2s infinite ease-in-out; }
-        @keyframes mic-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
-        #mic-icon-group { fill: #fff; stroke: #fff; }
+        #analog-clock { pointer-events: none; }
+        .clock-tick { stroke: #fff; stroke-width: 1.25; stroke-linecap: round; opacity: 0.78; }
+        .clock-tick.major { stroke-width: 1.8; opacity: 0.9; }
+        .clock-help { fill: gold; stroke: #000; stroke-width: 1.4; paint-order: stroke; font-size: 9.6px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+        .clock-numeral { fill: #fff; stroke: #000; stroke-width: 2; paint-order: stroke; font-size: 9px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; }
+        .clock-hand-outline { stroke: #000; stroke-linecap: round; opacity: 0.55; }
+        .clock-hand { stroke: #fff; stroke-linecap: round; opacity: 0.82; }
+.clock-hand-second-outline { stroke: #000; stroke-linecap: round; opacity: 0.55; }
+.clock-hand-second { stroke: red; stroke-linecap: round; opacity: 0.92; }
 
-        .blink { animation: sharp-blink-op 0.7s steps(1) infinite; }
+        #mic-button {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+            width: 28%; height: 28%; padding: 0; border: 0.92vw solid #fff; border-radius: 50%;
+            background: #000; color: #fff; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1; -webkit-tap-highlight-color: transparent;
+        }
+        #mic-button.mic-active { color: #f00; }
+        #mic-button.mic-waiting .microphone { animation: none; opacity: 1; }
+        @keyframes mic-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        .mic-holder { display: block; position: relative; width: 1.2em; height: 1.6em; font-size: 11.96vw; }
+        .microphone {
+            display: block; color: #fff; font-size: 11.96vw; position: relative; left: 0.3em;
+            width: 0.6em; height: 1.1em; background-color: currentColor; border-radius: 0.3em;
+        }
+        #mic-button.mic-active .microphone { color: #f00; animation: mic-blink 1.2s infinite ease-in-out; }
+        .microphone::before {
+            content: ""; position: absolute; top: 0.5em; left: -0.2em; width: 0.8em; height: 0.7em;
+            border-left: 0.1em solid currentColor; border-right: 0.1em solid currentColor;
+            border-bottom: 0.1em solid currentColor; border-radius: 0 0 0.5em 0.5em;
+        }
+        .microphone::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 1.6em; height: 1.6em;
+            background: linear-gradient(to bottom, currentColor 0%, currentColor 100%) 0.25em 1.2em,
+                        linear-gradient(to bottom, currentColor 0%, currentColor 100%) 0 1.5em;
+            background-size: 0.1em 0.4em, 0.6em 0.1em; background-repeat: no-repeat;
+        }.blink { animation: sharp-blink-op 0.7s steps(1) infinite; }
         .blink-fast { animation: sharp-blink-op 0.2s steps(1) infinite; }
         @keyframes sharp-blink-op { 50% { opacity: 0; } }
 
@@ -135,7 +163,7 @@
         <div id="snap-point"></div>
         
         <div id="header-container">
-            <span id="title-main">Circle timer - ver.03a</span><br>
+            <span id="title-main">Circle timer - ver.04</span><br>
             <span id="title-sub">《 by Ken.Ishida 》</span>
         </div>
 
@@ -147,16 +175,32 @@
 
                 <g id="pie-segments"></g>
                 <path id="mask-path" fill="#000" />
-                <circle class="outline" cx="100" cy="100" r="98" />
-                <g id="mic-button" onclick="toggleMic(event)">
-                    <circle id="mic-circle" cx="100" cy="100" r="28" />
-                    <g id="mic-icon-group">
-                        <path d="M100,81c-3.8,0-7,3.1-7,7v10c0,3.8,3.2,7,7,7s7-3.2,7-7V88C107,84.1,103.8,81,100,81z" stroke-width="0"/>
-                        <path d="M113,99v4c0,7.1-5.8,13-13,13s-13-5.9-13-13v-4h2v4c0,6.1,4.9,11,11,11s11-4.9,11-11v-4H113z" stroke-width="0"/>
-                        <path d="M100,116 v7 M92,123 h16" fill="none" stroke-width="2.5" stroke-linecap="round"/>
+                <g id="analog-clock" pointer-events="none">
+                    <g id="clock-ticks"></g>
+                    <g id="clock-numerals" class="clock-numeral">
+                        <text x="100" y="20">Ⅻ</text>
+                        <text x="140" y="31">Ⅰ</text>
+                        <text x="169" y="60">Ⅱ</text>
+                        <text x="180" y="100">Ⅲ</text>
+                        <text x="169" y="140">Ⅳ</text>
+                        <text x="140" y="169">Ⅴ</text>
+                        <text x="100" y="180">Ⅵ</text>
+                        <text x="60" y="169">Ⅶ</text>
+                        <text x="31" y="140">Ⅷ</text>
+                        <text x="20" y="100">Ⅸ</text>
+                        <text x="31" y="60">Ⅹ</text>
+                        <text x="60" y="31">Ⅺ</text>
                     </g>
+                    <g id="hour-hand"><line class="clock-hand-outline" x1="100" y1="100" x2="100" y2="43" stroke-width="6"/><line class="clock-hand" x1="100" y1="100" x2="100" y2="43" stroke-width="5"/></g>
+                    <g id="minute-hand"><line class="clock-hand-outline" x1="100" y1="100" x2="100" y2="27" stroke-width="5"/><line class="clock-hand" x1="100" y1="100" x2="100" y2="27" stroke-width="2.8"/></g>
+                    <g id="second-hand"><line class="clock-hand-second-outline" x1="100" y1="100" x2="100" y2="17" stroke-width="1.8"/><line class="clock-hand-second" x1="100" y1="100" x2="100" y2="17" stroke-width="1.0"/></g>
                 </g>
-                            
+                <g id="clock-help" class="clock-help" pointer-events="none">
+                    <text x="100" y="148">アナログ時計の OFF/ON は</text>
+                    <text x="100" y="162">文字盤を tap</text>
+                </g>
+                <circle class="outline" cx="100" cy="100" r="98" />
+                
 <!-- ① beep1(2時の位置) -->
 <text id="note1" class="metro-note" x="190" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
 <!-- ② beep2(4時の位置) -->
@@ -167,6 +211,9 @@
 <text id="note4" class="metro-note" x="15" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
 
             </svg>
+            <button id="mic-button" type="button" aria-label="マイク切替" onclick="toggleMic(event)">
+                <span class="mic-holder"><span class="microphone"></span></span>
+            </button>
         </div>
     </div>
 
@@ -455,6 +502,43 @@
         }
         function playChime() { const now = audioCtx.currentTime; const p = (f, s, d) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, s); g.gain.setValueAtTime(0.5, s); g.gain.exponentialRampToValueAtTime(0.01, s + d); o.connect(g); g.connect(audioCtx.destination); o.start(s); o.stop(s + d); }; p(659.25, now, 0.8); p(523.25, now + 0.4, 1.2); }
         
+        let clockHelpTimer = null;
+        function hideClockHelp() {
+            const help = document.getElementById('clock-help');
+            if (help) help.style.display = 'none';
+            if (clockHelpTimer) clearTimeout(clockHelpTimer);
+        }
+        let analogClockVisible = true;
+        function toggleAnalogClock() {
+            hideClockHelp();
+            analogClockVisible = !analogClockVisible;
+            document.getElementById('analog-clock').style.display = analogClockVisible ? '' : 'none';
+        }
+        function initAnalogClock() {
+            const ticks = document.getElementById('clock-ticks');
+            for (let i = 0; i < 12; i++) {
+                const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                tick.setAttribute('x1', '100');
+                tick.setAttribute('y1', '4');
+                tick.setAttribute('x2', '100');
+                tick.setAttribute('y2', i % 3 === 0 ? '14' : '10');
+                tick.setAttribute('transform', `rotate(${i * 30} 100 100)`);
+                tick.setAttribute('class', i % 3 === 0 ? 'clock-tick major' : 'clock-tick');
+                ticks.appendChild(tick);
+            }
+            updateAnalogClock();
+            setInterval(updateAnalogClock, 1000);
+        }
+
+        function updateAnalogClock() {
+            const now = new Date();
+            const seconds = now.getSeconds();
+            const minutes = now.getMinutes() + seconds / 60;
+            const hours = (now.getHours() % 12) + minutes / 60;
+            document.getElementById('hour-hand').setAttribute('transform', `rotate(${hours * 30} 100 100)`);
+            document.getElementById('minute-hand').setAttribute('transform', `rotate(${minutes * 6} 100 100)`);
+            document.getElementById('second-hand').setAttribute('transform', `rotate(${seconds * 6} 100 100)`);
+        }
         function updateDisplay() {
             let m = Math.floor(timeLeft / 60), s = timeLeft % 60;
             display.innerText = m + ":" + s.toString().padStart(2, '0');
@@ -508,7 +592,8 @@
             });
         }
 
-        function handleTap() { 
+        function handleTap() {
+            hideClockHelp(); 
             unlockAudio();
             playTapSound();
             if (isRunning || timeLeft === 0) resetTimer(); else startTimer(); 
@@ -544,7 +629,10 @@
             updateWakeLock(); 
         }
 
-        initPie(); 
+        initPie();
+        initAnalogClock();
+        document.querySelector('#circle-timer-container svg').addEventListener('click', toggleAnalogClock);
+        clockHelpTimer = setTimeout(hideClockHelp, 10000); 
         updateDisplay();
     
     /* === 虹色リニアモーターカー（2秒/周・出入庫完全対称版） === */
@@ -752,3 +840,21 @@ document.addEventListener('keydown', function(e){
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
