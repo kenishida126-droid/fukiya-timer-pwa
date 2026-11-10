@@ -111,7 +111,7 @@
             cursor: pointer; z-index: 1; -webkit-tap-highlight-color: transparent;
         }
         #mic-button.mic-active { color: #f00; }
-        #mic-button.mic-waiting .microphone { animation: none; opacity: 1; }
+        #mic-button.mic-running .microphone { animation: none; opacity: 1; }
         @keyframes mic-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
         .mic-holder { display: block; position: relative; width: 1.2em; height: 1.6em; font-size: 11.96vw; }
         .microphone {
@@ -119,6 +119,7 @@
             width: 0.6em; height: 1.1em; background-color: currentColor; border-radius: 0.3em;
         }
         #mic-button.mic-active .microphone { color: #f00; animation: mic-blink 1.2s infinite ease-in-out; }
+        #mic-button.mic-active.mic-running .microphone { color: #f00; animation: none; opacity: 1; }
         .microphone::before {
             content: ""; position: absolute; top: 0.5em; left: -0.2em; width: 0.8em; height: 0.7em;
             border-left: 0.1em solid currentColor; border-right: 0.1em solid currentColor;
@@ -427,10 +428,10 @@
         }
 
         function updateMicVisual() {
-            if (!isMicEnabled) { micButton.classList.remove('mic-active', 'mic-waiting'); return; }
+            if (!isMicEnabled) { micButton.classList.remove('mic-active', 'mic-running'); return; }
             micButton.classList.add('mic-active');
-            if (!isRunning && (timeLeft === 185 || timeLeft === 0)) { micButton.classList.add('mic-waiting'); }
-            else { micButton.classList.remove('mic-waiting'); }
+            if (isRunning) { micButton.classList.add('mic-running'); }
+            else { micButton.classList.remove('mic-running'); }
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -493,12 +494,29 @@
             });
             audioUnlocked = true;
         }
-        function safePlay(a){
-            try{
-                a.pause();
-                a.currentTime = 0;
-                a.play().catch(()=>{});
-            }catch(e){}
+        function safePlay(a) {
+            return new Promise(resolve => {
+                let finished = false;
+                const finish = () => {
+                    if (finished) return;
+                    finished = true;
+                    a.removeEventListener('ended', finish);
+                    a.removeEventListener('error', finish);
+                    a.removeEventListener('abort', finish);
+                    resolve();
+                };
+                try {
+                    a.pause();
+                    a.currentTime = 0;
+                    a.addEventListener('ended', finish, { once: true });
+                    a.addEventListener('error', finish, { once: true });
+                    a.addEventListener('abort', finish, { once: true });
+                    const playback = a.play();
+                    if (playback && typeof playback.catch === 'function') playback.catch(finish);
+                } catch (e) {
+                    finish();
+                }
+            });
         }
         function playChime() { const now = audioCtx.currentTime; const p = (f, s, d) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, s); g.gain.setValueAtTime(0.5, s); g.gain.exponentialRampToValueAtTime(0.01, s + d); o.connect(g); g.connect(audioCtx.destination); o.start(s); o.stop(s + d); }; p(659.25, now, 0.8); p(523.25, now + 0.4, 1.2); }
         
@@ -565,10 +583,18 @@
             if (timeLeft === 181 && audioFiles) safePlay(audioFiles.start);
             if (timeLeft === 30 && audioFiles) safePlay(audioFiles.halfMin);
             if (timeLeft === 0) {
-                if (audioFiles) safePlay(audioFiles.end);
+                let endPlayback = Promise.resolve();
+                if (audioFiles) endPlayback = safePlay(audioFiles.end);
                 clearInterval(timerInterval); isRunning = false;
-                updateWakeLock(); 
-                if (isMicEnabled) setTimeout(() => { if (!isRunning && isMicEnabled) { try { recognition.start(); } catch(e){} updateMicVisual(); } }, 2000);
+                updateWakeLock();
+                if (isMicEnabled) {
+                    endPlayback.then(() => {
+                        if (!isRunning && isMicEnabled) {
+                            try { recognition.start(); } catch (e) {}
+                            updateMicVisual();
+                        }
+                    });
+                }
                 updateMicVisual();
             }
         }
@@ -610,6 +636,7 @@
 
             isRunning = true; 
             if (isMicEnabled) { try { recognition.stop(); } catch(e){} } 
+            updateMicVisual();
             updateWakeLock(); 
             timerInterval = setInterval(() => { 
                 if (timeLeft > 0) { 
@@ -840,21 +867,3 @@ document.addEventListener('keydown', function(e){
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
