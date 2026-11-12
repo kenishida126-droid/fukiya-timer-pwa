@@ -150,6 +150,7 @@
 
         /* ★ メトロノーム */
         #metronome, .metro-note { fill: white; cursor: pointer; }
+        .metro-hit { fill: transparent; pointer-events: all; cursor: pointer; }
         @keyframes metro-blink { 0%{opacity:1;} 50%{opacity:0.2;} 100%{opacity:1;} }
         .on-red { fill: red !important; animation: metro-blink 1s infinite; }
         .on-yellow { fill: yellow !important; animation: metro-blink 1s infinite; }
@@ -203,12 +204,16 @@
                 <circle class="outline" cx="100" cy="100" r="98" />
                 
 <!-- ① beep1(2時の位置) -->
+<circle class="metro-hit" cx="190" cy="20" r="14" onclick="event.stopPropagation(); toggleMetro(1)" />
 <text id="note1" class="metro-note" x="190" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(1)">♬</text>
 <!-- ② beep2(4時の位置) -->
+<circle class="metro-hit" cx="190" cy="182" r="14" onclick="event.stopPropagation(); toggleMetro(2)" />
 <text id="note2" class="metro-note" x="190" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(2)">♫</text>
 <!-- ③ beep3(7時の位置) -->
+<circle class="metro-hit" cx="15" cy="182" r="14" onclick="event.stopPropagation(); toggleMetro(3)" />
 <text id="note3" class="metro-note" x="15" y="182" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(3)">♪</text>
 <!-- ④ beep4(10時の位置) -->
+<circle class="metro-hit" cx="15" cy="20" r="14" onclick="event.stopPropagation(); toggleMetro(4)" />
 <text id="note4" class="metro-note" x="15" y="20" font-size="25" text-anchor="middle" dominant-baseline="middle" onclick="event.stopPropagation(); toggleMetro(4)">♩</text>
 
             </svg>
@@ -220,8 +225,10 @@
 
     <script>
         let timeLeft = 185, timerInterval = null, isRunning = false, wakeLock = null, isMicEnabled = false, recognition = null;
+        let voiceStartChimePending = false;
         const display = document.getElementById('timer-display'), micButton = document.getElementById('mic-button');
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const isIOSDevice = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         document.addEventListener(
             'touchstart',
@@ -450,12 +457,12 @@
                 if (!isRunning && (timeLeft === 185 || timeLeft === 0)) {
                     if (/(開始|かいし|カイシ|スタート|すたーと|start|始め|はじめ|ハジメ)/.test(transcript)) {
                         if (timeLeft === 0) resetTimer();
-                        startTimer();
+                        startTimer(true);
                     }
                 }
             };
             recognition.onstart = () => { updateMicVisual(); updateWakeLock(); };
-            recognition.onend = () => { if (isMicEnabled && !isRunning) recognition.start(); updateMicVisual(); updateWakeLock(); };
+            recognition.onend = () => { playVoiceStartChimeAfterRecognitionEnds(); if (isMicEnabled && !isRunning) recognition.start(); updateMicVisual(); updateWakeLock(); };
             recognition.onerror = () => { if (isMicEnabled) setTimeout(() => recognition.start(), 300); };
         }
 
@@ -509,6 +516,18 @@
             });
         }
         function playChime() { const now = audioCtx.currentTime; const p = (f, s, d) => { const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(f, s); g.gain.setValueAtTime(0.5, s); g.gain.exponentialRampToValueAtTime(0.01, s + d); o.connect(g); g.connect(audioCtx.destination); o.start(s); o.stop(s + d); }; p(659.25, now, 0.8); p(523.25, now + 0.4, 1.2); }
+        function playVoiceStartChimeAfterRecognitionEnds() {
+            if (!voiceStartChimePending) return;
+            voiceStartChimePending = false;
+            setTimeout(() => retryVoiceStartChime(0), 2000);
+        }
+        async function retryVoiceStartChime(attempt) {
+            try {
+                if (audioCtx.state !== 'running') await audioCtx.resume();
+                if (audioCtx.state === 'running') { playChime(); return; }
+            } catch(e) {}
+            if (attempt < 3) setTimeout(() => retryVoiceStartChime(attempt + 1), 150);
+        }
         
         let clockHelpTimer = null;
         function hideClockHelp() {
@@ -615,7 +634,7 @@
             if (isRunning || timeLeft === 0) resetTimer(); else startTimer(); 
         }
 
-        async function startTimer() { 
+        async function startTimer(playVoiceStartChime = false) { 
             if (isRunning) return; 
 
             // ★ 音声起動時も確実にAudio解放
@@ -623,9 +642,15 @@
             if (audioCtx.state === 'suspended') {
                 try { await audioCtx.resume(); } catch(e){}
             }
-
+            if (playVoiceStartChime) playChime();
             isRunning = true; 
-            if (isMicEnabled) { try { recognition.stop(); } catch(e){} } 
+            if (isMicEnabled) {
+                if (playVoiceStartChime && isIOSDevice) {
+                    setTimeout(() => { try { recognition.stop(); } catch(e) {} }, 1300);
+                } else {
+                    try { recognition.stop(); } catch(e) {}
+                }
+            } 
             updateMicVisual();
             updateWakeLock(); 
             timerInterval = setInterval(() => { 
