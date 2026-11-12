@@ -130,7 +130,7 @@ body {
 
 <div id="main-wrapper">
 <div id="title">
-  <div id="title-main">Arrows timer - ver.02a</div>
+  <div id="title-main">Arrows timer - ver.03a</div>
   <div id="title-sign">《 by Ken.Ishida 》</div>
 </div>
 
@@ -228,11 +228,6 @@ function unlockAudio() {
   sndStart = new Audio("start-0.mp3");
   snd30    = new Audio("30sec.mp3");
   sndEnd   = new Audio("end.mp3");
-  [sndStart, snd30, sndEnd].forEach(a=>{
-    a.volume = 0;
-    a.play().then(()=>{ a.pause(); a.currentTime=0; });
-    a.volume = 1;
-  });
   audioUnlocked = true;
 }
 
